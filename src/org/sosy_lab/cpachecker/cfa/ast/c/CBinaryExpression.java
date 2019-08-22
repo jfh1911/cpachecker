@@ -44,6 +44,12 @@ public class CBinaryExpression extends ABinaryExpression implements CExpression 
   }
 
   @Override
+  public String toString() {
+    // FIXME: remove before release, just to simplify the debuging
+    return super.toASTString();
+  }
+
+  @Override
   public <R, X extends Exception> R accept(CExpressionVisitor<R, X> v) throws X {
     return v.visit(this);
   }

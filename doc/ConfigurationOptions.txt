@@ -434,6 +434,9 @@ analysis.useParallelAnalyses = false
 # generate test cases for covered test targets
 analysis.useTestCaseGeneratorAlgorithm = false
 
+# file in which lho-Order was stored
+arg.pcc.lhoReadFile = "D:\\\\eclipse-workspace\\\\CPAchecker-IFC\\\\output\\\\lho.obj"
+
 # Add a threshold to the automaton, after so many branches on a path the
 # automaton will be ignored (0 to disable)
 assumptions.automatonBranchingThreshold = 0
@@ -1438,29 +1441,39 @@ cpa.ifcsecurity.defaultsc = "LOW"
 # which immediatechecksfile to use for PolicyEnforcementCPA
 cpa.ifcsecurity.immediatechecksfile = "immediatechecks.conf"
 
-# defines security classes of entities
-cpa.ifcsecurity.initialmapfile = no default value
+# get an initial precision from file
+cpa.ifcsecurity.initialPrecisionFile = no default value
+
+# target file to hold the exported precision
+cpa.ifcsecurity.jsonFile = "dep.json"
 
 # which merge operator to use for ControlDependencyTrackerCPA
 # which merge operator to use for DependencyTrackerCPA
-# which merge operator to use for PolicyEnforcementCPA
+# which merge operator to use for ControlDependencyTrackerCPA
+# which merge operator to use for DependencyTrackerCPA
 cpa.ifcsecurity.merge = "JOIN"
   allowed values: [SEP, JOIN]
 
 # which policy to use for PolicyEnforcementCPA
 cpa.ifcsecurity.policy = "HILO"
 
+# which stop operator to use for DependencyTrackerCPA
+cpa.ifcsecurity.precisionType = "pol-indep"
+  allowed values: [pol-indep, pol-dep]
+
 # which betamapfile to use for PolicyEnforcementCPA
 cpa.ifcsecurity.scMappingFile = "betamap.conf"
 
-# which states shall be checked
-cpa.ifcsecurity.statestocheck = 0
-
 # which stop operator to use for ControlDependencyTrackerCPA
 # which stop operator to use for DependencyTrackerCPA
-# which stop operator to use for PolicyEnforcementCPA
+# which stop operator to use for ControlDependencyTrackerCPA
+# which stop operator to use for DependencyTrackerCPA
 cpa.ifcsecurity.stop = "SEP"
   allowed values: [SEP, JOIN]
+
+# target file to hold the exported precision
+cpa.ifcsecurity.targetFile = "stats.txt"
+cpa.ifcsecurity.xmlFile = "C:/Users/mtoews/workspace/CPA/CPAchecker/ifc.xml"
 
 # which type of merge operator to use for IntervalAnalysisCPA
 cpa.interval.merge = "SEP"
@@ -2378,6 +2391,20 @@ cpa.propertychecker.className = org.sosy_lab.cpachecker.pcc.propertychecker.Defa
 # respective constructor. Every parameter value is finished with ",". The
 # empty string represents an empty parameter list.
 cpa.propertychecker.parameters = ""
+
+# Which is the lowes allowed remaining Entropy, the highest allowed leakage
+# or the lowest allowed Min-Entropy(File)
+cpa.qMultiInterval.MinMaxMapping = "betamap.conf"
+
+# Which Intervals should be used for the Vars(File)
+cpa.qMultiInterval.intervalMapping = "betamap.conf"
+
+# How many intervals can be saved in a variable
+cpa.qMultiInterval.maxIntervals = 10000
+
+# After how many loopiterations the loop should be left. Then the variables
+# will be overapproximated
+cpa.qMultiInterval.maxLoops = 10000
 
 # Whether to consider constraints on program variables (e.g., x > 10) as
 # definitions)
@@ -3322,6 +3349,12 @@ pcc.HWrequirements.extraction.mode = OPERATOR
 # and checked property is violated for a set iff an element in this set
 # exists for which violates the property
 pcc.arg.checkPropertyPerElement = false
+
+# file in which lho-Order will be stored
+pcc.arg.ifc.pcc.lhoWriteFile = "lho.obj"
+
+# file in which lho-Order was stored
+pcc.arg.pcc.lhoReadFile = "D:\\\\eclipse-workspace\\\\CPAchecker-IFC\\\\output\\\\lho.obj"
 
 # Enable to store ARG states instead of abstract states wrapped by ARG state
 pcc.backwardtargets.certificateStatesAsARGStates = false

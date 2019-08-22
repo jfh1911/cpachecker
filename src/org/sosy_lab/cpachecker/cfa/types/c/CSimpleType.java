@@ -70,6 +70,7 @@ public final class CSimpleType implements CType, Serializable {
     isLongLong = pIsLongLong;
   }
 
+
   @Override
   public boolean isConst() {
     return isConst;

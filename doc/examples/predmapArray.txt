@@ -1,0 +1,11 @@
+(set-info :source |printed by MathSAT|)
+(declare-fun SIZE () Int)
+(declare-fun |main::i| () Int)
+(declare-fun i () Int)
+
+main:
+(assert (let ((.def_48 (<= SIZE |main::i|))).def_48))
+
+main N1:
+(assert (let ((.def_16 (<= SIZE i)))(let ((.def_17 (not .def_16))).def_17)))
+(assert (let ((.def_48 (<= SIZE |main::i|))).def_48))
