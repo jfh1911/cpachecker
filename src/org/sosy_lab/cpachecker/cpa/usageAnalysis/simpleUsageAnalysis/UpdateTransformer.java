@@ -21,8 +21,10 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression.BinaryOperator;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
@@ -33,9 +35,15 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageType
 public class UpdateTransformer {
 
   private ArraySegmentationState<VariableUsageDomain> state;
+  private LogManager logger;
+  private static final String PREFIX = "USAGE_ANALYSIS update";
 
-  public UpdateTransformer(ArraySegmentationState<VariableUsageDomain> pState) {
+
+  public UpdateTransformer(
+      ArraySegmentationState<VariableUsageDomain> pState,
+      LogManager pLogger) {
     this.state = pState;
+    this.logger = pLogger;
   }
 
   public @Nullable ArraySegmentationState<VariableUsageDomain> update(CBinaryExpression expr) {
@@ -86,7 +94,18 @@ public class UpdateTransformer {
       // The analysis seems to be not working, since there is more than one segment bound
       // containing an expression. This is an illegal state of the analysis, hence the analysis is
       // aborted by returning the errorSymbol!
+      logger.log(
+          Level.FINE,
+          PREFIX
+              + "THe segmentation is invalid, since the expression that should be reassigned is present twice."
+              + "Hence, the error symbol is returned. Current State is: "
+              + this.state.toDOTLabel()
+              + " for the expression :"
+              + pVar.toASTString()
+              + " := "
+              + pOp2.toASTString());
       return new ErrorSegmentation<>();
+
     } else {
       // Check, if the variable is present in any state:
       List<ArraySegment<VariableUsageDomain>> segmentsContainingVar =
@@ -99,6 +118,16 @@ public class UpdateTransformer {
         // The analysis seems to be not working, since there is more than one segment bound
         // containing an expression. This is an illegal state of the analysis, hence the analysis is
         // aborted by returning the errorSymbol!
+        logger.log(
+            Level.FINE,
+            PREFIX
+                + "THe segmentation is invalid, since the expression that should be reassigned is present twice."
+                + "Hence, the error symbol is returned. Current State is: "
+                + this.state.toDOTLabel()
+                + " for the expression :"
+                + pVar.toASTString()
+                + " := "
+                + pOp2.toASTString());
         return new ErrorSegmentation<>();
       } else {
 
@@ -119,6 +148,14 @@ public class UpdateTransformer {
                 .getAnalysisInformation()
                 .getType()
                 .equals(VariableUsageType.USED)) {
+              logger.log(
+                  Level.FINE,
+                  "The analysis result would be under-approximated when removing a segment bound containing array elements marked as used for "
+                      + state.toDOTLabel()
+                      + " for the expression "
+                      + pVar.toASTString()
+                      + pOperator.toString()
+                      + pOp2.toASTString());
               return new ErrorSegmentation<>();
             }
           }
@@ -167,38 +204,49 @@ public class UpdateTransformer {
       return new UnreachableArraySegmentation<>();
     } else {
       // Check if they var and op2 are present in consecutive segments and remove a ? in that case
-    }
-    List<ArraySegment<VariableUsageDomain>> segmentsContainingOp2 = getSegmentsContainingExpr(pOp2);
-    if (segmentsContainingOp2.isEmpty()) {
-      return state;
-    } else if (segmentsContainingOp2.size() > 1) {
-      // The analysis seems to be not working, since there is more than one segment bound
-      // containing an expression. This is an illegal state of the analysis, hence the analysis is
-      // aborted by returning the errorSymbol!
-      return new ErrorSegmentation<>();
-    } else {
-      // Check, if the variable is present in any state:
-      List<ArraySegment<VariableUsageDomain>> segmentsContainingOp1 =
-          getSegmentsContainingExpr(op1);
-      if (segmentsContainingOp1.size() > 1) {
+
+      List<ArraySegment<VariableUsageDomain>> segmentsContainingOp2 =
+          getSegmentsContainingExpr(pOp2);
+      if (segmentsContainingOp2.isEmpty()) {
+        return state;
+      } else if (segmentsContainingOp2.size() > 1) {
         // The analysis seems to be not working, since there is more than one segment bound
         // containing an expression. This is an illegal state of the analysis, hence the analysis is
         // aborted by returning the errorSymbol!
         return new ErrorSegmentation<>();
-      } else if (segmentsContainingOp1.size() == 1) {
-        // Check, if the segment bounds are consecutive:
-        int posSegmentContainsOp1 =
-            state.getSegments().indexOf(segmentsContainingOp1.get(0));
-        int posSegmentContainsOp2 =
-            state.getSegments().indexOf(segmentsContainingOp2.get(0));
-        int min = Integer.min(posSegmentContainsOp1, posSegmentContainsOp2);
-        int max = Integer.max(posSegmentContainsOp1, posSegmentContainsOp2);
-        if (max - min == 1) {
-          state.getSegments().get(min).setPotentiallyEmpty(false);
+      } else {
+        // Check, if the variable is present in any state:
+        List<ArraySegment<VariableUsageDomain>> segmentsContainingOp1 =
+            getSegmentsContainingExpr(op1);
+        if (segmentsContainingOp1.size() > 1) {
+          // The analysis seems to be not working, since there is more than one segment bound
+          // containing an expression. This is an illegal state of the analysis, hence the analysis
+          // is
+          // aborted by returning the errorSymbol!
+          logger.log(
+              Level.FINE,
+              PREFIX
+                  + "THe segmentation is invalid, since the expression that should be reassigned is present twice."
+                  + "Hence, the error symbol is returned. Current State is: "
+                  + this.state.toDOTLabel()
+                  + " for the expression :"
+                  + op1.toASTString()
+                  + " != "
+                  + pOp2.toASTString());
+          return new ErrorSegmentation<>();
+        } else if (segmentsContainingOp1.size() == 1) {
+          // Check, if the segment bounds are consecutive:
+          int posSegmentContainsOp1 = state.getSegments().indexOf(segmentsContainingOp1.get(0));
+          int posSegmentContainsOp2 = state.getSegments().indexOf(segmentsContainingOp2.get(0));
+          int min = Integer.min(posSegmentContainsOp1, posSegmentContainsOp2);
+          int max = Integer.max(posSegmentContainsOp1, posSegmentContainsOp2);
+          if (max - min == 1) {
+            state.getSegments().get(min).setPotentiallyEmpty(false);
+          }
         }
       }
+      return state;
     }
-    return state;
   }
 
   private @Nullable ArraySegmentationState<VariableUsageDomain>
@@ -212,6 +260,16 @@ public class UpdateTransformer {
       // Nothing to change
       return state;
     } else if (segmentsContainingGreater.size() > 1 || segmentsContainingSmaller.size() > 1) {
+      logger.log(
+          Level.FINE,
+          PREFIX
+              + "THe segmentation is invalid, since the expression that should be reassigned is present twice."
+              + "Hence, the error symbol is returned. Current State is: "
+              + this.state.toDOTLabel()
+              + " for the expression :"
+              + greater.toASTString()
+              + " > "
+              + smaller.toASTString());
       return new ErrorSegmentation<>();
     } else {
       // check if the two segmetns are ordered correctly!
@@ -237,6 +295,16 @@ public class UpdateTransformer {
       // Nothing to change
       return state;
     } else if (segmentsContainingGreater.size() > 1 || segmentsContainingSmaller.size() > 1) {
+      logger.log(
+          Level.FINE,
+          PREFIX
+              + "THe segmentation is invalid, since the expression that should be reassigned is present twice."
+              + "Hence, the error symbol is returned. Current State is: "
+              + this.state.toDOTLabel()
+              + " for the expression :"
+              + greater.toASTString()
+              + " >= "
+              + smaller.toASTString());
       return new ErrorSegmentation<>();
     } else {
       // check if the two segmetns are ordered correctly!

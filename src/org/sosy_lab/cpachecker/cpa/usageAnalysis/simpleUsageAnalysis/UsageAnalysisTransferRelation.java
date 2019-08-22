@@ -23,6 +23,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
@@ -75,6 +76,7 @@ public class UsageAnalysisTransferRelation extends
 
   private final LogManagerWithoutDuplicates logger;
   private final MachineModel machineModel;
+  private static final String PREFIX = "USAGE_ANALYSIS:";
 
   public UsageAnalysisTransferRelation(
       LogManagerWithoutDuplicates pLogger,
@@ -259,7 +261,7 @@ public class UsageAnalysisTransferRelation extends
 
     // Case 3: Update(e,d)
     if (pExpression instanceof CBinaryExpression) {
-      UpdateTransformer u = new UpdateTransformer(state);
+      UpdateTransformer u = new UpdateTransformer(state, logger);
       return u.update((CBinaryExpression) pExpression);
     } else {
       return state;
@@ -279,6 +281,14 @@ public class UsageAnalysisTransferRelation extends
       CExpression subscriptExpr = use.getSubscriptExpression();
       int pos = state.getSegBoundContainingExpr(subscriptExpr);
       if (pos < 0) {
+        logger.log(
+            Level.FINE, PREFIX+
+            "Cannot create a usage sincethe variable "
+                + subscriptExpr.toASTString()
+                + " is not present in the segmentation, hence the error symbol is returned. Current State is: "
+                + this.state.toDOTLabel()
+                + " for the expression :"
+                + pArrayUses.toString());
         return new ErrorSegmentation<>();
       } else {
         // Create a new segment after the segment containing the expression to access the array
@@ -295,8 +305,13 @@ public class UsageAnalysisTransferRelation extends
                       CIntegerLiteralExpression.ONE,
                       CBinaryExpression.BinaryOperator.PLUS));
         } catch (UnrecognizedCodeException e) {
-          // TODO Log error
           e.printStackTrace();
+          logger.log(
+              Level.FINE, PREFIX+
+              "Cannot create a usage due to internal problems, hence the error symbol is returned. Current State is: "
+                  + this.state.toDOTLabel()
+                  + " for the expression :"
+                  + pArrayUses.toString());
           return new ErrorSegmentation<>();
         }
         if (!leftBound.getNextSegment().getSegmentBound().contains(exprPlus1)) {
@@ -321,21 +336,35 @@ public class UsageAnalysisTransferRelation extends
 
     CExpression canoncialForm = getCanonicalForm(pRightHandSide);
     List<ArraySegment<VariableUsageDomain>> exprList = new ArrayList<>();
-        // FIXME: FIX this to correctly detect values
+    // FIXME: FIX this to correctly detect values
     for (ArraySegment<VariableUsageDomain> s : state.getSegments()) {
-      for(AExpression e : s.getSegmentBound()) {
-      if (e.equals(canoncialForm)) {
-        exprList.add(s);
-      }
+      for (AExpression e : s.getSegmentBound()) {
+        if (e.equals(canoncialForm)) {
+          exprList.add(s);
+        }
       }
     }
     if (exprList.size() > 1) {
+      logger.log(
+          Level.FINE, PREFIX+
+          "THe segmentation is invalid, since the expression that should be reassigned is present twice."
+              + "Hence, the error symbol is returned. Current State is: "
+              + this.state.toDOTLabel()
+              + " for the expression :"
+              + pVar.toASTString()
+              + " := "
+              + pRightHandSide.toASTString());
       return new ErrorSegmentation<>();
     } else if (exprList.size() == 1) {
       // Here, we are changing the ordering ( in the original transfer relation, the elements are
       // added firstly, than the others are removed. Anyway, changing these two steps leads to the
       // Exact same results!
       if (!cleanExprFromSegBounds(pVar)) {
+        logger.log(
+            Level.FINE, PREFIX+
+            "The cleanup for the segmentation "
+                + state.toDOTLabel() + " and expression " + pVar.toASTString()
+                + " has failed. The error label is returned");
         return new ErrorSegmentation<>();
       }
       // Add pVar to pRightHandSide
@@ -352,6 +381,12 @@ public class UsageAnalysisTransferRelation extends
       if (canoncialForm instanceof CIntegerLiteralExpression) {
 
         if (!cleanExprFromSegBounds(pVar)) {
+
+          logger.log(
+              Level.FINE, PREFIX+
+              "The cleanup for the segmentation "
+                  + state.toDOTLabel() + " and expression " + pVar.toASTString()
+                  + " has failed. The error label is returned");
           return new ErrorSegmentation<>();
         }
 
@@ -386,7 +421,8 @@ public class UsageAnalysisTransferRelation extends
         }
         // taking the assumption into account, that the variable pVar is smaller or equal to all
         // expression in the last segment bound, we can add it before the last segment!
-        //We need to assume that there are at least two segments present. IN case that only a single segment is present, nothing can be done!
+        // We need to assume that there are at least two segments present. IN case that only a
+        // single segment is present, nothing can be done!
 
         if (!isAdded && state.getSegments().size() > 1) {
           ArraySegment<VariableUsageDomain> prevSeg =
@@ -402,7 +438,9 @@ public class UsageAnalysisTransferRelation extends
                   state.getSegments().get(state.getSegments().size() - 1));
           state.addSegment(newSeg, prevSeg);
         } else {
-          //At this point, we know that: 1. 0 = SIZE, and the variable pVar := x , x \in N &  x > 0. If x would have been equal to 0, then pVar would have been added. Hence, the assumption pVar <= SIZE is violated and the unreachable Segment is returned!
+          // At this point, we know that: 1. 0 = SIZE, and the variable pVar := x , x \in N & x > 0.
+          // If x would have been equal to 0, then pVar would have been added. Hence, the assumption
+          // pVar <= SIZE is violated and the unreachable Segment is returned!
           return new UnreachableArraySegmentation<>();
         }
       } else {
@@ -496,8 +534,8 @@ public class UsageAnalysisTransferRelation extends
                   false,
                   false,
                   false);
-          return CIntegerLiteralExpression.createDummyLiteral(
-              ((CIntegerLiteralExpression) returnExpr).asLong(), newSimpleType);
+          return CIntegerLiteralExpression
+              .createDummyLiteral(((CIntegerLiteralExpression) returnExpr).asLong(), newSimpleType);
         }
       }
     }
@@ -517,13 +555,24 @@ public class UsageAnalysisTransferRelation extends
     try {
       state.mergeSegmentsWithEmptySegmentBounds();
     } catch (CPAException | InterruptedException e) {
-      e.printStackTrace();
+      logger.log(
+          Level.SEVERE,
+          "An error occured while removing the expression"
+              + pVar.toASTString()
+              + " from "
+              + this.state.toDOTLabel()
+              + e.getStackTrace().toString());
       // TODO Enhance error handling
       return false;
     }
     // Remove the '?' at the last segment if present
     if (state.getSegments().isEmpty()) {
       // All segment bounds were removed, report a failure
+      logger.log(
+          Level.FINE, PREFIX+
+          "The segmentation has become empty, this is invalid after removing the expression"
+              + pVar.toASTString()
+              + ". Hence, the error symbol is returned");
       return false;
     }
     state.getSegments().get(state.getSegments().size() - 1).setPotentiallyEmpty(false);
