@@ -29,6 +29,7 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression.BinaryOperator;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
+import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageType;
 
@@ -37,16 +38,20 @@ public class UpdateTransformer {
   private ArraySegmentationState<VariableUsageDomain> state;
   private LogManager logger;
   private static final String PREFIX = "USAGE_ANALYSIS update";
-
+  ExpressionSimplificationVisitor visitor;
 
   public UpdateTransformer(
       ArraySegmentationState<VariableUsageDomain> pState,
-      LogManager pLogger) {
+      LogManager pLogger,
+      ExpressionSimplificationVisitor pVisitor) {
     this.state = pState;
     this.logger = pLogger;
+    this.visitor = pVisitor;
+
   }
 
-  public @Nullable ArraySegmentationState<VariableUsageDomain> update(CBinaryExpression expr) {
+  public @Nullable ArraySegmentationState<VariableUsageDomain>
+      update(CBinaryExpression expr) {
 
     if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.EQUALS)) {// Case 3.1
       // AS explained by Jan Haltermann in hismaster thesis, we need to ensure that the LHS of the
@@ -341,8 +346,7 @@ public class UpdateTransformer {
       CIdExpression pVar,
       CExpression pOp2,
       BinaryOperator pOperator) {
-    // FIXME: implement
-    return pState;
+    return SegmentationReachabilityChecker.checkReachability(pState, pVar, pOp2, pOperator, logger, visitor);
   }
 
 }

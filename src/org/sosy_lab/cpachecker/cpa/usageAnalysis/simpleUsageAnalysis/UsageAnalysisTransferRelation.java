@@ -78,6 +78,7 @@ public class UsageAnalysisTransferRelation extends
   private final LogManagerWithoutDuplicates logger;
   private final MachineModel machineModel;
   private static final String PREFIX = "USAGE_ANALYSIS:";
+  ExpressionSimplificationVisitor visitor;
 
   public UsageAnalysisTransferRelation(
       LogManagerWithoutDuplicates pLogger,
@@ -85,6 +86,7 @@ public class UsageAnalysisTransferRelation extends
     super();
     logger = pLogger;
     machineModel = pMachineModel;
+    visitor = new EnhancedExpressionSimplificationVisitor(machineModel, logger);
   }
 
   @Override
@@ -113,7 +115,6 @@ public class UsageAnalysisTransferRelation extends
     }
     return logTransformation(inpUtArgumentsAsString, state);
   }
-
 
   @Override
   protected ArraySegmentationState<VariableUsageDomain> handleBlankEdge(BlankEdge pCfaEdge) {
@@ -273,8 +274,10 @@ public class UsageAnalysisTransferRelation extends
 
     // Case 3: Update(e,d)
     if (pExpression instanceof CBinaryExpression) {
-      UpdateTransformer u = new UpdateTransformer(state, logger);
-      return logTransformation(inpUtArgumentsAsString, u.update((CBinaryExpression) pExpression));
+      UpdateTransformer u = new UpdateTransformer(state, logger, visitor);
+      return logTransformation(
+          inpUtArgumentsAsString,
+          u.update((CBinaryExpression) pExpression));
     } else {
       return logTransformation(inpUtArgumentsAsString, state);
     }
@@ -307,8 +310,6 @@ public class UsageAnalysisTransferRelation extends
         // Create a new segment after the segment containing the expression to access the array
         // elements and mark this as used
         ArraySegment<VariableUsageDomain> leftBound = state.getSegments().get(pos);
-        ExpressionSimplificationVisitor visitor =
-            new EnhancedExpressionSimplificationVisitor(machineModel, logger);
         CExpression exprPlus1;
         try {
           exprPlus1 =
@@ -415,8 +416,7 @@ public class UsageAnalysisTransferRelation extends
         // Since by assumption only one variable is tracked, all other expressions evaluate either
         // to an integer value, contains the variable pVar or are the last element!
         BigInteger valueOfExpr = ((CIntegerLiteralExpression) canoncialForm).getValue();
-        ExpressionSimplificationVisitor visitor =
-            new EnhancedExpressionSimplificationVisitor(machineModel, logger);
+
         // We can start at the second element, since by assumption 0 is always present and hence e >
         // 0
         boolean isAdded = false;
@@ -491,7 +491,7 @@ public class UsageAnalysisTransferRelation extends
       s.replaceVar(
           pVar,
           canoncialForm,
-          new EnhancedExpressionSimplificationVisitor(machineModel, logger));
+          visitor);
     }
     return state;
   }
@@ -525,8 +525,7 @@ public class UsageAnalysisTransferRelation extends
 
   private CExpression getCanonicalForm(CExpression pExpr) {
     CExpression returnExpr = pExpr;
-    ExpressionSimplificationVisitor visitor =
-        new ExpressionSimplificationVisitor(machineModel, logger);
+
     if (pExpr instanceof CAddressOfLabelExpression) {
       returnExpr = visitor.visit((CAddressOfLabelExpression) pExpr);
     } else if (pExpr instanceof CBinaryExpression) {

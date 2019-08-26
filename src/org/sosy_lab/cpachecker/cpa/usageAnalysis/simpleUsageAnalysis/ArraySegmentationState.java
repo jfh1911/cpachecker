@@ -446,6 +446,11 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     this.segments = newSegments;
   }
 
+  /**
+   *
+   * @param pSubscriptExpr the expression to search for
+   * @return the position of the segmentation or -1, if not present
+   */
   public int getSegBoundContainingExpr(CExpression pSubscriptExpr) {
     for (int i = 0; i < this.segments.size(); i++) {
       if (segments.get(i).getSegmentBound().contains(pSubscriptExpr)) {

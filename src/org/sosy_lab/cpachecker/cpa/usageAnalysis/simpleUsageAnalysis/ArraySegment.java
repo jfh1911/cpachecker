@@ -48,7 +48,7 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
   private ArraySegment<T> nextSegment;
 
   public ArraySegment(
-      // TODO: Replace AbstractExpression by a boolean expression
+      // TODO: Think about to replace AbstractExpression by a boolean expression
       List<AExpression> pSegmentBound,
       T pAnalysisInformation,
       boolean pIsPotentiallyEmpty,
