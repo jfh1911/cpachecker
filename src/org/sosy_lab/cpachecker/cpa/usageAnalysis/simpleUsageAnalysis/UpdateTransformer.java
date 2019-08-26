@@ -189,7 +189,8 @@ public class UpdateTransformer {
               state.gettEmptyElement(),
               state.gettMeet(),
               state.gettLisOfArrayVariables(),
-              state.gettArray());
+              state.gettArray(),
+              logger);
         }
       }
     }

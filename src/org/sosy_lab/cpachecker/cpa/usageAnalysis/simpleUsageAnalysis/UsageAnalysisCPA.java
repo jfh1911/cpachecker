@@ -42,7 +42,6 @@ import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
 import org.sosy_lab.cpachecker.core.defaults.AbstractCPA;
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.defaults.DelegateAbstractDomain;
-import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.CPAFactory;
 import org.sosy_lab.cpachecker.core.interfaces.MergeOperator;
 import org.sosy_lab.cpachecker.core.interfaces.StateSpacePartition;
@@ -77,13 +76,12 @@ public class UsageAnalysisCPA extends AbstractCPA {
   private static final List<String> ARRAY_ACCESS_VARS = Arrays.asList(temp);
   private final CFA cfa;
 
-
   /**
    * This method acts as the constructor of the interval analysis CPA.
    *
    * @param config the configuration of the CPAinterval analysis CPA.
    */
-  private UsageAnalysisCPA(
+  public UsageAnalysisCPA(
       Configuration config,
       LogManager pLogger,
       ShutdownNotifier shutdownNotifier,
@@ -95,9 +93,6 @@ public class UsageAnalysisCPA extends AbstractCPA {
         DelegateAbstractDomain.<ArraySegmentationState<VariableUsageDomain>>getInstance(),
         null);
     config.inject(this, UsageAnalysisCPA.class);
-    // writer = new StateToFormulaWriter(config, pLogger, shutdownNotifier, cfa);
-
-
     this.logger = pLogger;
     this.cfa = cfa;
   }
@@ -123,11 +118,9 @@ public class UsageAnalysisCPA extends AbstractCPA {
         cfa.getMachineModel());
   }
 
-
-
   @Override
-  public AbstractState getInitialState(CFANode pNode, StateSpacePartition pPartition)
-      throws InterruptedException {
+  public ArraySegmentationState<VariableUsageDomain>
+      getInitialState(CFANode pNode, StateSpacePartition pPartition) throws InterruptedException {
 
     // The initial state consists of two segments: {0} N? {SIZE}, where SIZE is a variable used to
     // denote the length of the array used in the program
@@ -143,26 +136,33 @@ public class UsageAnalysisCPA extends AbstractCPA {
       if (!(node instanceof FunctionEntryNode)) {
         for (int i = 0; i < node.getNumLeavingEdges(); i++) {
           CFAEdge e = node.getLeavingEdge(i);
-          if( e instanceof CDeclarationEdge && ((CDeclarationEdge)e).getDeclaration() instanceof CVariableDeclaration) {
-            CVariableDeclaration decl =(CVariableDeclaration) ((CDeclarationEdge)e).getDeclaration() ;
-              if (decl.getName().equalsIgnoreCase(UsageAnalysisCPA.VARMANE_FOR_ARRAY_LENGTH)) {
-                sizeVar = decl;
+          if (e instanceof CDeclarationEdge
+              && ((CDeclarationEdge) e).getDeclaration() instanceof CVariableDeclaration) {
+            CVariableDeclaration decl =
+                (CVariableDeclaration) ((CDeclarationEdge) e).getDeclaration();
+            if (decl.getName().equalsIgnoreCase(UsageAnalysisCPA.VARMANE_FOR_ARRAY_LENGTH)) {
+              sizeVar = decl;
             } else if (ARRAY_ACCESS_VARS.contains(decl.getName())) {
               arrayAccessVars.add(decl);
             } else if (decl.getName().equalsIgnoreCase(UsageAnalysisCPA.VARNAME_ARRAY)) {
               arrayVar = decl;
-              }
             }
           }
         }
       }
-
+    }
 
     if (sizeVar == null) {
       throw new InterruptedException(
           "The program cannot be analyed, since the assumption, that the main function defines a variable named '"
               + UsageAnalysisCPA.VARMANE_FOR_ARRAY_LENGTH
               + "' is not met!");
+    }
+    if (arrayVar == null) {
+      throw new InterruptedException(
+          "The program cannot be analyed, since the array that needs to be ananlyzed in the main function named'"
+              + UsageAnalysisCPA.VARMANE_FOR_ARRAY_LENGTH
+              + "' is not defined!");
     }
 
     List<AExpression> pSBSecond = new ArrayList<>();
@@ -172,11 +172,11 @@ public class UsageAnalysisCPA extends AbstractCPA {
     pSBFirst.add(CIntegerLiteralExpression.ZERO);
 
     ArraySegment<VariableUsageDomain> second =
-        new ArraySegment<VariableUsageDomain>(
+        new ArraySegment<>(
             pSBSecond,
             new EmptyVariableUsageElement(),
             false,
-            new FinalSegSymbol<VariableUsageDomain>(VariableUsageDomain.getEmptyElement()));
+            new FinalSegSymbol<>(VariableUsageDomain.getEmptyElement()));
 
     ArraySegment<VariableUsageDomain> first =
         new ArraySegment<>(pSBFirst, VariableUsageDomain.getBottom(), true, second);
@@ -188,13 +188,14 @@ public class UsageAnalysisCPA extends AbstractCPA {
     ArrayList<AIdExpression> listOfIDElements = new ArrayList<>();
     arrayAccessVars.parallelStream()
         .forEach(v -> listOfIDElements.add(new CIdExpression(v.getFileLocation(), v)));
-    return new ArraySegmentationState<VariableUsageDomain>(
+    return new ArraySegmentationState<>(
         segments,
         VariableUsageDomain.getBottom(),
         VariableUsageDomain.getTop(),
         VariableUsageDomain.getEmptyElement(),
         VariableUsageDomain.getMeetOperator(),
-        listOfIDElements ,
-        new CIdExpression(arrayVar.getFileLocation(), arrayVar));
+        listOfIDElements,
+        new CIdExpression(arrayVar.getFileLocation(), arrayVar),
+        logger);
   }
 }

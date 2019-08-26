@@ -64,32 +64,33 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
     return this.unifyGeneric(d1, d2, il, ir, sqcup, sqcup, curleyVee, curleyVee);
   }
 
-  public Pair<ArraySegmentationState<T>, ArraySegmentationState<T>>
-      unifyCompare(
-          ArraySegmentationState<T> d1,
-          ArraySegmentationState<T> d2,
-          T il,
-          T ir,
-          BinaryOperator<T> sqcap)
-          throws CPAException {
+  public Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifyCompare(
+      ArraySegmentationState<T> d1,
+      ArraySegmentationState<T> d2,
+      T il,
+      T ir,
+      BinaryOperator<T> sqcap)
+      throws CPAException {
 
     // _|_, _|_, sqcup, sqcap, v , ^
     return this.unifyGeneric(d1, d2, il, ir, sqcup, sqcap, curleyVee, curleyWedge);
   }
 
-  public Pair<ArraySegmentationState<T>, ArraySegmentationState<T>>
-      unifyGeneric(
-          ArraySegmentationState<T> pD1,
-          ArraySegmentationState<T> pD2,
-          T il,
-          T ir,
-          BinaryOperator<T> ol,
-          BinaryOperator<T> or,
-          BiPredicate<Boolean, Boolean> hatl,
-          BiPredicate<Boolean, Boolean> hatr)
-          throws CPAException {
+  public Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifyGeneric(
+      ArraySegmentationState<T> pD1,
+      ArraySegmentationState<T> pD2,
+      T il,
+      T ir,
+      BinaryOperator<T> ol,
+      BinaryOperator<T> or,
+      BiPredicate<Boolean, Boolean> hatl,
+      BiPredicate<Boolean, Boolean> hatr)
+      throws CPAException {
 
-     ArraySegmentationState<T> d1 = pD1.clone();
+    ArraySegmentationState<T> d1 = pD1.clone();
+    ArraySegmentationState<T> copyForLoggingOfD1 = pD1.clone();
+    ArraySegmentationState<T> copyForLoggingOfD2 = pD2.clone();
+
     ArraySegmentationState<T> d2 = pD2.clone();
 
     // Case 1:
@@ -140,7 +141,11 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
               .parallelStream()
               .filter(b -> b2SegBounds.contains(b))
               .collect(Collectors.toList());
-
+      // Compute the expressions, that are present in both segment bounds
+      List<AExpression> subsetOfB1_B2 = new ArrayList<>();
+      b1SegBounds.parallelStream()
+          .filter(e -> b2SegBounds.contains(e))
+          .forEach(e -> subsetOfB1_B2.add(e));
 
       // Case 3:
       if (b1SegBounds.containsAll(b2SegBounds)) {
@@ -152,10 +157,16 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
           continue;
         }
         // Case 3.2
-        //Firstly, remove b1Bar from B1 for the second argument  named b1Temp, than use this element and create a new one pointing to this
-        ArraySegment<T> b1Temp = b1.removeExprFromBound(b1Bar);
-      //Create B1Bar Il ? B1\B1Bar
-        b1 =  new ArraySegment<>(b1Bar, il, true, b1Temp);
+        // To avoid confusen, crate two new elements, where the first is temp1 = B1\B1Bar I_l ?
+        // and the second temp2 = B1Bar p1 ?1
+        ArraySegment<T> temp2 =
+            new ArraySegment<>(
+                b1Bar,
+                b1.getAnalysisInformation(),
+                b1.isPotentiallyEmpty(),
+                b1.getNextSegment());
+        ArraySegment<T> temp1 = new ArraySegment<>(subsetOfB1_B2, il, true, temp2);
+        b1 = temp1;
         continue;
       }
 
@@ -169,11 +180,16 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
           continue;
         }
         // Case 4.2
-        // Firstly, remove b2Bar from B2 for the second argument named b2Temp, than use this element
-        // and create a new one pointing to this
-        ArraySegment<T> b2Temp = b2.removeExprFromBound(b2Bar);
-        // Create B2Bar Ir ? B2\B2Bar
-        b2 = new ArraySegment<>(b2Bar, ir, true, b2Temp);
+        // To avoid confusen, crate two new elements, where the first is temp1 = B2\B2Bar I_r ?
+        // and the second temp2 = B2Bar p2 ?2
+        ArraySegment<T> temp2 =
+            new ArraySegment<>(
+                b2Bar,
+                b2.getAnalysisInformation(),
+                b2.isPotentiallyEmpty(),
+                b2.getNextSegment());
+        ArraySegment<T> temp1 = new ArraySegment<>(subsetOfB1_B2, ir, true, temp2);
+        b2 = temp1;
         continue;
       }
 
@@ -182,12 +198,6 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
 
       if (b1SegBounds.parallelStream().anyMatch(b -> b2SegBounds.contains(b))
           && b2SegBounds.parallelStream().anyMatch(b -> b1SegBounds.contains(b))) {
-        // Compute the expressions, that are present in both segment bounds
-        List<AExpression> subsetOfB1_B2 = new ArrayList<>();
-        b1SegBounds
-            .parallelStream()
-            .filter(e -> b2SegBounds.contains(e))
-            .forEach(e -> subsetOfB1_B2.add(e));
 
         // Case 5.1 B1Bar = B2Bar = emptyset
         if (b1Bar.isEmpty() && b2Bar.isEmpty()) {
@@ -223,8 +233,9 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
           b1 = temp1;
           b2.setSegmentBound(subsetOfB1_B2);
           continue;
-        }else {
-          //Firstly, remove b1Bar from B1 for the second argument  named b1Temp, than use this element and create a new one pointing to this
+        } else {
+          // Firstly, remove b1Bar from B1 for the second argument named b1Temp, than use this
+          // element and create a new one pointing to this
           ArraySegment<T> b1Temp = b1.removeExprFromBound(b1Bar);
           // Create B1Bar Il ? B1\B1Bar
           b1 = new ArraySegment<>(b1Bar, il, true, b1Temp);
@@ -242,9 +253,9 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
       if (res1.isEmpty() || res2.isEmpty()) {
         throw new CPAException(
             "The unififcation failed for the elements "
-                + pD1.toDOTLabel()
+                + copyForLoggingOfD1.toDOTLabel()
                 + " and  "
-                + pD2.toDOTLabel());
+                + copyForLoggingOfD2.toDOTLabel());
       }
       ArraySegment<T> b0 = res1.get(res1.size() - 1);
       ArraySegment<T> b0Prime = res2.get(res2.size() - 1);
@@ -253,11 +264,8 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
       res2.remove(b0Prime);
 
       // Case 6: Ensure that there is no intersection of B1 and B2
-      if(! (b1.getSegmentBound().parallelStream().anyMatch(b -> b2SegBounds.contains(b))
-          || b2.getSegmentBound()
-              .parallelStream()
-              .anyMatch(b -> b1SegBounds.contains(b)))) {
-
+      if (!(b1.getSegmentBound().parallelStream().anyMatch(b -> b2SegBounds.contains(b))
+          || b2.getSegmentBound().parallelStream().anyMatch(b -> b1SegBounds.contains(b)))) {
 
         if ((!b1Bar.isEmpty()) && b2Bar.isEmpty()) {
           // Case 6.1
@@ -353,7 +361,8 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
             d1.gettEmptyElement(),
             d1.gettMeet(),
             d1.gettLisOfArrayVariables(),
-            d1.gettArray()),
+            d1.gettArray(),
+            d1.getLogger()),
         new ArraySegmentationState<>(
             conc(res2, d2.gettEmptyElement()),
             d2.gettBottom(),
@@ -361,8 +370,8 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
             d2.gettEmptyElement(),
             d2.gettMeet(),
             d1.gettLisOfArrayVariables(),
-            d1.gettArray()));
-
+            d1.gettArray(),
+            d2.getLogger()));
 
   }
 

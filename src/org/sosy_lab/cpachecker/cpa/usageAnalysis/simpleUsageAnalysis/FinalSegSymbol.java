@@ -39,10 +39,5 @@ public class FinalSegSymbol<T extends LatticeAbstractState<T>> extends ArraySegm
     return "<<EOF>>";
   }
 
-  @Override
-  public void setAnalysisInformation(T pAnalysisInformation) {
-    // TODO Auto-generated method stub
-    super.setAnalysisInformation(pAnalysisInformation);
-  }
 
 }

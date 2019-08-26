@@ -1,9 +1,7 @@
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.tests;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
 
 /*
  *  CPAchecker is a tool for configurable software verification.
@@ -31,7 +29,8 @@ public class unificationTest {
   @Test
   public void test() {
     // Set up two array segmentations
-    ArraySegmentationState<VariableUsageDomain> seg1 = new ArraySegmentationState<VariableUsageDomain>();
+    // ArraySegmentationState<VariableUsageDomain> seg1 = new
+    // ArraySegmentationState<VariableUsageDomain>();
 
     fail("Not yet implemented");
   }

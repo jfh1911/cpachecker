@@ -48,6 +48,7 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CStatement;
 import org.sosy_lab.cpachecker.cfa.ast.c.CTypeIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CUnaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CVariableDeclaration;
+import org.sosy_lab.cpachecker.cfa.model.AbstractCFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.BlankEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CAssumeEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
@@ -90,12 +91,13 @@ public class UsageAnalysisTransferRelation extends
   protected ArraySegmentationState<VariableUsageDomain>
       handleDeclarationEdge(CDeclarationEdge pCfaEdge, CDeclaration pDecl)
           throws CPATransferException {
+    String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
     if (super.state == null) {
-      return state;
+      return logTransformation(inpUtArgumentsAsString, state);
     }
     // Check, if a corner-case applies and the state can be returned directly:
     else if (isCornerCase(super.getState())) {
-      return super.state;
+      return logTransformation(inpUtArgumentsAsString, super.state);
     }
 
     // Check if a variable is assigned
@@ -103,17 +105,22 @@ public class UsageAnalysisTransferRelation extends
         && ((CVariableDeclaration) pDecl).getInitializer() instanceof CInitializerExpression) {
       CVariableDeclaration varDecl = (CVariableDeclaration) pDecl;
       // Now ensure that the variable needs to be checked (is a array variable
-      return this.reassign(
-          new CIdExpression(pDecl.getFileLocation(), pDecl),
-          ((CInitializerExpression) varDecl.getInitializer()).getExpression());
+      return logTransformation(
+          inpUtArgumentsAsString,
+          this.reassign(
+              new CIdExpression(pDecl.getFileLocation(), pDecl),
+              ((CInitializerExpression) varDecl.getInitializer()).getExpression()));
     }
-    return state;
+    return logTransformation(inpUtArgumentsAsString, state);
   }
+
 
   @Override
   protected ArraySegmentationState<VariableUsageDomain> handleBlankEdge(BlankEdge pCfaEdge) {
     // TODO: Verify that this is the correct behavior
-    return state;
+    String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
+
+    return logTransformation(inpUtArgumentsAsString, state);
   }
 
   @Override
@@ -123,7 +130,8 @@ public class UsageAnalysisTransferRelation extends
       List<CParameterDeclaration> pParameters,
       String pCalledFunctionName)
       throws CPATransferException {// TODO: Verify that this is the correct behavior
-    return state;
+    String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
+    return logTransformation(inpUtArgumentsAsString, state);
   }
 
   @Override
@@ -134,35 +142,38 @@ public class UsageAnalysisTransferRelation extends
       String pCallerFunctionName)
       throws CPATransferException {
     // TODO: Verify that this is the correct behavior
-    return state;
+    String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
+    return logTransformation(inpUtArgumentsAsString, state);
   }
 
   @Override
   protected ArraySegmentationState<VariableUsageDomain>
       handleFunctionSummaryEdge(CFunctionSummaryEdge pCfaEdge) throws CPATransferException {
     // TODO: Verify that this is the correct behavior
-    return state;
+    String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
+    return logTransformation(inpUtArgumentsAsString, state);
   }
 
   @Override
   protected ArraySegmentationState<VariableUsageDomain>
       handleReturnStatementEdge(CReturnStatementEdge pCfaEdge) throws CPATransferException {
     // TODO: Verify that this is the correct behavior
-    return state;
+    String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
+    return logTransformation(inpUtArgumentsAsString, state);
   }
 
   @Override
   protected ArraySegmentationState<VariableUsageDomain>
       handleStatementEdge(CStatementEdge pCfaEdge, CStatement pStatement)
           throws CPATransferException {
+    String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
     if (super.state == null) {
-      return state;
+      return logTransformation(inpUtArgumentsAsString, state);
     }
     // Check, if a corner-case applies and the state can be returned directly:
     else if (isCornerCase(super.getState())) {
-      return super.state;
+      return logTransformation(inpUtArgumentsAsString, state);
     }
-
     // Check, if the RHS contains any usage of the array
     state = use(pStatement);
 
@@ -176,10 +187,10 @@ public class UsageAnalysisTransferRelation extends
       // Check, if the RHS contains the Var (reassignment)
       if (isReplacement(stmt.getRightHandSide(), var)) {
         // Case 1
-        return replace(var, stmt.getRightHandSide());
+        return logTransformation(inpUtArgumentsAsString, replace(var, stmt.getRightHandSide()));
       } else {
         // Case 2
-        return reassign(var, stmt.getRightHandSide());
+        return logTransformation(inpUtArgumentsAsString, reassign(var, stmt.getRightHandSide()));
       }
 
     } // Handle FunctionCalls
@@ -215,7 +226,7 @@ public class UsageAnalysisTransferRelation extends
                   new FinalSegSymbol<>(VariableUsageDomain.getEmptyElement()));
           state.addSegment(lastSegment, state.getSegments().get(state.getSegments().size() - 1));
 
-          return state;
+          return logTransformation(inpUtArgumentsAsString, state);
         } else {
           throw new CPATransferException(
               "Could not cleanup the segment bound" + this.state.toString());
@@ -224,7 +235,7 @@ public class UsageAnalysisTransferRelation extends
       } else if (call.getLeftHandSide() instanceof CIdExpression) {
         // Remove all occurrences of the variable
         if (cleanExprFromSegBounds((CIdExpression) call.getLeftHandSide())) {
-          return state;
+          return logTransformation(inpUtArgumentsAsString, state);
         } else {
           throw new CPATransferException(
               "Could not cleanup the segment bound" + this.state.toString());
@@ -233,7 +244,7 @@ public class UsageAnalysisTransferRelation extends
 
     }
 
-    return state;
+    return logTransformation(inpUtArgumentsAsString, state);
 
   }
 
@@ -241,12 +252,13 @@ public class UsageAnalysisTransferRelation extends
   protected ArraySegmentationState<VariableUsageDomain>
       handleAssumption(CAssumeEdge pCfaEdge, CExpression pExpression, boolean pTruthAssumption)
           throws CPATransferException {
+    String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
     if (super.state == null) {
-      return state;
+      return logTransformation(inpUtArgumentsAsString, state);
     }
     // Check, if a corner-case applies and the state can be returned directly:
     else if (isCornerCase(super.getState())) {
-      return super.state;
+      return logTransformation(inpUtArgumentsAsString, super.state);
     }
     // Check, if any variable is used
     Collection<CArraySubscriptExpression> uses = this.getUses(pExpression);
@@ -256,15 +268,15 @@ public class UsageAnalysisTransferRelation extends
 
     // Check again, if a corner-case applies and the state can be returned directly:
     else if (isCornerCase(super.getState())) {
-      return super.state;
+      return logTransformation(inpUtArgumentsAsString, super.state);
     }
 
     // Case 3: Update(e,d)
     if (pExpression instanceof CBinaryExpression) {
       UpdateTransformer u = new UpdateTransformer(state, logger);
-      return u.update((CBinaryExpression) pExpression);
+      return logTransformation(inpUtArgumentsAsString, u.update((CBinaryExpression) pExpression));
     } else {
-      return state;
+      return logTransformation(inpUtArgumentsAsString, state);
     }
   }
 
@@ -282,8 +294,9 @@ public class UsageAnalysisTransferRelation extends
       int pos = state.getSegBoundContainingExpr(subscriptExpr);
       if (pos < 0) {
         logger.log(
-            Level.FINE, PREFIX+
-            "Cannot create a usage sincethe variable "
+            Level.FINE,
+            PREFIX
+                + "Cannot create a usage sincethe variable "
                 + subscriptExpr.toASTString()
                 + " is not present in the segmentation, hence the error symbol is returned. Current State is: "
                 + this.state.toDOTLabel()
@@ -307,8 +320,9 @@ public class UsageAnalysisTransferRelation extends
         } catch (UnrecognizedCodeException e) {
           e.printStackTrace();
           logger.log(
-              Level.FINE, PREFIX+
-              "Cannot create a usage due to internal problems, hence the error symbol is returned. Current State is: "
+              Level.FINE,
+              PREFIX
+                  + "Cannot create a usage due to internal problems, hence the error symbol is returned. Current State is: "
                   + this.state.toDOTLabel()
                   + " for the expression :"
                   + pArrayUses.toString());
@@ -346,8 +360,9 @@ public class UsageAnalysisTransferRelation extends
     }
     if (exprList.size() > 1) {
       logger.log(
-          Level.FINE, PREFIX+
-          "THe segmentation is invalid, since the expression that should be reassigned is present twice."
+          Level.FINE,
+          PREFIX
+              + "THe segmentation is invalid, since the expression that should be reassigned is present twice."
               + "Hence, the error symbol is returned. Current State is: "
               + this.state.toDOTLabel()
               + " for the expression :"
@@ -361,9 +376,12 @@ public class UsageAnalysisTransferRelation extends
       // Exact same results!
       if (!cleanExprFromSegBounds(pVar)) {
         logger.log(
-            Level.FINE, PREFIX+
-            "The cleanup for the segmentation "
-                + state.toDOTLabel() + " and expression " + pVar.toASTString()
+            Level.FINE,
+            PREFIX
+                + "The cleanup for the segmentation "
+                + state.toDOTLabel()
+                + " and expression "
+                + pVar.toASTString()
                 + " has failed. The error label is returned");
         return new ErrorSegmentation<>();
       }
@@ -383,9 +401,12 @@ public class UsageAnalysisTransferRelation extends
         if (!cleanExprFromSegBounds(pVar)) {
 
           logger.log(
-              Level.FINE, PREFIX+
-              "The cleanup for the segmentation "
-                  + state.toDOTLabel() + " and expression " + pVar.toASTString()
+              Level.FINE,
+              PREFIX
+                  + "The cleanup for the segmentation "
+                  + state.toDOTLabel()
+                  + " and expression "
+                  + pVar.toASTString()
                   + " has failed. The error label is returned");
           return new ErrorSegmentation<>();
         }
@@ -569,8 +590,9 @@ public class UsageAnalysisTransferRelation extends
     if (state.getSegments().isEmpty()) {
       // All segment bounds were removed, report a failure
       logger.log(
-          Level.FINE, PREFIX+
-          "The segmentation has become empty, this is invalid after removing the expression"
+          Level.FINE,
+          PREFIX
+              + "The segmentation has become empty, this is invalid after removing the expression"
               + pVar.toASTString()
               + ". Hence, the error symbol is returned");
       return false;
@@ -617,6 +639,21 @@ public class UsageAnalysisTransferRelation extends
       uses.add((CArraySubscriptExpression) pExpr);
     }
     return uses;
+  }
+
+  private ArraySegmentationState<VariableUsageDomain> logTransformation(
+      String inputToTransfer,
+      @Nullable ArraySegmentationState<VariableUsageDomain> pState) {
+    logger.log(Level.FINE, PREFIX + " " + inputToTransfer + ")=" + pState);
+    logger.flush();
+    return state;
+  }
+
+  private String computeInnputString(AbstractCFAEdge pCfaEdge) {
+    return pCfaEdge.getSuccessor().getNodeNumber()
+        + " Compute PHI("
+        + pCfaEdge.getRawStatement()
+        + this.state;
   }
 
 }

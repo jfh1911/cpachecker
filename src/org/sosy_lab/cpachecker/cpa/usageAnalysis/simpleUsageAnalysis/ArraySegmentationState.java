@@ -26,6 +26,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BinaryOperator;
+import java.util.logging.Level;
+import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
@@ -37,8 +39,8 @@ import org.sosy_lab.cpachecker.core.interfaces.Graphable;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
 
-public class ArraySegmentationState<T extends LatticeAbstractState<T>>
-    implements Serializable, LatticeAbstractState<ArraySegmentationState<T>>, AbstractState, Graphable {
+public class ArraySegmentationState<T extends LatticeAbstractState<T>> implements Serializable,
+    LatticeAbstractState<ArraySegmentationState<T>>, AbstractState, Graphable {
 
   private static final long serialVersionUID = 85908607562101422L;
   private List<ArraySegment<T>> segments;
@@ -48,6 +50,7 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
   protected List<AIdExpression> tLisOfArrayVariables;
   protected AIdExpression tArray;
   private T tEmptyElement;
+  private LogManager logger;
 
   /**
    *
@@ -59,6 +62,7 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
    * @param pTMeet
    * @param pLisOfArrayVariables
    * @param pArray
+   * @param pLogger
    */
   public ArraySegmentationState(
       List<ArraySegment<T>> pSegments,
@@ -67,7 +71,8 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
       T pEmptyElement,
       BinaryOperator<T> pTMeet,
       List<AIdExpression> pLisOfArrayVariables,
-      AIdExpression pArray) {
+      AIdExpression pArray,
+      LogManager pLogger) {
     super();
     segments = pSegments;
     // Check if the segment chain is correctly ordered
@@ -89,8 +94,8 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
     tEmptyElement = pEmptyElement;
     tLisOfArrayVariables = pLisOfArrayVariables;
     tArray = pArray;
+    logger = pLogger;
   }
-
 
   @Override
   public ArraySegmentationState<T> join(ArraySegmentationState<T> pOther)
@@ -99,6 +104,8 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
       throw new CPAException("The join cannot be applied for two differently initalized generics");
     }
 
+    logger
+        .log(Level.FINE, "Merging the elements" + this.toDOTLabel() + " - " + pOther.toDOTLabel());
     Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
         unifier.unifyMerge(this, pOther, tBottom, tBottom);
 
@@ -117,12 +124,12 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
     List<ArraySegment<T>> firstSegs = unifiedSegs.getFirst().getSegments();
     List<ArraySegment<T>> secondSegs = unifiedSegs.getSecond().getSegments();
 
-    if(firstSegs.isEmpty()) {
+    if (firstSegs.isEmpty()) {
       throw new CPAException("The unification has fail!");
     }
 
-    ArraySegment<T> firstSeg = firstSegs.get(firstSegs.size()-1);
-    ArraySegment<T> secondSeg = secondSegs.get(secondSegs.size()-1);
+    ArraySegment<T> firstSeg = firstSegs.get(firstSegs.size() - 1);
+    ArraySegment<T> secondSeg = secondSegs.get(secondSegs.size() - 1);
 
     // Since the list needs to be concatenated, we will start backwards (last element has a specific
     // next element). The last array segment only contains a segment bound, hence the analysis
@@ -141,7 +148,6 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
       firstSeg = firstSegs.get(i);
       secondSeg = secondSegs.get(i);
 
-
       ArraySegment<T> last = current;
       current =
           new ArraySegment<>(
@@ -158,9 +164,9 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
         this.tEmptyElement,
         this.tMeet,
         this.tLisOfArrayVariables,
-        this.tArray);
+        this.tArray,
+        logger);
   }
-
 
   @Override
   public boolean isLessOrEqual(ArraySegmentationState<T> pOther)
@@ -169,7 +175,6 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
       throw new CPAException(
           "The comparison  cannot be applied for two differently initalized generics");
     }
-
 
     Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
         unifier.unifyCompare(this, pOther, tBottom, tBottom, tMeet);
@@ -191,7 +196,6 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
     if (firstSegs.isEmpty()) {
       throw new CPAException("The unification has fail!");
     }
-
 
     for (int i = 0; i < firstSegs.size(); i++) {
       ArraySegment<T> firstSeg = firstSegs.get(i);
@@ -242,9 +246,9 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
 
   public ArraySegmentationState<T> strengthn(Collection<AExpression> eColl) {
     for (AExpression e : eColl) {
-    if (e instanceof CBinaryExpression || e instanceof JBinaryExpression) {
-      this.segments.parallelStream().forEach(s -> s.strengthn(e));
-    }
+      if (e instanceof CBinaryExpression || e instanceof JBinaryExpression) {
+        this.segments.parallelStream().forEach(s -> s.strengthn(e));
+      }
     }
     return this;
   }
@@ -283,7 +287,8 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
         this.tEmptyElement,
         this.tMeet,
         this.tLisOfArrayVariables,
-        this.tArray);
+        this.tArray,
+        logger);
   }
 
   /**
@@ -423,17 +428,19 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
     List<ArraySegment<T>> newSegments = new ArrayList<>();
 
     for (int i = 1; i < this.segments.size(); i++) {
-      ArraySegment<T> segment= segments.get(i);
-        if (segment.getSegmentBound().isEmpty()) {
-            prevSegment.setAnalysisInformation(prevSegment.getAnalysisInformation().join(segment.getAnalysisInformation()));
-            prevSegment.setPotentiallyEmpty(prevSegment.isPotentiallyEmpty() || segment.isPotentiallyEmpty());
-            prevSegment.setNextSegment(segment.getNextSegment());
+      ArraySegment<T> segment = segments.get(i);
+      if (segment.getSegmentBound().isEmpty()) {
+        prevSegment.setAnalysisInformation(
+            prevSegment.getAnalysisInformation().join(segment.getAnalysisInformation()));
+        prevSegment
+            .setPotentiallyEmpty(prevSegment.isPotentiallyEmpty() || segment.isPotentiallyEmpty());
+        prevSegment.setNextSegment(segment.getNextSegment());
       } else {
         // The segment bound is not empty, hence the previous segment can be stored, since it will
         // not be modified anymore
         newSegments.add(prevSegment);
         prevSegment = segment;
-        }
+      }
     }
     newSegments.add(prevSegment);
     this.segments = newSegments;
@@ -446,6 +453,10 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>>
       }
     }
     return -1;
+  }
+
+  public LogManager getLogger() {
+    return logger;
   }
 
 }

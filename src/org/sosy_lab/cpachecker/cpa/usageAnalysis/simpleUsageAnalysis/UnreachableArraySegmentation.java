@@ -30,7 +30,7 @@ ArraySegmentationState<T> {
     // This is bad stlye, but whenever the error or unreachable segment is used, the information are
     // not needed
     // TODO infer a more elegant way
-    super(new ArrayList<>(), null, null, null, null, null, null);
+    super(new ArrayList<>(), null, null, null, null, null, null, null);
   }
 
   private static final long serialVersionUID = -3937221925009806448L;

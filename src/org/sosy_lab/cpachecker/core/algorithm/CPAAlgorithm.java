@@ -276,7 +276,7 @@ public class CPAAlgorithm implements Algorithm, StatisticsProvider {
       final Precision precision = reachedSet.getPrecision(state);
       stats.chooseTimer.stop();
 
-      logger.log(Level.FINER, "Retrieved state from waitlist");
+      logger.log(Level.FINER, "Retrieved state ", state.toString(), " from waitlist");
       try {
         if (handleState(state, precision, reachedSet)) {
           // Prec operator requested break
