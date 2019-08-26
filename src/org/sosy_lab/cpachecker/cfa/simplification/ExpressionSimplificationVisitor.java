@@ -63,8 +63,8 @@ import org.sosy_lab.cpachecker.exceptions.NoException;
 public class ExpressionSimplificationVisitor
     extends DefaultCExpressionVisitor<CExpression, NoException> {
 
-  private final MachineModel machineModel;
-  private final LogManagerWithoutDuplicates logger;
+  protected final MachineModel machineModel;
+  protected final LogManagerWithoutDuplicates logger;
 
   public ExpressionSimplificationVisitor(MachineModel mm, LogManagerWithoutDuplicates pLogger) {
     this.machineModel = mm;
@@ -76,7 +76,8 @@ public class ExpressionSimplificationVisitor
     return expr.accept(this);
   }
 
-  private @Nullable NumericValue getValue(CExpression expr) {
+  @Nullable
+  protected NumericValue getValue(CExpression expr) {
     if (expr instanceof CIntegerLiteralExpression) {
       return new NumericValue(((CIntegerLiteralExpression)expr).getValue());
     } else if (expr instanceof CCharLiteralExpression) {
@@ -92,7 +93,7 @@ public class ExpressionSimplificationVisitor
    * converts it to a <code>Pair<CExpression, Number></code> as required by
    * this class.
    */
-  private CExpression convertExplicitValueToExpression(final CExpression expr, Value value) {
+  protected CExpression convertExplicitValueToExpression(final CExpression expr, Value value) {
     // TODO: handle cases other than numeric values
     NumericValue numericResult = value.asNumericValue();
     CType type = expr.getExpressionType().getCanonicalType();
