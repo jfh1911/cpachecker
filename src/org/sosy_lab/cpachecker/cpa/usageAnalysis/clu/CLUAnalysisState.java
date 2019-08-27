@@ -34,8 +34,8 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
     implements Serializable, LatticeAbstractState<CLUAnalysisState<T>>, AbstractState, Graphable {
 
   private static final long serialVersionUID = 7499975316022760688L;
-  private LocationState location;
-  private ArraySegmentationState<VariableUsageDomain> arraySegmentation;
+  private final LocationState location;
+  private final ArraySegmentationState<VariableUsageDomain> arraySegmentation;
   private LogManager logger;
 
   public CLUAnalysisState(
@@ -58,13 +58,19 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
     if (pOther == null) {
       return this;
     } else if (this.location.equals(pOther.getLocation())) {
+      CLUAnalysisState<T> returnElement;
       String mergeLogInfo =
           "Computing merge(" + this.toDOTLabel() + " , " + pOther.toDOTLabel() + ") --> ";
 
-      pOther.setArraySegmentation(this.arraySegmentation.join(pOther.getArraySegmentation()));
+      ArraySegmentationState<VariableUsageDomain> joinSegmentation = this.arraySegmentation.join(pOther.getArraySegmentation());
+     if(joinSegmentation.equals(pOther.getArraySegmentation())) {
+        returnElement = pOther;
+    } else {
+        returnElement = new CLUAnalysisState<>(this.location, joinSegmentation, this.logger);
+    }
 
-      logger.log(Level.FINE, mergeLogInfo + pOther.toDOTLabel());
-      return pOther;
+      logger.log(Level.FINE, mergeLogInfo + returnElement.toDOTLabel());
+      return returnElement;
 
     }
     return pOther;
@@ -81,7 +87,6 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
       return this.arraySegmentation.isLessOrEqual(pOther.getArraySegmentation());
     }
   }
-
 
   @Override
   public CLUAnalysisState<T> clone() {
@@ -130,16 +135,8 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
     return location;
   }
 
-  public void setLocation(LocationState pLocation) {
-    location = pLocation;
-  }
-
   public ArraySegmentationState<VariableUsageDomain> getArraySegmentation() {
     return arraySegmentation;
-  }
-
-  public void setArraySegmentation(ArraySegmentationState<VariableUsageDomain> pArraySegmentation) {
-    arraySegmentation = pArraySegmentation;
   }
 
   @Override

@@ -111,9 +111,11 @@ public abstract class ABinaryExpression extends AbstractExpression {
 
   @Override
   public String toString() {
-    return "operand1=[" + getOperand1() +
-        "], operand2=[" + getOperand2() +
-        "], operator=[" + getOperator() + "]";
+    // FIXME: Just for testing
+    return "" + getOperand1() + getOperator().getOperator() + getOperand2();
+    // return "operand1=[" + getOperand1() +
+    // "], operand2=[" + getOperand2() +
+    // "], operator=[" + getOperator() + "]";
   }
 
   public interface ABinaryOperator {

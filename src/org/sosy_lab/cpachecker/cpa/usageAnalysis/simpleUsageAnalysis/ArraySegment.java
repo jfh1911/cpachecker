@@ -23,6 +23,7 @@ import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import org.sosy_lab.cpachecker.cfa.ast.ABinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
@@ -66,7 +67,7 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
   }
 
   public List<AExpression> getSegmentBound() {
-    return segmentBound;
+    return Collections.unmodifiableList(segmentBound);
   }
 
   public void setSegmentBound(List<AExpression> pSegmentBound) {
@@ -132,7 +133,7 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
       builder.append(this.segmentBound.get(i).toString());
       builder.append(" , ");
     }
-    if (this.segmentBound.size() >= 0) {
+    if (this.segmentBound.size() > 0) {
       builder.append(this.segmentBound.get(segmentBound.size() - 1).toString());
     }
     builder.append("} ");
