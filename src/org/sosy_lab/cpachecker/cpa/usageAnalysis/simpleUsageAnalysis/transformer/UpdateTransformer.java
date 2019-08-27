@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.transformer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +25,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
+import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression.BinaryOperator;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
@@ -32,6 +33,11 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageType;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ErrorSegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.SegmentationReachabilityChecker;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.UnreachableArraySegmentation;
 
 public class UpdateTransformer {
 
@@ -40,19 +46,19 @@ public class UpdateTransformer {
   private static final String PREFIX = "USAGE_ANALYSIS update";
   ExpressionSimplificationVisitor visitor;
 
-  public UpdateTransformer(
-      ArraySegmentationState<VariableUsageDomain> pState,
-      LogManager pLogger,
-      ExpressionSimplificationVisitor pVisitor) {
-    this.state = pState;
-    this.logger = pLogger;
-    this.visitor = pVisitor;
+  public UpdateTransformer() {
 
   }
 
   public @Nullable ArraySegmentationState<VariableUsageDomain>
-      update(CBinaryExpression expr) {
-
+      update(
+          CBinaryExpression expr,
+          @Nullable ArraySegmentationState<VariableUsageDomain> pState,
+          LogManagerWithoutDuplicates pLogger,
+          ExpressionSimplificationVisitor pVisitor) {
+    this.state = pState;
+    this.logger = pLogger;
+    this.visitor = pVisitor;
     if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.EQUALS)) {// Case 3.1
       // AS explained by Jan Haltermann in hismaster thesis, we need to ensure that the LHS of the
       // equality expression is a variable. IN all other cases, this is not important. Hence, we

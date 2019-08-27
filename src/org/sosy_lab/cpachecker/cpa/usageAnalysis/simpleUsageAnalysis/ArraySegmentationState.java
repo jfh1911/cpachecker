@@ -26,7 +26,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BinaryOperator;
-import java.util.logging.Level;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
@@ -104,8 +103,8 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
       throw new CPAException("The join cannot be applied for two differently initalized generics");
     }
 
-    logger
-        .log(Level.FINE, "Merging the elements" + this.toDOTLabel() + " - " + pOther.toDOTLabel());
+    // logger
+    // .log(Level.FINE, "Merging the elements" + this.toDOTLabel() + " - " + pOther.toDOTLabel());
     Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
         unifier.unifyMerge(this, pOther, tBottom, tBottom);
 
