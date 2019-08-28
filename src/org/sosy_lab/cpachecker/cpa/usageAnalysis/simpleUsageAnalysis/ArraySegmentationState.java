@@ -26,7 +26,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BinaryOperator;
-import java.util.logging.Level;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
@@ -104,8 +103,7 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
       throw new CPAException("The join cannot be applied for two differently initalized generics");
     }
 
-    String logText = "Merging the elements" + this.toDOTLabel() + " - " + pOther.toDOTLabel();
-
+    if (this.equals(pOther)) {
     Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
         unifier.unifyMerge(this, pOther, tBottom, tBottom);
 
@@ -136,40 +134,29 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     // information are set to null (they are null anyway), same for isPotentiallyEmpty (which is
     // false)
 
-    ArraySegment<T> current =
-        new ArraySegment<>(
-            firstSeg.getSegmentBound(),
-            firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()),
-            false,
-            new FinalSegSymbol<T>(this.tEmptyElement));
+    ArraySegment<T> current = secondSeg;
+    current.setAnalysisInformation(
+        firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()));
+    current.setPotentiallyEmpty(false);
+    current.setNextSegment(new FinalSegSymbol<T>(this.tEmptyElement));
     res.add(0, current);
 
     for (int i = firstSegs.size() - 2; i >= 0; i--) {
       firstSeg = firstSegs.get(i);
       secondSeg = secondSegs.get(i);
 
-      ArraySegment<T> last = current;
-      current =
-          new ArraySegment<>(
-              firstSeg.getSegmentBound(),
-              firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()),
-              firstSeg.isPotentiallyEmpty() | secondSeg.isPotentiallyEmpty(),
-              last);
-      res.add(0, current);
-    }
+      ArraySegment<T> last = secondSeg;
+      secondSeg.setAnalysisInformation(
+          firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()));
+      secondSeg.setPotentiallyEmpty(firstSeg.isPotentiallyEmpty() | secondSeg.isPotentiallyEmpty());
+      secondSeg.setNextSegment(last);
+      res.add(0, secondSeg);
 
-    ArraySegmentationState<T> result =
-        new ArraySegmentationState<>(
-            res,
-            this.tBottom,
-            this.tTop,
-            this.tEmptyElement,
-            this.tMeet,
-            this.tLisOfArrayVariables,
-            this.tArray,
-            logger);
-    logger.log(Level.FINE, logText + ")= " + result.toDOTLabel());
-    return result;
+      }
+      pOther.setSegments(res);
+
+    }
+    return pOther;
   }
 
   @Override
