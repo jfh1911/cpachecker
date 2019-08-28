@@ -22,11 +22,13 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import org.sosy_lab.cpachecker.cfa.ast.ABinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
+import org.sosy_lab.cpachecker.cfa.ast.AbstractExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CAddressOfLabelExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CCastExpression;
@@ -148,6 +150,52 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
     return builder.toString();
   }
 
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((analysisInformation == null) ? 0 : analysisInformation.hashCode());
+    result = prime * result + (isPotentiallyEmpty ? 1231 : 1237);
+    result = prime * result + ((segmentBound == null) ? 0 : segmentBound.hashCode());
+    return result;
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    ArraySegment<T> other = (ArraySegment<T>) obj;
+    if (analysisInformation == null) {
+      if (other.analysisInformation != null) {
+        return false;
+      }
+    } else if (!analysisInformation.equals(other.analysisInformation)) {
+      return false;
+    }
+    if (isPotentiallyEmpty != other.isPotentiallyEmpty) {
+      return false;
+    }
+    if (segmentBound == null) {
+      if (other.segmentBound != null) {
+        return false;
+      }
+    } else if (!Arrays
+        .deepEquals(
+            segmentBound.toArray(new AbstractExpression[segmentBound.size()]),
+            other.segmentBound.toArray(new AbstractExpression[other.getSegmentBound().size()]))) {
+      return false;
+    }
+    return true;
+  }
+
   /**
    * In this first version, the array segment is strengthn (meaning made mroe precise), iff the epression is of the form i < SIZE or i<= SIZE, where i the the dedicated variable for accessing array elements and size is the length of the array
    * In that case and if the array segment is of the form {i, ...} p_i ? {SIZE}, the questionmark can be removed!
@@ -221,7 +269,7 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
 
 
     // Simplify the expression in the segment bound
-    ArrayList<AExpression> simplifiedList = new ArrayList<AExpression>();
+    ArrayList<AExpression> simplifiedList = new ArrayList<>();
     modifiedBound.forEach(e -> simplifiedList.add(getSimplified(e, visitor)));
     this.segmentBound = simplifiedList;
     return this;
@@ -286,7 +334,7 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
    * @return the modified ArraySegment
    */
   public ArraySegment<T> removeExprContainingSubExpr(CIdExpression subExpr) {
-    List<AExpression> toRemove = new ArrayList<AExpression>();
+    List<AExpression> toRemove = new ArrayList<>();
     for (AExpression e : this.segmentBound) {
       if (contains(e, subExpr)) {
         toRemove.add(e);

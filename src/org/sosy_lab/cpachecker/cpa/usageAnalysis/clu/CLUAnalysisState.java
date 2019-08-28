@@ -57,12 +57,18 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
     }
     if (pOther == null) {
       return this;
+    } else if (pOther.equals(this)) {
+      return pOther;
     } else if (this.location.equals(pOther.getLocation())) {
       CLUAnalysisState<T> returnElement;
       String mergeLogInfo =
           "Computing merge(" + this.toDOTLabel() + " , " + pOther.toDOTLabel() + ") --> ";
 
-      ArraySegmentationState<VariableUsageDomain> joinSegmentation = this.arraySegmentation.join(pOther.getArraySegmentation());
+      // FIXME: an dieser stelle wird pOther überschrieben, da keine kopie verwendet wird
+      // dehsalb teminert alles so schnell
+
+      ArraySegmentationState<VariableUsageDomain> joinSegmentation =
+          this.arraySegmentation.join(pOther.getArraySegmentation().clone());
      if(joinSegmentation.equals(pOther.getArraySegmentation())) {
         returnElement = pOther;
     } else {

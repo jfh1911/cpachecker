@@ -107,6 +107,46 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
+  protected @Nullable ArraySegmentationState<VariableUsageDomain>
+      handleAssumption(CAssumeEdge pCfaEdge, CExpression pExpression, boolean pTruthAssumption)
+          throws CPATransferException {
+    String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
+    if (super.state == null) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
+    // Check, if a corner-case applies and the state can be returned directly:
+    else if (isCornerCase(getState())) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
+    // Check, if any variable is used
+    Collection<CArraySubscriptExpression> uses = usageTransformer.getUses(pExpression);
+    if (!uses.isEmpty()) {
+
+      state = usageTransformer.explUse(new ArrayList<>(uses), state.clone());
+    }
+
+    // Check again, if a corner-case applies and the state can be returned directly:
+    else if (isCornerCase(super.getState())) {
+      return logTransformation(inpUtArgumentsAsString, super.state);
+    }
+
+    // Case 3: Update(e,d)
+    if (pExpression instanceof CBinaryExpression) {
+      UpdateTransformer u = new UpdateTransformer();
+      return logTransformation(
+          inpUtArgumentsAsString,
+          u.update(
+              (CBinaryExpression) pExpression,
+              pTruthAssumption,
+              state.clone(),
+              logger,
+              visitor));
+    } else {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
+  }
+
+  @Override
   protected ArraySegmentationState<VariableUsageDomain>
       handleBlankEdge(BlankEdge pCfaEdge) {
     // TODO: Verify that this is the correct behavior
@@ -207,46 +247,6 @@ public class UsageAnalysisTransferRelation extends
 
   }
 
-  @Override
-  protected @Nullable ArraySegmentationState<VariableUsageDomain>
-      handleAssumption(CAssumeEdge pCfaEdge, CExpression pExpression, boolean pTruthAssumption)
-          throws CPATransferException {
-    String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
-    if (super.state == null) {
-      return logTransformation(inpUtArgumentsAsString, state);
-    }
-    // Check, if a corner-case applies and the state can be returned directly:
-    else if (isCornerCase(getState())) {
-      return logTransformation(inpUtArgumentsAsString, state);
-    }
-    // Check, if any variable is used
-    Collection<CArraySubscriptExpression> uses = usageTransformer.getUses(pExpression);
-    if (!uses.isEmpty()) {
-
-      state = usageTransformer.explUse(new ArrayList<>(uses), state.clone());
-    }
-
-    // Check again, if a corner-case applies and the state can be returned directly:
-    else if (isCornerCase(super.getState())) {
-      return logTransformation(inpUtArgumentsAsString, super.state);
-    }
-
-    // Case 3: Update(e,d)
-    if (pExpression instanceof CBinaryExpression) {
-      UpdateTransformer u = new UpdateTransformer();
-      return logTransformation(
-          inpUtArgumentsAsString,
-          u.update(
-              (CBinaryExpression) pExpression,
-              pTruthAssumption,
-              state.clone(),
-              logger,
-              visitor));
-    } else {
-      return logTransformation(inpUtArgumentsAsString, state);
-    }
-  }
-
   public static boolean isCornerCase(ArraySegmentationState<VariableUsageDomain> s) {
     return s instanceof ErrorSegmentation || s instanceof UnreachableArraySegmentation;
   }
@@ -256,12 +256,12 @@ public class UsageAnalysisTransferRelation extends
       @Nullable ArraySegmentationState<VariableUsageDomain> pState) {
     logger.log(Level.FINE, PREFIX + " " + inputToTransfer + ")=" + pState);
     logger.flush();
-    try {
-      Thread.sleep(400);
-    } catch (InterruptedException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
+    // try {
+    // Thread.sleep(400);
+    // } catch (InterruptedException e) {
+    // // TODO Auto-generated catch block
+    // e.printStackTrace();
+    // }
     return pState;
   }
 

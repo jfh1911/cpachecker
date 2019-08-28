@@ -101,7 +101,7 @@ public class CLUAnalysisCPA extends AbstractCPA {
     this.cfa = cfa;
     this.config = config;
     this.shutdownNotifier = shutdownNotifier;
-    usageCPA = new UsageAnalysisCPA(config, logger, shutdownNotifier, cfa);
+    usageCPA = new UsageAnalysisCPA(config, logger, cfa);
     locationCPA = LocationCPA.create(this.cfa, this.config);
     this.factory = new LocationStateFactory(cfa, AnalysisDirection.FORWARD, config);
   }
