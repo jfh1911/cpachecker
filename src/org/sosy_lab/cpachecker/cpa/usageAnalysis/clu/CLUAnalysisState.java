@@ -72,8 +72,10 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
       logger.log(Level.FINE, mergeLogInfo + returnElement.toDOTLabel());
       return returnElement;
 
+    } else {
+      return pOther;
     }
-    return pOther;
+
   }
 
   @Override

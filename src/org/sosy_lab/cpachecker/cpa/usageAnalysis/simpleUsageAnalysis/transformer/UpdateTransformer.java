@@ -50,15 +50,28 @@ public class UpdateTransformer {
 
   }
 
-  public @Nullable ArraySegmentationState<VariableUsageDomain>
-      update(
-          CBinaryExpression expr,
-          @Nullable ArraySegmentationState<VariableUsageDomain> pState,
-          LogManagerWithoutDuplicates pLogger,
-          ExpressionSimplificationVisitor pVisitor) {
+  public @Nullable ArraySegmentationState<VariableUsageDomain> update(
+      CBinaryExpression expr,
+      boolean pTruthAssumption,
+      @Nullable ArraySegmentationState<VariableUsageDomain> pState,
+      LogManagerWithoutDuplicates pLogger,
+      ExpressionSimplificationVisitor pVisitor) {
     this.state = pState;
     this.logger = pLogger;
     this.visitor = pVisitor;
+    // Apply the truth assumption. In case of false, invert the operator
+    if (!pTruthAssumption) {
+      expr =
+          new CBinaryExpression(
+              expr.getFileLocation(),
+              expr.getExpressionType(),
+              expr.getCalculationType(),
+              expr.getOperand1(),
+              expr.getOperand2(),
+              expr.getOperator().getOppositLogicalOperator());
+
+    }
+
     if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.EQUALS)) {// Case 3.1
       // AS explained by Jan Haltermann in hismaster thesis, we need to ensure that the LHS of the
       // equality expression is a variable. IN all other cases, this is not important. Hence, we
@@ -352,7 +365,8 @@ public class UpdateTransformer {
       CIdExpression pVar,
       CExpression pOp2,
       BinaryOperator pOperator) {
-    return SegmentationReachabilityChecker.checkReachability(pState, pVar, pOp2, pOperator, logger, visitor);
+    return SegmentationReachabilityChecker
+        .checkReachability(pState, pVar, pOp2, pOperator, logger, visitor);
   }
 
 }

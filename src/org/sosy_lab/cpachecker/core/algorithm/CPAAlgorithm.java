@@ -381,7 +381,12 @@ public class CPAAlgorithm implements Algorithm, StatisticsProvider {
           logger.log(Level.FINER, "Break signalled, CPAAlgorithm will stop.");
 
           // add the new state
+
           reachedSet.add(successor, successorPrecision);
+          logger.log(
+              Level.FINE,
+              "The following element is added to reachedSet" + successor.toString());
+          logger.log(Level.FINER, "The current reachset is:" + reachedSet.toString());
 
           if (it.hasNext()) {
             // re-add the old state to the waitlist, there are unhandled
@@ -419,6 +424,11 @@ public class CPAAlgorithm implements Algorithm, StatisticsProvider {
 
                 toRemove.add(reachedState);
                 toAdd.add(Pair.of(mergedState, successorPrecision));
+                logger.log(
+                    Level.FINE,
+                    "The following element is added to reachedSet" + mergedState.toString());
+                logger.log(Level.FINER, "The current reachset is:" + reachedSet.toString());
+
               }
             }
           } finally {
@@ -454,6 +464,10 @@ public class CPAAlgorithm implements Algorithm, StatisticsProvider {
 
         stats.addTimer.start();
         reachedSet.add(successor, successorPrecision);
+        logger
+            .log(Level.FINE, "The following element is added to reachedSet" + successor.toString());
+        logger.log(Level.FINER, "The current reachset is:" + reachedSet.toString());
+
         stats.addTimer.stop();
       }
     }
