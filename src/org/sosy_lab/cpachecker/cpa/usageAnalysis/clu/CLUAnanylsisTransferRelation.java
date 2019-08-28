@@ -138,7 +138,10 @@ public class CLUAnanylsisTransferRelation extends
     }
     Collection<ArraySegmentationState<VariableUsageDomain>> arraySegmentation =
         usageTransfer
-            .getAbstractSuccessorsForEdge(state.getArraySegmentation(), getPrecision(), pCfaEdge);
+            .getAbstractSuccessorsForEdge(
+                state.getArraySegmentation().clone(),
+                getPrecision(),
+                pCfaEdge);
     // Check if a single reslt is returned
     if (arraySegmentation.size() != 1) {
       throw new CPATransferException(

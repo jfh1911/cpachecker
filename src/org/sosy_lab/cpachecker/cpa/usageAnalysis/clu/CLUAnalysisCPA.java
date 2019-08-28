@@ -137,6 +137,5 @@ public class CLUAnalysisCPA extends AbstractCPA {
         usageCPA.getInitialState(pNode, pPartition),
         this.logger);
 
-
   }
 }

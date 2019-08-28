@@ -103,9 +103,10 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
   @Override
   public ArraySegment<T> clone() {
     List<AExpression> boundsCopy = new ArrayList<>(segmentBound.size());
+    this.segmentBound.parallelStream().forEach(e -> boundsCopy.add(e));
     // TODO: Add deep copying!
     return new ArraySegment<>(
-        this.segmentBound,
+        boundsCopy,
         this.analysisInformation,
         this.isPotentiallyEmpty,
         null);
