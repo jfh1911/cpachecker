@@ -22,7 +22,6 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.configuration.Option;
@@ -84,7 +83,6 @@ public class UsageAnalysisCPA extends AbstractCPA {
   public UsageAnalysisCPA(
       Configuration config,
       LogManager pLogger,
-      ShutdownNotifier shutdownNotifier,
       CFA cfa)
       throws InvalidConfigurationException {
     super(
@@ -189,7 +187,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
     arrayAccessVars.parallelStream()
         .forEach(v -> listOfIDElements.add(new CIdExpression(v.getFileLocation(), v)));
     return
-        new ArraySegmentationState<VariableUsageDomain>(
+    new ArraySegmentationState<>(
         segments,
         VariableUsageDomain.getBottom(),
         VariableUsageDomain.getTop(),

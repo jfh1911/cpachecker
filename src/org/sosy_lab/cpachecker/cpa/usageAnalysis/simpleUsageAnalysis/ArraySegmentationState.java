@@ -139,7 +139,7 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     current.setAnalysisInformation(
         firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()));
     current.setPotentiallyEmpty(false);
-    current.setNextSegment(new FinalSegSymbol<T>(this.tEmptyElement));
+    current.setNextSegment(new FinalSegSymbol<>(this.tEmptyElement));
     res.add(0, current);
 
     for (int i = firstSegs.size() - 2; i >= 0; i--) {
@@ -298,6 +298,7 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     if (getClass() != obj.getClass()) {
       return false;
     }
+    @SuppressWarnings("unchecked")
     ArraySegmentationState<T> other = (ArraySegmentationState<T>) obj;
     if (segments == null) {
       if (other.segments != null) {
@@ -306,9 +307,13 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     }
     if (other.getSegments().size() != this.segments.size()) {
       return false;
-    } else if (!this.segments.containsAll(other.getSegments())
-        || !other.getSegments().containsAll(this.segments)) {
+    }
+    for (int i = 0; i < this.segments.size(); i++) {
+      ArraySegment<T> seg1 = segments.get(i);
+      ArraySegment<T> seg2 = other.getSegments().get(i);
+      if (!seg1.equals(seg2)) {
       return false;
+      }
     }
     if (tBottom == null) {
       if (other.tBottom != null) {

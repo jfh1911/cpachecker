@@ -198,13 +198,18 @@ public class UpdateTransformer {
             keeptSeg.addSegmentBounds(prevSegs.get(i).getSegmentBound());
           }
           // Set the pointer of the last element of newSegs to keeptSeg and add keeptSeg to
-          // newSegments
-          newSegments.get(min - 1).setNextSegment(keeptSeg);
+          // newSegments, if min >0
+          if (min >= 1) {
+            newSegments.get(min - 1).setNextSegment(keeptSeg);
+
+          }
           newSegments.add(keeptSeg);
 
           // Add the remaining segments;
-          for (int i = max; i < prevSegs.size(); i++) {
-            newSegments.add(prevSegs.get(i));
+          for (int i = max + 1; i < prevSegs.size(); i++) {
+            if (!newSegments.contains(prevSegs.get(i))) {
+              newSegments.add(prevSegs.get(i));
+            }
           }
           return new ArraySegmentationState<>(
               newSegments,

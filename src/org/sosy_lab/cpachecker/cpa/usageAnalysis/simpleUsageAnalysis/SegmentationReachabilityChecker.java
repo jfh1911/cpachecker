@@ -71,7 +71,7 @@ public class SegmentationReachabilityChecker {
       int min = Integer.min(segOfExpr, segOfVar);
       int max = Integer.max(segOfExpr, segOfVar);
       for (int i = min; i < max; i++) {
-        if (segments.get(i).isPotentiallyEmpty()) {
+        if (!segments.get(i).isPotentiallyEmpty()) {
           return new UnreachableArraySegmentation<>();
         }
       }
@@ -85,7 +85,6 @@ public class SegmentationReachabilityChecker {
       BigInteger v = ((CIntegerLiteralExpression) valueOfpOp2).getValue();
       if (segOfVar != -1) {
         ArraySegment<VariableUsageDomain> segment = segments.get(segOfVar);
-        BigInteger valueOfExpr;
         if (segment.getSegmentBound()
             .parallelStream()
             .anyMatch(
