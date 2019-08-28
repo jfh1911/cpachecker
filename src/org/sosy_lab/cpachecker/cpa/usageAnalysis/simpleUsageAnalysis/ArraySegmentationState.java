@@ -103,7 +103,8 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
       throw new CPAException("The join cannot be applied for two differently initalized generics");
     }
 
-    if (this.equals(pOther)) {
+    // logger
+    // .log(Level.FINE, "Merging the elements" + this.toDOTLabel() + " - " + pOther.toDOTLabel());
     Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
         unifier.unifyMerge(this, pOther, tBottom, tBottom);
 
@@ -155,8 +156,8 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
       }
       pOther.setSegments(res);
 
-    }
-    return pOther;
+
+  return pOther;
   }
 
   @Override
