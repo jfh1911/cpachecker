@@ -21,7 +21,6 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -57,7 +56,7 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.util.EnhancedExpressionSimplifi
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
 public class UsageAnalysisTransferRelation extends
-    ForwardingTransferRelation<Collection<ArraySegmentationState<VariableUsageDomain>>, ArraySegmentationState<VariableUsageDomain>, Precision> {
+    ForwardingTransferRelation<ArraySegmentationState<VariableUsageDomain>, ArraySegmentationState<VariableUsageDomain>, Precision> {
 
   private final LogManagerWithoutDuplicates logger;
   private final MachineModel machineModel;
@@ -80,16 +79,16 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
-  protected Collection<ArraySegmentationState<VariableUsageDomain>>
+  protected ArraySegmentationState<VariableUsageDomain>
       handleDeclarationEdge(CDeclarationEdge pCfaEdge, CDeclaration pDecl)
           throws CPATransferException {
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
     if (super.state == null) {
-      return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
+      return logTransformation(inpUtArgumentsAsString, state);
     }
     // Check, if a corner-case applies and the state can be returned directly:
     else if (isCornerCase(super.getState())) {
-      return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
+      return logTransformation(inpUtArgumentsAsString, state);
     }
 
     // Check if a variable is assigned
@@ -108,27 +107,40 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
-  protected Collection<ArraySegmentationState<VariableUsageDomain>>
+  protected ArraySegmentationState<VariableUsageDomain>
       handleBlankEdge(BlankEdge pCfaEdge) {
     // TODO: Verify that this is the correct behavior
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
-
+    if (super.state == null) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
+    // Check, if a corner-case applies and the state can be returned directly:
+    else if (isCornerCase(super.getState())) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
     return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
   }
 
   @Override
-  protected Collection<ArraySegmentationState<VariableUsageDomain>> handleFunctionCallEdge(
+  protected ArraySegmentationState<VariableUsageDomain> handleFunctionCallEdge(
       CFunctionCallEdge pCfaEdge,
       List<CExpression> pArguments,
       List<CParameterDeclaration> pParameters,
       String pCalledFunctionName)
       throws CPATransferException {// TODO: Verify that this is the correct behavior
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
+    if (super.state == null) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
+    // Check, if a corner-case applies and the state can be returned directly:
+    else if (isCornerCase(super.getState())) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
     return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
   }
 
   @Override
-  protected Collection<ArraySegmentationState<VariableUsageDomain>> handleFunctionReturnEdge(
+  protected ArraySegmentationState<VariableUsageDomain> handleFunctionReturnEdge(
       CFunctionReturnEdge pCfaEdge,
       CFunctionSummaryEdge pFnkCall,
       CFunctionCall pSummaryExpr,
@@ -136,30 +148,58 @@ public class UsageAnalysisTransferRelation extends
       throws CPATransferException {
     // TODO: Verify that this is the correct behavior
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
+    if (super.state == null) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
+    // Check, if a corner-case applies and the state can be returned directly:
+    else if (isCornerCase(super.getState())) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
     return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
   }
 
   @Override
-  protected Collection<ArraySegmentationState<VariableUsageDomain>>
+  protected ArraySegmentationState<VariableUsageDomain>
       handleFunctionSummaryEdge(CFunctionSummaryEdge pCfaEdge) throws CPATransferException {
     // TODO: Verify that this is the correct behavior
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
+    if (super.state == null) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
+    // Check, if a corner-case applies and the state can be returned directly:
+    else if (isCornerCase(super.getState())) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
     return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
   }
 
   @Override
-  protected Collection<ArraySegmentationState<VariableUsageDomain>>
+  protected ArraySegmentationState<VariableUsageDomain>
       handleReturnStatementEdge(CReturnStatementEdge pCfaEdge) throws CPATransferException {
     // TODO: Verify that this is the correct behavior
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
+    if (super.state == null) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
+    // Check, if a corner-case applies and the state can be returned directly:
+    else if (isCornerCase(super.getState())) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
     return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
   }
 
   @Override
-  protected Collection<ArraySegmentationState<VariableUsageDomain>>
+  protected ArraySegmentationState<VariableUsageDomain>
       handleStatementEdge(CStatementEdge pCfaEdge, CStatement pStatement)
           throws CPATransferException {
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
+    if (super.state == null) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
+    // Check, if a corner-case applies and the state can be returned directly:
+    else if (isCornerCase(super.getState())) {
+      return logTransformation(inpUtArgumentsAsString, state);
+    }
     StatementTrasformer stmtTransformer =
         new StatementTrasformer(logger, visitor, usageTransformer);
     state = stmtTransformer.transform(state.clone(), pStatement);
@@ -168,7 +208,7 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
-  protected @Nullable Collection<ArraySegmentationState<VariableUsageDomain>>
+  protected @Nullable ArraySegmentationState<VariableUsageDomain>
       handleAssumption(CAssumeEdge pCfaEdge, CExpression pExpression, boolean pTruthAssumption)
           throws CPATransferException {
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
@@ -206,7 +246,7 @@ public class UsageAnalysisTransferRelation extends
     return s instanceof ErrorSegmentation || s instanceof UnreachableArraySegmentation;
   }
 
-  private Collection<ArraySegmentationState<VariableUsageDomain>> logTransformation(
+  private ArraySegmentationState<VariableUsageDomain> logTransformation(
       String inputToTransfer,
       @Nullable ArraySegmentationState<VariableUsageDomain> pState) {
     logger.log(Level.FINE, PREFIX + " " + inputToTransfer + ")=" + pState);
@@ -217,8 +257,9 @@ public class UsageAnalysisTransferRelation extends
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
-    return Collections.singleton(state);
+    return state;
   }
+
 
   private String computeInnputString(AbstractCFAEdge pCfaEdge) {
     return pCfaEdge.getSuccessor().getNodeNumber()

@@ -73,13 +73,7 @@ public class StatementTrasformer {
   public @Nullable ArraySegmentationState<VariableUsageDomain>
       transform(ArraySegmentationState<VariableUsageDomain> state, CStatement pStatement)
           throws CPATransferException {
-    if (state == null) {
-      return state;
-    }
-    // Check, if a corner-case applies and the state can be returned directly:
-    else if (UsageAnalysisTransferRelation.isCornerCase(state)) {
-      return state;
-    }
+
     // Check, if the RHS contains any usage of the array
     state = usageTransformer.use(pStatement, state);
 
