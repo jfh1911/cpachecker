@@ -58,7 +58,7 @@ public class ErrorSegmentation<T extends LatticeAbstractState<T>> extends
 
   @Override
   public ArraySegmentationState<T> clone() {
-    return new ErrorSegmentation<>();
+    return this;
   }
 
 }

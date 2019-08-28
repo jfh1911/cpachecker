@@ -54,7 +54,7 @@ ArraySegmentationState<T> {
 
   @Override
   public ArraySegmentationState<T> clone() {
-    return new UnreachableArraySegmentation<>();
+    return this;
   }
 
 }
