@@ -118,7 +118,7 @@ public class UsageAnalysisTransferRelation extends
     else if (isCornerCase(super.getState())) {
       return logTransformation(inpUtArgumentsAsString, state);
     }
-    return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
+    return logTransformation(inpUtArgumentsAsString, state.clone());
   }
 
   @Override
@@ -136,7 +136,7 @@ public class UsageAnalysisTransferRelation extends
     else if (isCornerCase(super.getState())) {
       return logTransformation(inpUtArgumentsAsString, state);
     }
-    return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
+    return logTransformation(inpUtArgumentsAsString, state.clone());
   }
 
   @Override
@@ -155,7 +155,7 @@ public class UsageAnalysisTransferRelation extends
     else if (isCornerCase(super.getState())) {
       return logTransformation(inpUtArgumentsAsString, state);
     }
-    return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
+    return logTransformation(inpUtArgumentsAsString, state.clone());
   }
 
   @Override
@@ -170,7 +170,7 @@ public class UsageAnalysisTransferRelation extends
     else if (isCornerCase(super.getState())) {
       return logTransformation(inpUtArgumentsAsString, state);
     }
-    return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
+    return logTransformation(inpUtArgumentsAsString, state.clone());
   }
 
   @Override
@@ -185,7 +185,7 @@ public class UsageAnalysisTransferRelation extends
     else if (isCornerCase(super.getState())) {
       return logTransformation(inpUtArgumentsAsString, state);
     }
-    return logTransformation(inpUtArgumentsAsString, state != null ? state.clone() : state);
+    return logTransformation(inpUtArgumentsAsString, state.clone());
   }
 
   @Override
@@ -236,7 +236,12 @@ public class UsageAnalysisTransferRelation extends
       UpdateTransformer u = new UpdateTransformer();
       return logTransformation(
           inpUtArgumentsAsString,
-          u.update((CBinaryExpression) pExpression, state.clone(), logger, visitor));
+          u.update(
+              (CBinaryExpression) pExpression,
+              pTruthAssumption,
+              state.clone(),
+              logger,
+              visitor));
     } else {
       return logTransformation(inpUtArgumentsAsString, state);
     }
@@ -257,7 +262,7 @@ public class UsageAnalysisTransferRelation extends
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
-    return state;
+    return pState;
   }
 
 

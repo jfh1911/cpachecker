@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BinaryOperator;
+import java.util.logging.Level;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
@@ -103,8 +104,8 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
       throw new CPAException("The join cannot be applied for two differently initalized generics");
     }
 
-    // logger
-    // .log(Level.FINE, "Merging the elements" + this.toDOTLabel() + " - " + pOther.toDOTLabel());
+    String logText = "Merging the elements" + this.toDOTLabel() + " - " + pOther.toDOTLabel();
+
     Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
         unifier.unifyMerge(this, pOther, tBottom, tBottom);
 
@@ -156,15 +157,19 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
               last);
       res.add(0, current);
     }
-    return new ArraySegmentationState<>(
-        res,
-        this.tBottom,
-        this.tTop,
-        this.tEmptyElement,
-        this.tMeet,
-        this.tLisOfArrayVariables,
-        this.tArray,
-        logger);
+
+    ArraySegmentationState<T> result =
+        new ArraySegmentationState<>(
+            res,
+            this.tBottom,
+            this.tTop,
+            this.tEmptyElement,
+            this.tMeet,
+            this.tLisOfArrayVariables,
+            this.tArray,
+            logger);
+    logger.log(Level.FINE, logText + ")= " + result.toDOTLabel());
+    return result;
   }
 
   @Override
@@ -203,8 +208,8 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
         return false;
       }
 
-      // Since ? (=true) < |_| (=false), ?_i !<= ?_i', iff ?_i = false & ß_i' = true
-      if (!firstSeg.isPotentiallyEmpty() && secondSeg.isPotentiallyEmpty()) {
+      // Since |_| (=false) < ? (=true) , ?_i !<= ?_i', iff ?_i = true & ß_i' = false
+      if (firstSeg.isPotentiallyEmpty() && !secondSeg.isPotentiallyEmpty()) {
         return false;
       }
 
