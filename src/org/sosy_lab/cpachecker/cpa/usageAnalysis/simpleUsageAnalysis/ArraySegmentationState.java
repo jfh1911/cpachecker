@@ -32,9 +32,13 @@ import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.java.JBinaryExpression;
+import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
+import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.util.ArrayModificationException;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.util.SegmentationModifier;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
 
@@ -94,6 +98,7 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     tLisOfArrayVariables = pLisOfArrayVariables;
     tArray = pArray;
     logger = pLogger;
+
   }
 
   /**
@@ -218,6 +223,60 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     return true;
   }
 
+  public ArraySegmentationState<T> strengthn(Collection<AExpression> eColl) {
+    for (AExpression e : eColl) {
+      if (e instanceof CBinaryExpression || e instanceof JBinaryExpression) {
+        this.segments.parallelStream().forEach(s -> s.strengthn(e));
+      }
+    }
+    return this;
+  }
+
+  /**
+   * Iterate through all segments and check, if a segment has no expressions in its bound. in this
+   * case, remove the segment bound and merge the information with the prior segment
+   *
+   * @throws InterruptedException if the join in the underlying domain fails
+   * @throws CPAException if the segmentation is empty
+   */
+  public void mergeSegmentsWithEmptySegmentBounds() throws CPAException, InterruptedException {
+    if (this.getSegments().isEmpty()) {
+      throw new CPAException(
+          "The segmentation "
+              + this.toString()
+              + " does not conaint a single segmentation, hence the computation is aborted");
+    }
+
+    // By assumption, the segmentation contains at least one segment!
+    ArraySegment<T> prevSegment = this.segments.get(0);
+    List<ArraySegment<T>> newSegments = new ArrayList<>();
+
+    for (int i = 1; i < this.segments.size(); i++) {
+      ArraySegment<T> segment = segments.get(i);
+      if (segment.getSegmentBound().isEmpty()) {
+        prevSegment.setAnalysisInformation(
+            prevSegment.getAnalysisInformation().join(segment.getAnalysisInformation()));
+        prevSegment
+            .setPotentiallyEmpty(prevSegment.isPotentiallyEmpty() || segment.isPotentiallyEmpty());
+        prevSegment.setNextSegment(segment.getNextSegment());
+      } else {
+        // The segment bound is not empty, hence the previous segment can be stored, since it will
+        // not be modified anymore
+        newSegments.add(prevSegment);
+        prevSegment = segment;
+      }
+    }
+    newSegments.add(prevSegment);
+    this.segments = newSegments;
+  }
+
+  /**
+   * Adds a segment at after the segment {@code after} and set the next parameter correctly.
+   *
+   * @param toAdd segment to add
+   * @param after position to add after
+   * @return true if the segment is added, false if after is not present
+   */
   public boolean addSegment(ArraySegment<T> toAdd, ArraySegment<T> after) {
     if (!segments.contains(after)) {
       return false;
@@ -227,6 +286,74 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     toAdd.setNextSegment((cur).getNextSegment());
     cur.setNextSegment(toAdd);
     segments.add(posToAdd, toAdd);
+    return true;
+  }
+
+  /**
+   * <b>REPLACES</b> analysis information for a specific index. If information for the array index
+   * "3" should be stored, a new segment bound continuing "3+1"=4 is added( if not already present)
+   * directly right of the segment bound containing 3 and the information is stored for that segment
+   * (hence holds for array element at index 3. If no segment bound should be added, use the method
+   * {@link #storeAnalysisInformationAtIndexWithoutAddingBounds}
+   *
+   * @param index the index of the information to be stored
+   * @param analysisInfo to be stored
+   * @param newSegmentIsPotentiallyEmpty he information if the new segment is potentially empty
+   *        (default is false)
+   * @param machineModel of the computation
+   * @param pVisitor to create expressions
+   * @return true, if the operation was successful
+   */
+  public boolean storeAnalysisInformationAtIndex(
+      CExpression index,
+      T analysisInfo,
+      boolean newSegmentIsPotentiallyEmpty,
+      MachineModel machineModel,
+      ExpressionSimplificationVisitor pVisitor) {
+    SegmentationModifier<T> modifier = new SegmentationModifier<>(logger, machineModel, pVisitor);
+    try {
+      ArraySegmentationState<T> res =
+          modifier.storeAnalysisInformationAtIndex(
+              this.clone(),
+              index,
+              analysisInfo,
+              newSegmentIsPotentiallyEmpty);
+      this.segments = res.getSegments();
+    } catch (ArrayModificationException e) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Behaves like {@link #storeAnalysisInformationAtIndex}, but does not add new segment bounds. If
+   * the segment bound index or index+1 is missing, false is returned and nothing is changed.
+   *
+   *
+   * @param index the index of the information to be stored
+   * @param analysisInfo to be stored
+   * @param newSegmentIsPotentiallyEmpty he information if the new segment is potentially empty
+   *        (default is false)
+   * @return true, if the operation was successful
+   */
+  public boolean storeAnalysisInformationAtIndexWithoutAddingBounds(
+      CExpression index,
+      T analysisInfo,
+      boolean newSegmentIsPotentiallyEmpty,
+      MachineModel machineModel,
+      ExpressionSimplificationVisitor pVisitor) {
+    SegmentationModifier<T> modifier = new SegmentationModifier<>(logger, machineModel, pVisitor);
+    try {
+      ArraySegmentationState<T> res =
+          modifier.storeAnalysisInformationAtIndexWithoutAddingBounds(
+              this.clone(),
+              index,
+              analysisInfo,
+              newSegmentIsPotentiallyEmpty);
+      this.segments = res.getSegments();
+    } catch (ArrayModificationException e) {
+      return false;
+    }
     return true;
   }
 
@@ -249,13 +376,23 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     return result;
   }
 
-  public ArraySegmentationState<T> strengthn(Collection<AExpression> eColl) {
-    for (AExpression e : eColl) {
-      if (e instanceof CBinaryExpression || e instanceof JBinaryExpression) {
-        this.segments.parallelStream().forEach(s -> s.strengthn(e));
+  @Override
+  public boolean shouldBeHighlighted() {
+    return false;
+  }
+
+  /**
+   *
+   * @param pSubscriptExpr the expression to search for
+   * @return the position of the segmentation or -1, if not present
+   */
+  public int getSegBoundContainingExpr(CExpression pSubscriptExpr) {
+    for (int i = 0; i < this.segments.size(); i++) {
+      if (segments.get(i).getSegmentBound().contains(pSubscriptExpr)) {
+        return i;
       }
     }
-    return this;
+    return -1;
   }
 
   public List<ArraySegment<T>> getSegments() {
@@ -264,6 +401,58 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
 
   public void setSegments(List<ArraySegment<T>> pSegments) {
     segments = pSegments;
+  }
+
+  public T gettBottom() {
+    return tBottom;
+  }
+
+  public void settBottom(T pTBottom) {
+    tBottom = pTBottom;
+  }
+
+  public T gettTop() {
+    return tTop;
+  }
+
+  public void settTop(T pTTop) {
+    tTop = pTTop;
+  }
+
+  public BinaryOperator<T> gettMeet() {
+    return tMeet;
+  }
+
+  public void settMeet(BinaryOperator<T> pTMeet) {
+    tMeet = pTMeet;
+  }
+
+  public List<AIdExpression> gettLisOfArrayVariables() {
+    return tLisOfArrayVariables;
+  }
+
+  public void settLisOfArrayVariables(List<AIdExpression> pTLisOfArrayVariables) {
+    tLisOfArrayVariables = pTLisOfArrayVariables;
+  }
+
+  public AIdExpression gettArray() {
+    return tArray;
+  }
+
+  public void settArray(AIdExpression pTArray) {
+    tArray = pTArray;
+  }
+
+  public T gettEmptyElement() {
+    return tEmptyElement;
+  }
+
+  public void settEmptyElement(T pTEmptyElement) {
+    tEmptyElement = pTEmptyElement;
+  }
+
+  public LogManager getLogger() {
+    return logger;
   }
 
   @Override
@@ -352,54 +541,6 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     return true;
   }
 
-  public T gettBottom() {
-    return tBottom;
-  }
-
-  public void settBottom(T pTBottom) {
-    tBottom = pTBottom;
-  }
-
-  public T gettTop() {
-    return tTop;
-  }
-
-  public void settTop(T pTTop) {
-    tTop = pTTop;
-  }
-
-  public BinaryOperator<T> gettMeet() {
-    return tMeet;
-  }
-
-  public void settMeet(BinaryOperator<T> pTMeet) {
-    tMeet = pTMeet;
-  }
-
-  public List<AIdExpression> gettLisOfArrayVariables() {
-    return tLisOfArrayVariables;
-  }
-
-  public void settLisOfArrayVariables(List<AIdExpression> pTLisOfArrayVariables) {
-    tLisOfArrayVariables = pTLisOfArrayVariables;
-  }
-
-  public AIdExpression gettArray() {
-    return tArray;
-  }
-
-  public void settArray(AIdExpression pTArray) {
-    tArray = pTArray;
-  }
-
-  public T gettEmptyElement() {
-    return tEmptyElement;
-  }
-
-  public void settEmptyElement(T pTEmptyElement) {
-    tEmptyElement = pTEmptyElement;
-  }
-
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
@@ -411,67 +552,6 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
   @Override
   public String toDOTLabel() {
     return this.toString();
-  }
-
-  @Override
-  public boolean shouldBeHighlighted() {
-    return false;
-  }
-
-  /**
-   * Iterate through all segments and check, if a segment has no expressions in its bound. in this
-   * case, remove the segment bound and merge the information with the prior segment
-   *
-   * @throws InterruptedException
-   * @throws CPAException
-   */
-  public void mergeSegmentsWithEmptySegmentBounds() throws CPAException, InterruptedException {
-    if (this.getSegments().isEmpty()) {
-      throw new CPAException(
-          "The segmentation "
-              + this.toString()
-              + " does not conaint a single segmentation, hence the computation is aborted");
-    }
-
-    // By assumption, the segmentation contains at least one segment!
-    ArraySegment<T> prevSegment = this.segments.get(0);
-    List<ArraySegment<T>> newSegments = new ArrayList<>();
-
-    for (int i = 1; i < this.segments.size(); i++) {
-      ArraySegment<T> segment = segments.get(i);
-      if (segment.getSegmentBound().isEmpty()) {
-        prevSegment.setAnalysisInformation(
-            prevSegment.getAnalysisInformation().join(segment.getAnalysisInformation()));
-        prevSegment
-            .setPotentiallyEmpty(prevSegment.isPotentiallyEmpty() || segment.isPotentiallyEmpty());
-        prevSegment.setNextSegment(segment.getNextSegment());
-      } else {
-        // The segment bound is not empty, hence the previous segment can be stored, since it will
-        // not be modified anymore
-        newSegments.add(prevSegment);
-        prevSegment = segment;
-      }
-    }
-    newSegments.add(prevSegment);
-    this.segments = newSegments;
-  }
-
-  /**
-   *
-   * @param pSubscriptExpr the expression to search for
-   * @return the position of the segmentation or -1, if not present
-   */
-  public int getSegBoundContainingExpr(CExpression pSubscriptExpr) {
-    for (int i = 0; i < this.segments.size(); i++) {
-      if (segments.get(i).getSegmentBound().contains(pSubscriptExpr)) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
-  public LogManager getLogger() {
-    return logger;
   }
 
 }
