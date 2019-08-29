@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain;
 
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
@@ -67,7 +67,7 @@ public interface ExtendedCompletLatticeAbstractState<T extends ExtendedCompletLa
    *
    * @return true, if the value is default and can be removed
    */
-  default Predicate<T> isDefaultValueAndCanBeRemoved() {
+  default Predicate<T> getIsDefaultValueAndCanBeRemoved() {
     return new Predicate<T>() {
 
       @Override

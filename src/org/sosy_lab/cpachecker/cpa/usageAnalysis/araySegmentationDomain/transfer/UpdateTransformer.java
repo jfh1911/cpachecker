@@ -17,10 +17,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.transformer;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -31,29 +32,29 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression.BinaryOperator;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageType;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegment;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ErrorSegmentation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.SegmentationReachabilityChecker;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.UnreachableArraySegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ErrorSegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.UnreachableSegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.SegmentationReachabilityChecker;
 
-public class UpdateTransformer {
+public class UpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>> {
 
-  private ArraySegmentationState<VariableUsageState> state;
+  private ArraySegmentationState<T> state;
   private LogManager logger;
   private static final String PREFIX = "USAGE_ANALYSIS update";
   ExpressionSimplificationVisitor visitor;
+  private SegmentationReachabilityChecker<T> checker;
 
   public UpdateTransformer() {
-
+    checker = new SegmentationReachabilityChecker<>(logger);
   }
 
-  public @Nullable ArraySegmentationState<VariableUsageState> update(
+  public @Nullable ArraySegmentationState<T> update(
       CBinaryExpression expr,
       boolean pTruthAssumption,
-      @Nullable ArraySegmentationState<VariableUsageState> pState,
+      @Nullable ArraySegmentationState<T> pState,
       LogManagerWithoutDuplicates pLogger,
       ExpressionSimplificationVisitor pVisitor) {
     this.state = pState;
@@ -103,14 +104,14 @@ public class UpdateTransformer {
     }
   }
 
-  private @Nullable ArraySegmentationState<VariableUsageState>
+  private @Nullable ArraySegmentationState<T>
       updateEquals(CExpression pVar, CExpression pOp2, BinaryOperator pOperator) {
     if (!(pVar instanceof CIdExpression)) {
       // CUrrently, there is no behaviour defined in this case
       return state;
     }
     CIdExpression var = (CIdExpression) pVar;
-    List<ArraySegment<VariableUsageState>> segmentsContainingOp2 = getSegmentsContainingExpr(pOp2);
+    List<ArraySegment<T>> segmentsContainingOp2 = getSegmentsContainingExpr(pOp2);
     if (segmentsContainingOp2.isEmpty()) {
       // Case 3.1.1 and 3.1.2
       return state;
@@ -128,11 +129,11 @@ public class UpdateTransformer {
               + pVar.toASTString()
               + " := "
               + pOp2.toASTString());
-      return new ErrorSegmentation<>();
+      return new ErrorSegmentation<>(logger);
 
     } else {
       // Check, if the variable is present in any state:
-      List<ArraySegment<VariableUsageState>> segmentsContainingVar = getSegmentsContainingExpr(var);
+      List<ArraySegment<T>> segmentsContainingVar = getSegmentsContainingExpr(var);
       if (segmentsContainingVar.isEmpty()) {
         // Case 3.1.3
         segmentsContainingOp2.get(0).addSegmentBound(var);
@@ -151,13 +152,12 @@ public class UpdateTransformer {
                 + pVar.toASTString()
                 + " := "
                 + pOp2.toASTString());
-        return new ErrorSegmentation<>();
+        return new ErrorSegmentation<>(logger);
       } else {
 
         @Nullable
-        ArraySegmentationState<VariableUsageState> validated =
-            this.validate(state, var, pOp2, pOperator);
-        if (validated instanceof UnreachableArraySegmentation) {
+        ArraySegmentationState<T> validated = this.validate(state, var, pOp2, pOperator);
+        if (validated instanceof UnreachableSegmentation) {
           return validated;
         } else {
           // Check, if there is usage between the segments containing i and the pOp2
@@ -165,12 +165,9 @@ public class UpdateTransformer {
           int posSegmentContainsOp2 = state.getSegments().indexOf(segmentsContainingOp2.get(0));
           int min = Integer.min(posSegmentContainsVar, posSegmentContainsOp2);
           int max = Integer.max(posSegmentContainsVar, posSegmentContainsOp2);
+          Predicate<T> pred = state.gettEmptyElement().getIsDefaultValueAndCanBeRemoved();
           for (int i = min; i < max; i++) {
-            if (state.getSegments()
-                .get(i)
-                .getAnalysisInformation()
-                .getType()
-                .equals(VariableUsageType.USED)) {
+            if (pred.test(state.getSegments().get(i).getAnalysisInformation())) {
               logger.log(
                   Level.FINE,
                   "The analysis result would be under-approximated when removing a segment bound containing array elements marked as used for "
@@ -179,20 +176,20 @@ public class UpdateTransformer {
                       + pVar.toASTString()
                       + pOperator.toString()
                       + pOp2.toASTString());
-              return new ErrorSegmentation<>();
+              return new ErrorSegmentation<>(logger);
             }
           }
           // We can safely merge the segment bounds between posSegmentContainsVar and
           // posSegmentContainsOp2, since all elements are marked as unused.
-          List<ArraySegment<VariableUsageState>> newSegments = new ArrayList<>();
-          List<ArraySegment<VariableUsageState>> prevSegs = state.getSegments();
+          List<ArraySegment<T>> newSegments = new ArrayList<>();
+          List<ArraySegment<T>> prevSegs = state.getSegments();
 
           // Add all segments before min(posSegmentContainsVar,posSegmentContainsOp2)
           for (int i = 0; i < min; i++) {
             newSegments.add(prevSegs.get(i));
           }
           // Merge the segment information from min to max into max (since max will be kept
-          ArraySegment<VariableUsageState> keeptSeg = prevSegs.get(max);
+          ArraySegment<T> keeptSeg = prevSegs.get(max);
           for (int i = min; i < max; i++) {
             keeptSeg.addSegmentBounds(prevSegs.get(i).getSegmentBound());
           }
@@ -221,29 +218,26 @@ public class UpdateTransformer {
     }
   }
 
-  private @Nullable ArraySegmentationState<VariableUsageState>
-      updateNotEquals(CExpression op1, CExpression pOp2) {
+  private @Nullable ArraySegmentationState<T> updateNotEquals(CExpression op1, CExpression pOp2) {
 
     if (state.getSegments()
         .parallelStream()
         .anyMatch(s -> s.getSegmentBound().contains(op1) && s.getSegmentBound().contains(pOp2))) {
-      return new UnreachableArraySegmentation<>();
+      return new UnreachableSegmentation<>(logger);
     } else {
       // Check if they var and op2 are present in consecutive segments and remove a ? in that case
 
-      List<ArraySegment<VariableUsageState>> segmentsContainingOp2 =
-          getSegmentsContainingExpr(pOp2);
+      List<ArraySegment<T>> segmentsContainingOp2 = getSegmentsContainingExpr(pOp2);
       if (segmentsContainingOp2.isEmpty()) {
         return state;
       } else if (segmentsContainingOp2.size() > 1) {
         // The analysis seems to be not working, since there is more than one segment bound
         // containing an expression. This is an illegal state of the analysis, hence the analysis is
         // aborted by returning the errorSymbol!
-        return new ErrorSegmentation<>();
+        return new ErrorSegmentation<>(logger);
       } else {
         // Check, if the variable is present in any state:
-        List<ArraySegment<VariableUsageState>> segmentsContainingOp1 =
-            getSegmentsContainingExpr(op1);
+        List<ArraySegment<T>> segmentsContainingOp1 = getSegmentsContainingExpr(op1);
         if (segmentsContainingOp1.size() > 1) {
           // The analysis seems to be not working, since there is more than one segment bound
           // containing an expression. This is an illegal state of the analysis, hence the analysis
@@ -259,7 +253,7 @@ public class UpdateTransformer {
                   + op1.toASTString()
                   + " != "
                   + pOp2.toASTString());
-          return new ErrorSegmentation<>();
+          return new ErrorSegmentation<>(logger);
         } else if (segmentsContainingOp1.size() == 1) {
           // Check, if the segment bounds are consecutive:
           int posSegmentContainsOp1 = state.getSegments().indexOf(segmentsContainingOp1.get(0));
@@ -275,12 +269,10 @@ public class UpdateTransformer {
     }
   }
 
-  private @Nullable ArraySegmentationState<VariableUsageState>
+  private @Nullable ArraySegmentationState<T>
       updateGreater(CExpression greater, CExpression smaller) {
-    List<ArraySegment<VariableUsageState>> segmentsContainingGreater =
-        getSegmentsContainingExpr(greater);
-    List<ArraySegment<VariableUsageState>> segmentsContainingSmaller =
-        getSegmentsContainingExpr(smaller);
+    List<ArraySegment<T>> segmentsContainingGreater = getSegmentsContainingExpr(greater);
+    List<ArraySegment<T>> segmentsContainingSmaller = getSegmentsContainingExpr(smaller);
     // CHeck, if both expressions are present in exactly one segment bound
     if (segmentsContainingGreater.isEmpty() || segmentsContainingSmaller.isEmpty()) {
       // Nothing to change
@@ -296,13 +288,13 @@ public class UpdateTransformer {
               + greater.toASTString()
               + " > "
               + smaller.toASTString());
-      return new ErrorSegmentation<>();
+      return new ErrorSegmentation<>(logger);
     } else {
       // check if the two segments are ordered correctly!
       int posSmaller = state.getSegments().indexOf(segmentsContainingSmaller.get(0));
       int posGreater = state.getSegments().indexOf(segmentsContainingGreater.get(0));
       if (posSmaller >= posGreater) {
-        return new UnreachableArraySegmentation<>();
+        return new UnreachableSegmentation<>(logger);
       } else if (posGreater - posSmaller == 1) {
         state.getSegments().get(posSmaller).setPotentiallyEmpty(false);
       }
@@ -310,12 +302,10 @@ public class UpdateTransformer {
     return state;
   }
 
-  private @Nullable ArraySegmentationState<VariableUsageState>
+  private @Nullable ArraySegmentationState<T>
       updateGreaterEq(CExpression greater, CExpression smaller) {
-    List<ArraySegment<VariableUsageState>> segmentsContainingGreater =
-        getSegmentsContainingExpr(greater);
-    List<ArraySegment<VariableUsageState>> segmentsContainingSmaller =
-        getSegmentsContainingExpr(smaller);
+    List<ArraySegment<T>> segmentsContainingGreater = getSegmentsContainingExpr(greater);
+    List<ArraySegment<T>> segmentsContainingSmaller = getSegmentsContainingExpr(smaller);
     // CHeck, if both expressions are present in exactly one segment bound
     if (segmentsContainingGreater.isEmpty() || segmentsContainingSmaller.isEmpty()) {
       // Nothing to change
@@ -331,7 +321,7 @@ public class UpdateTransformer {
               + greater.toASTString()
               + " >= "
               + smaller.toASTString());
-      return new ErrorSegmentation<>();
+      return new ErrorSegmentation<>(logger);
     } else {
       // check if the two segments are ordered correctly!
       int posSmaller = state.getSegments().indexOf(segmentsContainingSmaller.get(0));
@@ -354,20 +344,20 @@ public class UpdateTransformer {
     return expr instanceof CIdExpression;
   }
 
-  private List<ArraySegment<VariableUsageState>> getSegmentsContainingExpr(CExpression pOp2) {
+  private List<ArraySegment<T>> getSegmentsContainingExpr(CExpression pOp2) {
     return state.getSegments()
         .parallelStream()
         .filter(s -> s.getSegmentBound().contains(pOp2))
         .collect(Collectors.toList());
   }
 
-  private @Nullable ArraySegmentationState<VariableUsageState> validate(
-      ArraySegmentationState<VariableUsageState> pState,
+  private @Nullable ArraySegmentationState<T> validate(
+      ArraySegmentationState<T> pState,
       CIdExpression pVar,
       CExpression pOp2,
       BinaryOperator pOperator) {
-    return SegmentationReachabilityChecker
-        .checkReachability(pState, pVar, pOp2, pOperator, logger, visitor);
+
+    return this.checker.checkReachability(pState, pVar, pOp2, pOperator, logger, visitor);
   }
 
 }

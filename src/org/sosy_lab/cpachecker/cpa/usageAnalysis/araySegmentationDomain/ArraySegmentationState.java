@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -37,9 +37,9 @@ import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.ExtendedCompletLatticeAbstractState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.util.ArrayModificationException;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.util.SegmentationModifier;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.SegmentationModifier;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.ArrayModificationException;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.SegmentationUnifier;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
 
@@ -48,11 +48,12 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
   private static final long serialVersionUID = 85908607562101422L;
   private List<ArraySegment<T>> segments;
-  private SegmentUnifier<T> unifier;
+  private SegmentationUnifier<T> unifier;
 
   protected List<AIdExpression> tLisOfArrayVariables;
   protected AIdExpression tArray;
   private T tEmptyElement;
+
   private LogManager logger;
 
   /**
@@ -79,12 +80,12 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
             "The succesor of the " + i + "th element is not correctly set!");
       }
       if (segments.size() > 0
-          && !(segments.get(segments.size() - 1).getNextSegment() instanceof FinalSegSymbol)) {
+          && !(segments.get(segments.size() - 1).getNextSegment() instanceof FinalSegment)) {
         throw new IllegalArgumentException(
             "The nextElement of the last element does not contain the specific FINAL_SEG_SYMBOL");
       }
     }
-    unifier = new SegmentUnifier<>();
+    unifier = new SegmentationUnifier<>();
     tEmptyElement = pEmptyElement;
     tLisOfArrayVariables = pLisOfArrayVariables;
     tArray = pArray;
@@ -103,9 +104,9 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     }
 
     // Some corner cases for error and unreachable segmentations
-    if (this instanceof UnreachableArraySegmentation) {
+    if (this instanceof UnreachableSegmentation) {
       return pOther;
-    } else if (pOther instanceof UnreachableArraySegmentation) {
+    } else if (pOther instanceof UnreachableSegmentation) {
       return this;
     } else if (pOther instanceof ErrorSegmentation) {
       return pOther;
@@ -145,7 +146,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     current.setAnalysisInformation(
         firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()));
     current.setPotentiallyEmpty(false);
-    current.setNextSegment(new FinalSegSymbol<>(this.tEmptyElement));
+    current.setNextSegment(new FinalSegment<>(this.tEmptyElement));
     res.add(0, current);
 
     for (int i = firstSegs.size() - 2; i >= 0; i--) {
@@ -187,9 +188,9 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
             tEmptyElement.getMeetOperator());
 
     // Come corner cases for error and unreachable segmentations
-    if (unifiedSegs.getFirst() instanceof UnreachableArraySegmentation) {
+    if (unifiedSegs.getFirst() instanceof UnreachableSegmentation) {
       return true;
-    } else if (unifiedSegs.getSecond() instanceof UnreachableArraySegmentation) {
+    } else if (unifiedSegs.getSecond() instanceof UnreachableSegmentation) {
       return false;// since the first is not unreachable
     } else if (unifiedSegs.getSecond() instanceof ErrorSegmentation) {
       return true;

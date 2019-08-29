@@ -17,20 +17,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain;
 
 import java.util.ArrayList;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-public class ErrorSegmentation<T extends ExtendedCompletLatticeAbstractState<T>> extends
-    ArraySegmentationState<T> {
+public class UnreachableSegmentation<T extends ExtendedCompletLatticeAbstractState<T>> extends
+ArraySegmentationState<T> {
 
-  public ErrorSegmentation() {
+  public UnreachableSegmentation(LogManager pLogger) {
     // This is bad stlye, but whenever the error or unreachable segment is used, the information are
     // not needed
     // TODO infer a more elegant way
-    super(new ArrayList<>(), null, null, null, null);
+    super(new ArrayList<>(), null, null, null, pLogger);
   }
 
   private static final long serialVersionUID = -3937221925009806448L;
@@ -38,22 +38,18 @@ public class ErrorSegmentation<T extends ExtendedCompletLatticeAbstractState<T>>
   @Override
   public boolean isLessOrEqual(ArraySegmentationState<T> pOther)
       throws CPAException, InterruptedException {
-    // Only if they are equal, this is true, else false, since this is the top element of the
-    // lattice
-    return pOther instanceof ErrorSegmentation;
-
+    return true;
   }
 
   @Override
   public ArraySegmentationState<T> join(ArraySegmentationState<T> pOther)
       throws CPAException, InterruptedException {
-    // Since this is the top element of the lattice, we can simply return it
-    return this;
+    return pOther;
   }
 
   @Override
   public String toString() {
-    return Character.toString((char) 9632);
+    return "[x]";
   }
 
   @Override

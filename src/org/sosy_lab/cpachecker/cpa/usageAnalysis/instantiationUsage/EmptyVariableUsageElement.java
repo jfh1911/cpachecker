@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
 
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 

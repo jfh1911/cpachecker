@@ -17,18 +17,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.util;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer;
 
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.UsageAnalysisTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-public class TransformationHelper {
+public class TransformationHelper<T extends ExtendedCompletLatticeAbstractState<T>> {
 
   LogManager logger;
 
@@ -44,9 +44,10 @@ public class TransformationHelper {
    * @return true, if the segments containing pVar are cleaned, false if any error occurred
    */
   @Nullable
-  public ArraySegmentationState<VariableUsageState> cleanExprFromSegBounds(
+  public ArraySegmentationState<T>
+      cleanExprFromSegBounds(
       CIdExpression pVar,
-      ArraySegmentationState<VariableUsageState> state) {
+          ArraySegmentationState<T> state) {
     state.getSegments().forEach(s -> s.removeExprContainingSubExpr(pVar));
     try {
       state.mergeSegmentsWithEmptySegmentBounds();

@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,11 +25,16 @@ import java.util.function.BiPredicate;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ErrorSegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.FinalSegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
 
-public class SegmentUnifier<T extends ExtendedCompletLatticeAbstractState<T>> {
+public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T>> {
   private BiPredicate<Boolean, Boolean> curleyVee = new BiPredicate<Boolean, Boolean>() {
     @Override
     public boolean test(Boolean pArg0, Boolean pArg1) {
@@ -93,9 +98,9 @@ public class SegmentUnifier<T extends ExtendedCompletLatticeAbstractState<T>> {
 
     // Case 1:
     if (d1 instanceof ErrorSegmentation
-        || d1 instanceof UnreachableArraySegmentation
+        || d1 instanceof UnreachableSegmentation
         || d2 instanceof ErrorSegmentation
-        || d2 instanceof UnreachableArraySegmentation) {
+        || d2 instanceof UnreachableSegmentation) {
       return Pair.of(d1, d2);
     }
 
@@ -116,7 +121,7 @@ public class SegmentUnifier<T extends ExtendedCompletLatticeAbstractState<T>> {
     // The algorithm terminates, if the left and the right segment bound are reached with the
     // pointer
 
-    while ((!(b1 instanceof FinalSegSymbol)) && (!(b2 instanceof FinalSegSymbol))) {
+    while ((!(b1 instanceof FinalSegment)) && (!(b2 instanceof FinalSegment))) {
       // Case 2: Both segment bounds are equal
       if (b1.getSegmentBound().containsAll(b2.getSegmentBound())
           && b2.getSegmentBound().containsAll(b1.getSegmentBound())) {
@@ -319,8 +324,8 @@ public class SegmentUnifier<T extends ExtendedCompletLatticeAbstractState<T>> {
       }
 
       // Case 7: Right limit reached
-      if (!(b1.getNextSegment() instanceof FinalSegSymbol)
-          && b2.getNextSegment() instanceof FinalSegSymbol) {
+      if (!(b1.getNextSegment() instanceof FinalSegment)
+          && b2.getNextSegment() instanceof FinalSegment) {
         // Merge the analysis information from B1 into B0 and remove the segment B1
         b0.setAnalysisInformation(
             ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation()));
@@ -331,8 +336,8 @@ public class SegmentUnifier<T extends ExtendedCompletLatticeAbstractState<T>> {
 
       }
       // Case 8: Left limit reached
-      if (b1.getNextSegment() instanceof FinalSegSymbol
-          && !(b2.getNextSegment() instanceof FinalSegSymbol)) {
+      if (b1.getNextSegment() instanceof FinalSegment
+          && !(b2.getNextSegment() instanceof FinalSegment)) {
         // Merge the analysis information from B2 into B0' and remove the segment B2
         b0Prime.setAnalysisInformation(
             or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation()));
@@ -344,8 +349,8 @@ public class SegmentUnifier<T extends ExtendedCompletLatticeAbstractState<T>> {
 
       }
       // Case 9:
-      if (b1.getNextSegment() instanceof FinalSegSymbol
-          && b2.getNextSegment() instanceof FinalSegSymbol) {
+      if (b1.getNextSegment() instanceof FinalSegment
+          && b2.getNextSegment() instanceof FinalSegment) {
         // Termination, hence break loop (should happen anyway
         break;
       }
@@ -383,7 +388,7 @@ public class SegmentUnifier<T extends ExtendedCompletLatticeAbstractState<T>> {
       pCopiedElements.get(i).setNextSegment(pCopiedElements.get(i + 1));
     }
     pCopiedElements.get(pCopiedElements.size() - 1)
-        .setNextSegment(new FinalSegSymbol<>(pEmptyElement));
+        .setNextSegment(new FinalSegment<>(pEmptyElement));
     return pCopiedElements;
   }
 

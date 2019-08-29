@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.transformer;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -41,33 +41,31 @@ import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisito
 import org.sosy_lab.cpachecker.cfa.types.c.CBasicType;
 import org.sosy_lab.cpachecker.cfa.types.c.CSimpleType;
 import org.sosy_lab.cpachecker.cfa.types.c.CType;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.EmptyVariableUsageElement;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegment;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ErrorSegmentation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.FinalSegSymbol;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.UnreachableArraySegmentation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.UsageAnalysisCPA;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.UsageAnalysisTransferRelation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.util.TransformationHelper;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ErrorSegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.FinalSegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.UnreachableSegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.EmptyVariableUsageElement;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisCPA;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
-public class StatementTrasformer {
+public class StatementTrasformer<T extends ExtendedCompletLatticeAbstractState<T>> {
 
-  private TransformationHelper helper;
+  private TransformationHelper<T> helper;
   private LogManager logger;
   ExpressionSimplificationVisitor visitor;
-  UsageTransformer usageTransformer;
+
 
   public StatementTrasformer(
       LogManager pLogger,
-      ExpressionSimplificationVisitor pVisitor,
-      UsageTransformer pUsageTransformer) {
-    this.helper = new TransformationHelper(pLogger);
+      ExpressionSimplificationVisitor pVisitor) {
+    this.helper = new TransformationHelper<>(pLogger);
     this.logger = pLogger;
     this.visitor = pVisitor;
-    this.usageTransformer = pUsageTransformer;
+
   }
 
   /**
@@ -77,12 +75,11 @@ public class StatementTrasformer {
    * @return a modified version of the state NOT A COPY!
    * @throws CPATransferException if some errors occurred during cleanup
    */
-  public @Nullable ArraySegmentationState<VariableUsageState>
-      transform(ArraySegmentationState<VariableUsageState> state, CStatement pStatement)
+  public @Nullable ArraySegmentationState<T>
+      transform(ArraySegmentationState<T> state, CStatement pStatement)
           throws CPATransferException {
 
-    // Check, if the RHS contains any usage of the array
-    state = usageTransformer.use(pStatement, state);
+
 
     // Check, if the LHS is a variable, else return
     if (pStatement instanceof CExpressionAssignmentStatement
@@ -117,7 +114,7 @@ public class StatementTrasformer {
           // Check, if the current last segment contains any analysis information, if not, add _|_?
           // to it. Anyway, mark it as potentially empty
 
-          List<ArraySegment<VariableUsageState>> segments = state.getSegments();
+          List<ArraySegment<T>> segments = state.getSegments();
           int posCurrenLast = segments.size() - 1;
           if (segments.get(posCurrenLast)
               .getAnalysisInformation() instanceof EmptyVariableUsageElement) {
@@ -127,12 +124,12 @@ public class StatementTrasformer {
           segments.get(posCurrenLast).setPotentiallyEmpty(true);
           ArrayList<AExpression> bounds = new ArrayList<>();
           bounds.add(call.getLeftHandSide());
-          ArraySegment<VariableUsageState> lastSegment =
+          ArraySegment<T> lastSegment =
               new ArraySegment<>(
                   bounds,
-                  VariableUsageState.getEmptyElement(),
+                  state.gettEmptyElement(),
                   false,
-                  new FinalSegSymbol<>(VariableUsageState.getEmptyElement()));
+                  new FinalSegment<>(state.gettEmptyElement()));
           state.addSegment(lastSegment, state.getSegments().get(state.getSegments().size() - 1));
 
           return state;
@@ -155,14 +152,14 @@ public class StatementTrasformer {
     return state;
   }
 
-  public ArraySegmentationState<VariableUsageState>
+  public ArraySegmentationState<T>
       reassign(
           CIdExpression pVar,
           CExpression pRightHandSide,
-          ArraySegmentationState<VariableUsageState> state) {
+          ArraySegmentationState<T> state) {
     CExpression canoncialForm = getCanonicalForm(pRightHandSide);
-    List<ArraySegment<VariableUsageState>> exprList = new ArrayList<>();
-    for (ArraySegment<VariableUsageState> s : state.getSegments()) {
+    List<ArraySegment<T>> exprList = new ArrayList<>();
+    for (ArraySegment<T> s : state.getSegments()) {
       for (AExpression e : s.getSegmentBound()) {
         if (e.equals(canoncialForm)) {
           exprList.add(s);
@@ -180,7 +177,7 @@ public class StatementTrasformer {
               + pVar.toASTString()
               + " := "
               + pRightHandSide.toASTString());
-      return new ErrorSegmentation<>();
+      return new ErrorSegmentation<>(logger);
     } else if (exprList.size() == 1) {
       // Here, we are changing the ordering ( in the original transfer relation, the elements are
       // added firstly, than the others are removed. Anyway, changing these two steps leads to the
@@ -193,7 +190,7 @@ public class StatementTrasformer {
                 + "The cleanup for the  current segmentation and expression "
                 + pVar.toASTString()
                 + " has failed. The error label is returned");
-        return new ErrorSegmentation<>();
+        return new ErrorSegmentation<>(logger);
       }
       // Add pVar to pRightHandSide
       exprList.get(0).addSegmentBound(pVar);
@@ -217,7 +214,7 @@ public class StatementTrasformer {
                   + "The cleanup for the current segmentation and expression "
                   + pVar.toASTString()
                   + " has failed. The error label is returned");
-          return new ErrorSegmentation<>();
+          return new ErrorSegmentation<>(logger);
         }
 
         // Get the greatest element strictly smaller than pRightHandSide
@@ -229,16 +226,16 @@ public class StatementTrasformer {
         // 0
         boolean isAdded = false;
         for (int i = 1; i < state.getSegments().size(); i++) {
-          ArraySegment<VariableUsageState> s = state.getSegments().get(i);
+          ArraySegment<T> s = state.getSegments().get(i);
           BigInteger curValue = s.evaluateToInteger(visitor);
           if (curValue.compareTo(valueOfExpr) > 0) {
             // This is the first segment that is greater than the one needs to be added, hence add
             // it between the previous and this segment
-            ArraySegment<VariableUsageState> prevSeg = state.getSegments().get(i - 1);
+            ArraySegment<T> prevSeg = state.getSegments().get(i - 1);
             List<AExpression> segBounds = new ArrayList<>();
             segBounds.add(pVar);
             segBounds.add(pRightHandSide);
-            ArraySegment<VariableUsageState> newSeg =
+            ArraySegment<T> newSeg =
                 new ArraySegment<>(
                     segBounds,
                     prevSeg.getAnalysisInformation(),
@@ -254,12 +251,12 @@ public class StatementTrasformer {
         // single segment is present, nothing can be done!
 
         if (!isAdded && state.getSegments().size() > 1) {
-          ArraySegment<VariableUsageState> prevSeg =
+          ArraySegment<T> prevSeg =
               state.getSegments().get(state.getSegments().size() - 2);
           List<AExpression> segBounds = new ArrayList<>();
           segBounds.add(pVar);
           segBounds.add(pRightHandSide);
-          ArraySegment<VariableUsageState> newSeg =
+          ArraySegment<T> newSeg =
               new ArraySegment<>(
                   segBounds,
                   prevSeg.getAnalysisInformation(),
@@ -270,7 +267,7 @@ public class StatementTrasformer {
           // At this point, we know that: 1. 0 = SIZE, and the variable pVar := x , x \in N & x > 0.
           // If x would have been equal to 0, then pVar would have been added. Hence, the assumption
           // pVar <= SIZE is violated and the unreachable Segment is returned!
-          return new UnreachableArraySegmentation<>();
+          return new UnreachableSegmentation<>(logger);
         }
       } else {
 
@@ -291,15 +288,15 @@ public class StatementTrasformer {
    * @param state
    * @return
    */
-  private ArraySegmentationState<VariableUsageState>
+  public ArraySegmentationState<T>
       replace(
           CIdExpression pVar,
           CExpression pRightHandSide,
-          @Nullable ArraySegmentationState<VariableUsageState> state) {
+          @Nullable ArraySegmentationState<T> state) {
     CExpression reversedExpr = reverseIfNeccessary(pRightHandSide);
     CExpression canoncialForm = getCanonicalForm(reversedExpr);
     for (int i = 0; i < state.getSegments().size(); i++) {
-      ArraySegment<VariableUsageState> s = state.getSegments().get(i);
+      ArraySegment<T> s = state.getSegments().get(i);
       s.replaceVar(pVar, canoncialForm, visitor);
     }
     return state;

@@ -17,12 +17,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util;
 
-public enum VariableUsageType {
-  USED,
-  NOT_USED,
-  // Empty is only used to avoid null values, it will be ignored during unification and raise an
-  // error, if it is merged or compared to non-empty information
-  EMPTY;
+import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
+
+public class ArrayModificationException extends Exception {
+
+  private static final long serialVersionUID = 7026698096550946440L;
+
+  public ArrayModificationException() {
+    super();
+  }
+
+  public ArrayModificationException(String message) {
+    super(message);
+  }
+
+  public ArrayModificationException(String message, UnrecognizedCodeException e) {
+    super(message, e);
+  }
+
 }
