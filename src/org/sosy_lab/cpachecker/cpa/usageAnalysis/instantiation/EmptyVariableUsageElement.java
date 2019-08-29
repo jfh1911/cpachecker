@@ -21,7 +21,7 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation;
 
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-public class EmptyVariableUsageElement extends VariableUsageDomain {
+public class EmptyVariableUsageElement extends VariableUsageState {
 
   public EmptyVariableUsageElement() {
     super(VariableUsageType.EMPTY);
@@ -30,7 +30,7 @@ public class EmptyVariableUsageElement extends VariableUsageDomain {
   private static final long serialVersionUID = 7811014835418326945L;
 
   @Override
-  public boolean isLessOrEqual(VariableUsageDomain pOther)
+  public boolean isLessOrEqual(VariableUsageState pOther)
       throws CPAException, InterruptedException {
     if (pOther.getType().equals(this.getType())) {
       return true;
@@ -40,19 +40,19 @@ public class EmptyVariableUsageElement extends VariableUsageDomain {
   }
 
   @Override
-  public VariableUsageDomain join(VariableUsageDomain pOther)
+  public VariableUsageState join(VariableUsageState pOther)
       throws CPAException, InterruptedException {
     if (pOther instanceof EmptyVariableUsageElement || pOther.getType().equals(this.getType())) {
-      return new VariableUsageDomain(VariableUsageType.EMPTY);
+      return new VariableUsageState(VariableUsageType.EMPTY);
     }
     throw new CPAException(
         "The empty variable usage element cannot be merged with " + pOther.toString());
   }
 
   @Override
-  public VariableUsageDomain meet(VariableUsageDomain pOther) throws CPAException {
+  public VariableUsageState meet(VariableUsageState pOther) throws CPAException {
     if (pOther instanceof EmptyVariableUsageElement) {
-      return new VariableUsageDomain(VariableUsageType.EMPTY);
+      return new VariableUsageState(VariableUsageType.EMPTY);
     }
     throw new CPAException(
         "The empty variable usage element cannot be merged with " + pOther.toString());

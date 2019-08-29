@@ -96,28 +96,34 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     logger = pLogger;
   }
 
+  /**
+   * Returns a copy of the elements given as arguments
+   */
   @Override
-  public ArraySegmentationState<T> join(ArraySegmentationState<T> pOther)
+  public ArraySegmentationState<T> join(final ArraySegmentationState<T> pOther)
       throws CPAException, InterruptedException {
     if (!pOther.getClass().equals(this.getClass())) {
       throw new CPAException("The join cannot be applied for two differently initalized generics");
     }
 
-    // logger
-    // .log(Level.FINE, "Merging the elements" + this.toDOTLabel() + " - " + pOther.toDOTLabel());
-    Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
-        unifier.unifyMerge(this, pOther, tBottom, tBottom);
-
     // Some corner cases for error and unreachable segmentations
-    if (unifiedSegs.getFirst() instanceof UnreachableArraySegmentation) {
-      return unifiedSegs.getSecond();
-    } else if (unifiedSegs.getSecond() instanceof UnreachableArraySegmentation) {
-      return unifiedSegs.getFirst();
-    } else if (unifiedSegs.getSecond() instanceof ErrorSegmentation) {
-      return unifiedSegs.getSecond();
-    } else if (unifiedSegs.getFirst() instanceof ErrorSegmentation) {
-      return unifiedSegs.getFirst();
+    if (this instanceof UnreachableArraySegmentation) {
+      return pOther;
+    } else if (pOther instanceof UnreachableArraySegmentation) {
+      return this;
+    } else if (pOther instanceof ErrorSegmentation) {
+      return pOther;
+    } else if (this instanceof ErrorSegmentation) {
+      return this;
     }
+
+    // Don't need to create a copy the elements to avoid side effects, since this is done during
+    // unify
+    ArraySegmentationState<T> first = this.clone();
+    ArraySegmentationState<T> second = pOther.clone();
+
+    Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
+        unifier.unifyMerge(first, second, tBottom, tBottom);
 
     List<ArraySegment<T>> res = new ArrayList<>();
     List<ArraySegment<T>> firstSegs = unifiedSegs.getFirst().getSegments();
@@ -146,18 +152,25 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
       firstSeg = firstSegs.get(i);
       secondSeg = secondSegs.get(i);
 
-      ArraySegment<T> last = secondSeg;
-      secondSeg.setAnalysisInformation(
-          firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()));
-      secondSeg.setPotentiallyEmpty(firstSeg.isPotentiallyEmpty() | secondSeg.isPotentiallyEmpty());
-      secondSeg.setNextSegment(last);
-      res.add(0, secondSeg);
+      ArraySegment<T> last = current;
+      current =
+          new ArraySegment<>(
+              firstSeg.getSegmentBound(),
+              firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()),
+              firstSeg.isPotentiallyEmpty() | secondSeg.isPotentiallyEmpty(),
+              last);
+      res.add(0, current);
 
-      }
-      pOther.setSegments(res);
-
-
-  return pOther;
+    }
+    return new ArraySegmentationState<>(
+        res,
+        this.gettBottom(),
+        this.tTop,
+        this.tEmptyElement,
+        this.tMeet,
+        this.tLisOfArrayVariables,
+        this.tArray,
+        this.logger);
   }
 
   @Override
@@ -312,7 +325,7 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
       ArraySegment<T> seg1 = segments.get(i);
       ArraySegment<T> seg2 = other.getSegments().get(i);
       if (!seg1.equals(seg2)) {
-      return false;
+        return false;
       }
     }
     if (tBottom == null) {

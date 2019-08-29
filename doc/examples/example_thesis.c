@@ -5,9 +5,9 @@ int SIZE;
 int main()
 {
 	SIZE = __VERIFIER_nondet_int();
+	int i = 0;
 	if (1 <= SIZE)
-	{
-		int i = 0;
+	{		
 		int a[SIZE];
 		
 		while (i < SIZE)		{

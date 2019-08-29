@@ -88,10 +88,8 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
       throws CPAException {
 
     ArraySegmentationState<T> d1 = pD1.clone();
-    ArraySegmentationState<T> copyForLoggingOfD1 = pD1.clone();
-    ArraySegmentationState<T> copyForLoggingOfD2 = pD2.clone();
-
     ArraySegmentationState<T> d2 = pD2.clone();
+
 
     // Case 1:
     if (d1 instanceof ErrorSegmentation
@@ -111,11 +109,11 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
     ArraySegment<T> b1 = segs1.get(0);
     ArraySegment<T> b2 = segs2.get(0);
 
-    // Create resultLists, the concatination will be done in the end
+    // Create resultLists, the concatenation will be done in the end
     List<ArraySegment<T>> res1 = new ArrayList<>();
     List<ArraySegment<T>> res2 = new ArrayList<>();
 
-    // The algorithm terminates, if the left and the rigth segment bound are reached with the
+    // The algorithm terminates, if the left and the right segment bound are reached with the
     // pointer
 
     while ((!(b1 instanceof FinalSegSymbol)) && (!(b2 instanceof FinalSegSymbol))) {
@@ -157,7 +155,7 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
           continue;
         }
         // Case 3.2
-        // To avoid confusen, crate two new elements, where the first is temp1 = B1\B1Bar I_l ?
+        // To avoid confuse, crate two new elements, where the first is temp1 = B1\B1Bar I_l ?
         // and the second temp2 = B1Bar p1 ?1
         ArraySegment<T> temp2 =
             new ArraySegment<>(
@@ -180,7 +178,7 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
           continue;
         }
         // Case 4.2
-        // To avoid confusen, crate two new elements, where the first is temp1 = B2\B2Bar I_r ?
+        // To avoid confuse, crate two new elements, where the first is temp1 = B2\B2Bar I_r ?
         // and the second temp2 = B2Bar p2 ?2
         ArraySegment<T> temp2 =
             new ArraySegment<>(
@@ -194,7 +192,7 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
       }
 
       // Case 5:
-      // Firstly, check if there is an expression in B1 presnt in B2 and vice versa
+      // Firstly, check if there is an expression in B1 present in B2 and vice versa
 
       if (b1SegBounds.parallelStream().anyMatch(b -> b2SegBounds.contains(b))
           && b2SegBounds.parallelStream().anyMatch(b -> b1SegBounds.contains(b))) {
@@ -208,7 +206,7 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
         } else if (b1Bar.isEmpty()) {
           // Case 5.2
           b1.setSegmentBound(subsetOfB1_B2);
-          // To avoid confusen, crate two new elements, where the first is temp1 = B2\B2Bar I_r ?
+          // To avoid confuse, crate two new elements, where the first is temp1 = B2\B2Bar I_r ?
           // and the second temp2 = B2Bar p2 ?2
           ArraySegment<T> temp2 =
               new ArraySegment<>(
@@ -221,7 +219,7 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
           continue;
         } else if (b2Bar.isEmpty()) {
           // Case 5.3
-          // To avoid confusen, crate two new elements, where the first is temp1 = B1\B1Bar I_l ?
+          // To avoid confuse, crate two new elements, where the first is temp1 = B1\B1Bar I_l ?
           // and the second temp2 = B1Bar p1 ?1
           ArraySegment<T> temp2 =
               new ArraySegment<>(
@@ -253,13 +251,13 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
       if (res1.isEmpty() || res2.isEmpty()) {
         throw new CPAException(
             "The unififcation failed for the elements "
-                + copyForLoggingOfD1.toDOTLabel()
+                + pD1.toDOTLabel()
                 + " and  "
-                + copyForLoggingOfD2.toDOTLabel());
+                + pD2.toDOTLabel());
       }
       ArraySegment<T> b0 = res1.get(res1.size() - 1);
       ArraySegment<T> b0Prime = res2.get(res2.size() - 1);
-      // Since they will be readded later on, remove tb0 and b0' from res1 and res2
+      // Since they will be re-added later on, remove tb0 and b0' from res1 and res2
       res1.remove(b0);
       res2.remove(b0Prime);
 
@@ -276,7 +274,7 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
                   b1.isPotentiallyEmpty(),
                   b1.getNextSegment()));
           b1 = b0;
-          // Merge the analysis informaiton from B2 into B0' and remove the segment B2
+          // Merge the analysis information from B2 into B0' and remove the segment B2
           b0Prime.setAnalysisInformation(
               or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation()));
           b0Prime.setPotentiallyEmpty(
@@ -286,7 +284,7 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
           continue;
         } else if (b1Bar.isEmpty() && (!b2Bar.isEmpty())) {
           // Case 6.2
-          // Merge the analysis informaiton from B1 into B0 and remove the segment B1
+          // Merge the analysis information from B1 into B0 and remove the segment B1
           b0.setAnalysisInformation(
               ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation()));
           b0.setPotentiallyEmpty(hatl.test(b0.isPotentiallyEmpty(), b1.isPotentiallyEmpty()));
@@ -303,13 +301,13 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
           continue;
         } else {
           // Case 6.3
-          // Merge the analysis informaiton from B1 into B0 and remove the segment B1
+          // Merge the analysis information from B1 into B0 and remove the segment B1
           b0.setAnalysisInformation(
               ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation()));
           b0.setPotentiallyEmpty(hatl.test(b0.isPotentiallyEmpty(), b1.isPotentiallyEmpty()));
           b0.setNextSegment(b1.getNextSegment());
           b1 = b0;
-          // Merge the analysis informaiton from B2 into B0' and remove the segment B2
+          // Merge the analysis information from B2 into B0' and remove the segment B2
           b0Prime.setAnalysisInformation(
               or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation()));
           b0Prime.setPotentiallyEmpty(
@@ -323,7 +321,7 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
       // Case 7: Right limit reached
       if (!(b1.getNextSegment() instanceof FinalSegSymbol)
           && b2.getNextSegment() instanceof FinalSegSymbol) {
-        // Merge the analysis informaiton from B1 into B0 and remove the segment B1
+        // Merge the analysis information from B1 into B0 and remove the segment B1
         b0.setAnalysisInformation(
             ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation()));
         b0.setPotentiallyEmpty(hatl.test(b0.isPotentiallyEmpty(), b1.isPotentiallyEmpty()));
@@ -335,7 +333,7 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
       // Case 8: Left limit reached
       if (b1.getNextSegment() instanceof FinalSegSymbol
           && !(b2.getNextSegment() instanceof FinalSegSymbol)) {
-        // Merge the analysis informaiton from B2 into B0' and remove the segment B2
+        // Merge the analysis information from B2 into B0' and remove the segment B2
         b0Prime.setAnalysisInformation(
             or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation()));
         b0Prime
@@ -353,25 +351,27 @@ public class SegmentUnifier<T extends LatticeAbstractState<T>> {
       }
 
     }
-    return Pair.of(
-        new ArraySegmentationState<>(
-            conc(res1, d1.gettEmptyElement()),
-            d1.gettBottom(),
-            d1.gettTop(),
-            d1.gettEmptyElement(),
-            d1.gettMeet(),
-            d1.gettLisOfArrayVariables(),
-            d1.gettArray(),
-            d1.getLogger()),
-        new ArraySegmentationState<>(
-            conc(res2, d2.gettEmptyElement()),
-            d2.gettBottom(),
-            d2.gettTop(),
-            d2.gettEmptyElement(),
-            d2.gettMeet(),
-            d1.gettLisOfArrayVariables(),
-            d1.gettArray(),
-            d2.getLogger()));
+    d1.setSegments(conc(res1, d1.gettEmptyElement()));
+    d2.setSegments(conc(res2, d2.gettEmptyElement()));
+    return Pair.of(d1, d2);
+    // new ArraySegmentationState<>(
+    // conc(res1, d1.gettEmptyElement()),
+    // d1.gettBottom(),
+    // d1.gettTop(),
+    // d1.gettEmptyElement(),
+    // d1.gettMeet(),
+    // d1.gettLisOfArrayVariables(),
+    // d1.gettArray(),
+    // d1.getLogger()),
+    // new ArraySegmentationState<>(
+    // conc(res2, d2.gettEmptyElement()),
+    // d2.gettBottom(),
+    // d2.gettTop(),
+    // d2.gettEmptyElement(),
+    // d2.gettMeet(),
+    // d1.gettLisOfArrayVariables(),
+    // d1.gettArray(),
+    // d2.getLogger()));
 
   }
 

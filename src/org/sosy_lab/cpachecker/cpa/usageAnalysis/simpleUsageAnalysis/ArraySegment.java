@@ -105,7 +105,7 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
   @Override
   public ArraySegment<T> clone() {
     List<AExpression> boundsCopy = new ArrayList<>(segmentBound.size());
-    this.segmentBound.parallelStream().forEach(e -> boundsCopy.add(e));
+    this.segmentBound.parallelStream().forEach(e -> boundsCopy.add((e)));
     // TODO: Add deep copying!
     return new ArraySegment<>(
         boundsCopy,
@@ -197,10 +197,13 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
   }
 
   /**
-   * In this first version, the array segment is strengthn (meaning made mroe precise), iff the epression is of the form i < SIZE or i<= SIZE, where i the the dedicated variable for accessing array elements and size is the length of the array
-   * In that case and if the array segment is of the form {i, ...} p_i ? {SIZE}, the questionmark can be removed!
-   * @param pE the expression used to strengthn the segment
-   * @return the (Strengethened) segment
+   * In this first version, the array segment is strengthen (meaning made more precise), iff the
+   * expression is of the form i < SIZE or i<= SIZE, where i the the dedicated variable for
+   * accessing array elements and size is the length of the array In that case and if the array
+   * segment is of the form {i, ...} p_i ? {SIZE}, the question-mark can be removed!
+   *
+   * @param pE the expression used to strengthen the segment
+   * @return the (Strengthened) segment
    */
   public ArraySegment<T> strengthn(AExpression pE) {
     if (pE instanceof CBinaryExpression) {
@@ -233,7 +236,7 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
         this.isPotentiallyEmpty = false;
             }
         }
-    // TODO: Add more complext strengethening functions
+    // TODO: Add more complex strengthening functions
     // TODO: Add a extension for java programs!
     return this;
   }

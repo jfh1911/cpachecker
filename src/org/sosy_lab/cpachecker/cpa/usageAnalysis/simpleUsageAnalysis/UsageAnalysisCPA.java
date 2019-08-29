@@ -47,7 +47,7 @@ import org.sosy_lab.cpachecker.core.interfaces.StateSpacePartition;
 import org.sosy_lab.cpachecker.core.interfaces.StopOperator;
 import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.EmptyVariableUsageElement;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
 
 @Options(prefix = "cpa.usageCPA")
 public class UsageAnalysisCPA extends AbstractCPA {
@@ -88,7 +88,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
     super(
         "join",
         "sep",
-        DelegateAbstractDomain.<ArraySegmentationState<VariableUsageDomain>>getInstance(),
+        DelegateAbstractDomain.<ArraySegmentationState<VariableUsageState>>getInstance(),
         null);
     config.inject(this, UsageAnalysisCPA.class);
     this.logger = pLogger;
@@ -117,7 +117,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
   }
 
   @Override
-  public ArraySegmentationState<VariableUsageDomain>
+  public ArraySegmentationState<VariableUsageState>
       getInitialState(CFANode pNode, StateSpacePartition pPartition) throws InterruptedException {
 
     // The initial state consists of two segments: {0} N? {SIZE}, where SIZE is a variable used to
@@ -169,17 +169,17 @@ public class UsageAnalysisCPA extends AbstractCPA {
     List<AExpression> pSBFirst = new ArrayList<>();
     pSBFirst.add(CIntegerLiteralExpression.ZERO);
 
-    ArraySegment<VariableUsageDomain> second =
+    ArraySegment<VariableUsageState> second =
         new ArraySegment<>(
             pSBSecond,
             new EmptyVariableUsageElement(),
             false,
-            new FinalSegSymbol<>(VariableUsageDomain.getEmptyElement()));
+            new FinalSegSymbol<>(VariableUsageState.getEmptyElement()));
 
-    ArraySegment<VariableUsageDomain> first =
-        new ArraySegment<>(pSBFirst, VariableUsageDomain.getBottom(), true, second);
+    ArraySegment<VariableUsageState> first =
+        new ArraySegment<>(pSBFirst, VariableUsageState.getBottom(), true, second);
 
-    List<ArraySegment<VariableUsageDomain>> segments = new ArrayList<>();
+    List<ArraySegment<VariableUsageState>> segments = new ArrayList<>();
     segments.add(first);
     segments.add(second);
 
@@ -189,10 +189,10 @@ public class UsageAnalysisCPA extends AbstractCPA {
     return
     new ArraySegmentationState<>(
         segments,
-        VariableUsageDomain.getBottom(),
-        VariableUsageDomain.getTop(),
-        VariableUsageDomain.getEmptyElement(),
-        VariableUsageDomain.getMeetOperator(),
+        VariableUsageState.getBottom(),
+        VariableUsageState.getTop(),
+        VariableUsageState.getEmptyElement(),
+        VariableUsageState.getMeetOperator(),
         listOfIDElements,
         new CIdExpression(arrayVar.getFileLocation(), arrayVar),
         logger);

@@ -33,7 +33,7 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CTypeIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CUnaryExpression;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
 
 public class SegmentationReachabilityChecker {
 
@@ -50,8 +50,8 @@ public class SegmentationReachabilityChecker {
    * @param pVisitor statement simplifaction visitor to compute cannonical form
    * @return true, if the segmentation is reachable, false otherwise
    */
-  public static @Nullable ArraySegmentationState<VariableUsageDomain> checkReachability(
-      ArraySegmentationState<VariableUsageDomain> pSegmentation,
+  public static @Nullable ArraySegmentationState<VariableUsageState> checkReachability(
+      ArraySegmentationState<VariableUsageState> pSegmentation,
       CIdExpression pVar,
       CExpression pOp2,
       BinaryOperator pOperator,
@@ -60,7 +60,7 @@ public class SegmentationReachabilityChecker {
 
     int segOfVar = pSegmentation.getSegBoundContainingExpr(pVar);
     int segOfExpr = pSegmentation.getSegBoundContainingExpr(pOp2);
-    List<ArraySegment<VariableUsageDomain>> segments = pSegmentation.getSegments();
+    List<ArraySegment<VariableUsageState>> segments = pSegmentation.getSegments();
     // Case 1: If e = (i = c), i and c are present in different segment bounds and there is a
     // segment {e j }d j {e k } between the segment bounds containing i and c that is not marked
     // with ’?’,
@@ -84,7 +84,7 @@ public class SegmentationReachabilityChecker {
     if (valueOfpOp2 != null && valueOfpOp2 instanceof CIntegerLiteralExpression) {
       BigInteger v = ((CIntegerLiteralExpression) valueOfpOp2).getValue();
       if (segOfVar != -1) {
-        ArraySegment<VariableUsageDomain> segment = segments.get(segOfVar);
+        ArraySegment<VariableUsageState> segment = segments.get(segOfVar);
         if (segment.getSegmentBound()
             .parallelStream()
             .anyMatch(

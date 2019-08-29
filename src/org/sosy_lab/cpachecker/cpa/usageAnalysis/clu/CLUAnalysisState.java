@@ -26,7 +26,7 @@ import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
 import org.sosy_lab.cpachecker.cpa.location.LocationState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
@@ -35,12 +35,12 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
 
   private static final long serialVersionUID = 7499975316022760688L;
   private final LocationState location;
-  private final ArraySegmentationState<VariableUsageDomain> arraySegmentation;
+  private final ArraySegmentationState<VariableUsageState> arraySegmentation;
   private LogManager logger;
 
   public CLUAnalysisState(
       LocationState pLocation,
-      ArraySegmentationState<VariableUsageDomain> pArraySegmentation,
+      ArraySegmentationState<VariableUsageState> pArraySegmentation,
       LogManager pLogger) {
     super();
     location = pLocation;
@@ -55,25 +55,20 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
     if (!pOther.getClass().equals(this.getClass())) {
       throw new CPAException("The join cannot be applied for two differently initalized generics");
     }
-    if (pOther == null) {
-      return this;
-    } else if (pOther.equals(this)) {
+    if (pOther.equals(this)) {
       return pOther;
     } else if (this.location.equals(pOther.getLocation())) {
       CLUAnalysisState<T> returnElement;
       String mergeLogInfo =
           "Computing merge(" + this.toDOTLabel() + " , " + pOther.toDOTLabel() + ") --> ";
 
-      // FIXME: an dieser stelle wird pOther überschrieben, da keine kopie verwendet wird
-      // dehsalb teminert alles so schnell
-
-      ArraySegmentationState<VariableUsageDomain> joinSegmentation =
+      ArraySegmentationState<VariableUsageState> joinSegmentation =
           this.arraySegmentation.join(pOther.getArraySegmentation().clone());
-     if(joinSegmentation.equals(pOther.getArraySegmentation())) {
+      if (joinSegmentation.equals(pOther.getArraySegmentation())) {
         returnElement = pOther;
-    } else {
+      } else {
         returnElement = new CLUAnalysisState<>(this.location, joinSegmentation, this.logger);
-    }
+      }
 
       logger.log(Level.FINE, mergeLogInfo + returnElement.toDOTLabel());
       return returnElement;
@@ -143,7 +138,7 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
     return location;
   }
 
-  public ArraySegmentationState<VariableUsageDomain> getArraySegmentation() {
+  public ArraySegmentationState<VariableUsageState> getArraySegmentation() {
     return arraySegmentation;
   }
 

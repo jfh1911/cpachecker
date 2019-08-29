@@ -24,12 +24,12 @@ import java.util.function.BinaryOperator;
 import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-public class VariableUsageDomain implements LatticeAbstractState<VariableUsageDomain>, Serializable {
+public class VariableUsageState implements LatticeAbstractState<VariableUsageState>, Serializable {
 
   private static final long serialVersionUID = -3799697790388179030L;
   private VariableUsageType type;
 
-  public VariableUsageDomain(VariableUsageType pType) {
+  public VariableUsageState(VariableUsageType pType) {
     super();
     type = pType;
   }
@@ -38,7 +38,7 @@ public class VariableUsageDomain implements LatticeAbstractState<VariableUsageDo
    * The join function looks as follows: this / pOther | U N U | U U N | U N
    */
   @Override
-  public VariableUsageDomain join(VariableUsageDomain pOther)
+  public VariableUsageState join(VariableUsageState pOther)
       throws CPAException, InterruptedException {
     if (type.equals(VariableUsageType.USED)) {
       return this;
@@ -52,7 +52,7 @@ public class VariableUsageDomain implements LatticeAbstractState<VariableUsageDo
    *
    * @throws CPAException
    */
-  public VariableUsageDomain meet(VariableUsageDomain pOther) throws CPAException {
+  public VariableUsageState meet(VariableUsageState pOther) throws CPAException {
     if (type.equals(VariableUsageType.NOT_USED)) {
       return this;
     } else {
@@ -66,16 +66,16 @@ public class VariableUsageDomain implements LatticeAbstractState<VariableUsageDo
    *                U | U N
    *                N | N N
    */
- public static  BinaryOperator<VariableUsageDomain> getMeetOperator(){
-  return new BinaryOperator<VariableUsageDomain>() {
+ public static  BinaryOperator<VariableUsageState> getMeetOperator(){
+  return new BinaryOperator<VariableUsageState>() {
 
     @Override
-    public VariableUsageDomain apply(VariableUsageDomain pT, VariableUsageDomain pU) {
+    public VariableUsageState apply(VariableUsageState pT, VariableUsageState pU) {
       if (pT.getType().equals(VariableUsageType.NOT_USED)) {
-        return new VariableUsageDomain(VariableUsageType.NOT_USED);
+        return new VariableUsageState(VariableUsageType.NOT_USED);
       }
     else {
-      return new VariableUsageDomain(pU.getType());
+      return new VariableUsageState(pU.getType());
     }
       }
     };
@@ -86,7 +86,7 @@ public class VariableUsageDomain implements LatticeAbstractState<VariableUsageDo
    * _|_ = N <= U = T
    */
   @Override
-  public boolean isLessOrEqual(VariableUsageDomain pOther)
+  public boolean isLessOrEqual(VariableUsageState pOther)
       throws CPAException, InterruptedException {
     if (type.equals(VariableUsageType.USED)
         && pOther.getType().equals(VariableUsageType.NOT_USED)) {
@@ -99,12 +99,12 @@ public class VariableUsageDomain implements LatticeAbstractState<VariableUsageDo
     return VariableUsageType.NOT_USED;
   }
 
-  public static VariableUsageDomain getBottom() {
-    return new VariableUsageDomain(getBottomElement());
+  public static VariableUsageState getBottom() {
+    return new VariableUsageState(getBottomElement());
   }
 
-  public static VariableUsageDomain getTop() {
-    return new VariableUsageDomain(getTopElement());
+  public static VariableUsageState getTop() {
+    return new VariableUsageState(getTopElement());
   }
 
   public static VariableUsageType getTopElement() {
@@ -138,7 +138,7 @@ public class VariableUsageDomain implements LatticeAbstractState<VariableUsageDo
     if (getClass() != obj.getClass()) {
       return false;
     }
-    VariableUsageDomain other = (VariableUsageDomain) obj;
+    VariableUsageState other = (VariableUsageState) obj;
     if (type != other.type) {
       return false;
     }
@@ -152,7 +152,6 @@ public class VariableUsageDomain implements LatticeAbstractState<VariableUsageDo
     } else if (this.type.equals(VariableUsageType.NOT_USED)) {
       return "N";
     }
-
     return "";
   }
 
@@ -160,7 +159,7 @@ public class VariableUsageDomain implements LatticeAbstractState<VariableUsageDo
     return VariableUsageType.EMPTY;
   }
 
-  public static VariableUsageDomain getEmptyElement() {
+  public static VariableUsageState getEmptyElement() {
     return new EmptyVariableUsageElement();
   }
 

@@ -31,7 +31,7 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression.BinaryOperator;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageType;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
@@ -41,7 +41,7 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.Unreachable
 
 public class UpdateTransformer {
 
-  private ArraySegmentationState<VariableUsageDomain> state;
+  private ArraySegmentationState<VariableUsageState> state;
   private LogManager logger;
   private static final String PREFIX = "USAGE_ANALYSIS update";
   ExpressionSimplificationVisitor visitor;
@@ -50,10 +50,10 @@ public class UpdateTransformer {
 
   }
 
-  public @Nullable ArraySegmentationState<VariableUsageDomain> update(
+  public @Nullable ArraySegmentationState<VariableUsageState> update(
       CBinaryExpression expr,
       boolean pTruthAssumption,
-      @Nullable ArraySegmentationState<VariableUsageDomain> pState,
+      @Nullable ArraySegmentationState<VariableUsageState> pState,
       LogManagerWithoutDuplicates pLogger,
       ExpressionSimplificationVisitor pVisitor) {
     this.state = pState;
@@ -103,14 +103,14 @@ public class UpdateTransformer {
     }
   }
 
-  private @Nullable ArraySegmentationState<VariableUsageDomain>
+  private @Nullable ArraySegmentationState<VariableUsageState>
       updateEquals(CExpression pVar, CExpression pOp2, BinaryOperator pOperator) {
     if (!(pVar instanceof CIdExpression)) {
       // CUrrently, there is no behaviour defined in this case
       return state;
     }
     CIdExpression var = (CIdExpression) pVar;
-    List<ArraySegment<VariableUsageDomain>> segmentsContainingOp2 = getSegmentsContainingExpr(pOp2);
+    List<ArraySegment<VariableUsageState>> segmentsContainingOp2 = getSegmentsContainingExpr(pOp2);
     if (segmentsContainingOp2.isEmpty()) {
       // Case 3.1.1 and 3.1.2
       return state;
@@ -121,7 +121,7 @@ public class UpdateTransformer {
       logger.log(
           Level.FINE,
           PREFIX
-              + "THe segmentation is invalid, since the expression that should be reassigned is present twice."
+              + "The segmentation is invalid, since the expression that should be reassigned is present twice."
               + "Hence, the error symbol is returned. Current State is: "
               + this.state.toDOTLabel()
               + " for the expression :"
@@ -132,7 +132,7 @@ public class UpdateTransformer {
 
     } else {
       // Check, if the variable is present in any state:
-      List<ArraySegment<VariableUsageDomain>> segmentsContainingVar =
+      List<ArraySegment<VariableUsageState>> segmentsContainingVar =
           getSegmentsContainingExpr(var);
       if (segmentsContainingVar.isEmpty()) {
         // Case 3.1.3
@@ -156,7 +156,7 @@ public class UpdateTransformer {
       } else {
 
         @Nullable
-        ArraySegmentationState<VariableUsageDomain> validated =
+        ArraySegmentationState<VariableUsageState> validated =
             this.validate(state, var, pOp2, pOperator);
         if (validated instanceof UnreachableArraySegmentation) {
           return validated;
@@ -185,15 +185,15 @@ public class UpdateTransformer {
           }
           // We can safely merge the segment bounds between posSegmentContainsVar and
           // posSegmentContainsOp2, since all elements are marked as unused.
-          List<ArraySegment<VariableUsageDomain>> newSegments = new ArrayList<>();
-          List<ArraySegment<VariableUsageDomain>> prevSegs = state.getSegments();
+          List<ArraySegment<VariableUsageState>> newSegments = new ArrayList<>();
+          List<ArraySegment<VariableUsageState>> prevSegs = state.getSegments();
 
-          // Add all segemtns before min(posSegmentContainsVar,posSegmentContainsOp2)
+          // Add all segments before min(posSegmentContainsVar,posSegmentContainsOp2)
           for (int i = 0; i < min; i++) {
             newSegments.add(prevSegs.get(i));
           }
           // Merge the segment information from min to max into max (since max will be kept
-          ArraySegment<VariableUsageDomain> keeptSeg = prevSegs.get(max);
+          ArraySegment<VariableUsageState> keeptSeg = prevSegs.get(max);
           for (int i = min; i < max; i++) {
             keeptSeg.addSegmentBounds(prevSegs.get(i).getSegmentBound());
           }
@@ -225,7 +225,7 @@ public class UpdateTransformer {
     }
   }
 
-  private @Nullable ArraySegmentationState<VariableUsageDomain>
+  private @Nullable ArraySegmentationState<VariableUsageState>
       updateNotEquals(CExpression op1, CExpression pOp2) {
 
     if (state.getSegments()
@@ -235,7 +235,7 @@ public class UpdateTransformer {
     } else {
       // Check if they var and op2 are present in consecutive segments and remove a ? in that case
 
-      List<ArraySegment<VariableUsageDomain>> segmentsContainingOp2 =
+      List<ArraySegment<VariableUsageState>> segmentsContainingOp2 =
           getSegmentsContainingExpr(pOp2);
       if (segmentsContainingOp2.isEmpty()) {
         return state;
@@ -246,7 +246,7 @@ public class UpdateTransformer {
         return new ErrorSegmentation<>();
       } else {
         // Check, if the variable is present in any state:
-        List<ArraySegment<VariableUsageDomain>> segmentsContainingOp1 =
+        List<ArraySegment<VariableUsageState>> segmentsContainingOp1 =
             getSegmentsContainingExpr(op1);
         if (segmentsContainingOp1.size() > 1) {
           // The analysis seems to be not working, since there is more than one segment bound
@@ -279,11 +279,11 @@ public class UpdateTransformer {
     }
   }
 
-  private @Nullable ArraySegmentationState<VariableUsageDomain>
+  private @Nullable ArraySegmentationState<VariableUsageState>
       updateGreater(CExpression greater, CExpression smaller) {
-    List<ArraySegment<VariableUsageDomain>> segmentsContainingGreater =
+    List<ArraySegment<VariableUsageState>> segmentsContainingGreater =
         getSegmentsContainingExpr(greater);
-    List<ArraySegment<VariableUsageDomain>> segmentsContainingSmaller =
+    List<ArraySegment<VariableUsageState>> segmentsContainingSmaller =
         getSegmentsContainingExpr(smaller);
     // CHeck, if both expressions are present in exactly one segment bound
     if (segmentsContainingGreater.isEmpty() || segmentsContainingSmaller.isEmpty()) {
@@ -302,7 +302,7 @@ public class UpdateTransformer {
               + smaller.toASTString());
       return new ErrorSegmentation<>();
     } else {
-      // check if the two segmetns are ordered correctly!
+      // check if the two segments are ordered correctly!
       int posSmaller = state.getSegments().indexOf(segmentsContainingSmaller.get(0));
       int posGreater = state.getSegments().indexOf(segmentsContainingGreater.get(0));
       if (posSmaller >= posGreater) {
@@ -314,11 +314,11 @@ public class UpdateTransformer {
     return state;
   }
 
-  private @Nullable ArraySegmentationState<VariableUsageDomain>
+  private @Nullable ArraySegmentationState<VariableUsageState>
       updateGreaterEq(CExpression greater, CExpression smaller) {
-    List<ArraySegment<VariableUsageDomain>> segmentsContainingGreater =
+    List<ArraySegment<VariableUsageState>> segmentsContainingGreater =
         getSegmentsContainingExpr(greater);
-    List<ArraySegment<VariableUsageDomain>> segmentsContainingSmaller =
+    List<ArraySegment<VariableUsageState>> segmentsContainingSmaller =
         getSegmentsContainingExpr(smaller);
     // CHeck, if both expressions are present in exactly one segment bound
     if (segmentsContainingGreater.isEmpty() || segmentsContainingSmaller.isEmpty()) {
@@ -337,7 +337,7 @@ public class UpdateTransformer {
               + smaller.toASTString());
       return new ErrorSegmentation<>();
     } else {
-      // check if the two segmetns are ordered correctly!
+      // check if the two segments are ordered correctly!
       int posSmaller = state.getSegments().indexOf(segmentsContainingSmaller.get(0));
       int posGreater = state.getSegments().indexOf(segmentsContainingGreater.get(0));
       if (posSmaller > posGreater) {
@@ -358,15 +358,15 @@ public class UpdateTransformer {
     return expr instanceof CIdExpression;
   }
 
-  private List<ArraySegment<VariableUsageDomain>> getSegmentsContainingExpr(CExpression pOp2) {
+  private List<ArraySegment<VariableUsageState>> getSegmentsContainingExpr(CExpression pOp2) {
     return state.getSegments()
         .parallelStream()
         .filter(s -> s.getSegmentBound().contains(pOp2))
         .collect(Collectors.toList());
   }
 
-  private @Nullable ArraySegmentationState<VariableUsageDomain> validate(
-      ArraySegmentationState<VariableUsageDomain> pState,
+  private @Nullable ArraySegmentationState<VariableUsageState> validate(
+      ArraySegmentationState<VariableUsageState> pState,
       CIdExpression pVar,
       CExpression pOp2,
       BinaryOperator pOperator) {

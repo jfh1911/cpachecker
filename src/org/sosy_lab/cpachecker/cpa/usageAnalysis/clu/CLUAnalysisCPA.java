@@ -42,7 +42,7 @@ import org.sosy_lab.cpachecker.core.interfaces.StopOperator;
 import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
 import org.sosy_lab.cpachecker.cpa.location.LocationCPA;
 import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.UsageAnalysisCPA;
 
 @Options(prefix = "cpa.CLUCPA")
@@ -92,7 +92,7 @@ public class CLUAnalysisCPA extends AbstractCPA {
     super(
         "join",
         "sep",
-        DelegateAbstractDomain.<CLUAnalysisState<VariableUsageDomain>>getInstance(),
+        DelegateAbstractDomain.<CLUAnalysisState<VariableUsageState>>getInstance(),
         null);
     config.inject(this, CLUAnalysisCPA.class);
     // writer = new StateToFormulaWriter(config, pLogger, shutdownNotifier, cfa);
@@ -132,7 +132,7 @@ public class CLUAnalysisCPA extends AbstractCPA {
   public AbstractState getInitialState(CFANode pNode, StateSpacePartition pPartition)
       throws InterruptedException {
 
-    return new CLUAnalysisState<VariableUsageDomain>(
+    return new CLUAnalysisState<VariableUsageState>(
         locationCPA.getInitialState(pNode, pPartition),
         usageCPA.getInitialState(pNode, pPartition),
         this.logger);
