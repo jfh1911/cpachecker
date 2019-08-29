@@ -48,7 +48,7 @@ import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisito
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.transformer.StatementTrasformer;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.transformer.UpdateTransformer;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.transformer.UsageTransformer;
@@ -56,7 +56,7 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.util.EnhancedExpressionSimplifi
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
 public class UsageAnalysisTransferRelation extends
-    ForwardingTransferRelation<ArraySegmentationState<VariableUsageDomain>, ArraySegmentationState<VariableUsageDomain>, Precision> {
+    ForwardingTransferRelation<ArraySegmentationState<VariableUsageState>, ArraySegmentationState<VariableUsageState>, Precision> {
 
   private final LogManagerWithoutDuplicates logger;
   private final MachineModel machineModel;
@@ -79,7 +79,7 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
-  protected ArraySegmentationState<VariableUsageDomain>
+  protected ArraySegmentationState<VariableUsageState>
       handleDeclarationEdge(CDeclarationEdge pCfaEdge, CDeclaration pDecl)
           throws CPATransferException {
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
@@ -107,7 +107,7 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
-  protected @Nullable ArraySegmentationState<VariableUsageDomain>
+  protected @Nullable ArraySegmentationState<VariableUsageState>
       handleAssumption(CAssumeEdge pCfaEdge, CExpression pExpression, boolean pTruthAssumption)
           throws CPATransferException {
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
@@ -147,7 +147,7 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
-  protected ArraySegmentationState<VariableUsageDomain>
+  protected ArraySegmentationState<VariableUsageState>
       handleBlankEdge(BlankEdge pCfaEdge) {
     // TODO: Verify that this is the correct behavior
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
@@ -162,7 +162,7 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
-  protected ArraySegmentationState<VariableUsageDomain> handleFunctionCallEdge(
+  protected ArraySegmentationState<VariableUsageState> handleFunctionCallEdge(
       CFunctionCallEdge pCfaEdge,
       List<CExpression> pArguments,
       List<CParameterDeclaration> pParameters,
@@ -180,7 +180,7 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
-  protected ArraySegmentationState<VariableUsageDomain> handleFunctionReturnEdge(
+  protected ArraySegmentationState<VariableUsageState> handleFunctionReturnEdge(
       CFunctionReturnEdge pCfaEdge,
       CFunctionSummaryEdge pFnkCall,
       CFunctionCall pSummaryExpr,
@@ -199,7 +199,7 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
-  protected ArraySegmentationState<VariableUsageDomain>
+  protected ArraySegmentationState<VariableUsageState>
       handleFunctionSummaryEdge(CFunctionSummaryEdge pCfaEdge) throws CPATransferException {
     // TODO: Verify that this is the correct behavior
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
@@ -214,7 +214,7 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
-  protected ArraySegmentationState<VariableUsageDomain>
+  protected ArraySegmentationState<VariableUsageState>
       handleReturnStatementEdge(CReturnStatementEdge pCfaEdge) throws CPATransferException {
     // TODO: Verify that this is the correct behavior
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
@@ -229,7 +229,7 @@ public class UsageAnalysisTransferRelation extends
   }
 
   @Override
-  protected ArraySegmentationState<VariableUsageDomain>
+  protected ArraySegmentationState<VariableUsageState>
       handleStatementEdge(CStatementEdge pCfaEdge, CStatement pStatement)
           throws CPATransferException {
     String inpUtArgumentsAsString = computeInnputString(pCfaEdge);
@@ -247,13 +247,13 @@ public class UsageAnalysisTransferRelation extends
 
   }
 
-  public static boolean isCornerCase(ArraySegmentationState<VariableUsageDomain> s) {
+  public static boolean isCornerCase(ArraySegmentationState<VariableUsageState> s) {
     return s instanceof ErrorSegmentation || s instanceof UnreachableArraySegmentation;
   }
 
-  private ArraySegmentationState<VariableUsageDomain> logTransformation(
+  private ArraySegmentationState<VariableUsageState> logTransformation(
       String inputToTransfer,
-      @Nullable ArraySegmentationState<VariableUsageDomain> pState) {
+      @Nullable ArraySegmentationState<VariableUsageState> pState) {
     logger.log(Level.FINE, PREFIX + " " + inputToTransfer + ")=" + pState);
     logger.flush();
     // try {

@@ -41,13 +41,13 @@ import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
 public class CLUAnanylsisTransferRelation extends
-    ForwardingTransferRelation<CLUAnalysisState<VariableUsageDomain>, CLUAnalysisState<VariableUsageDomain>, Precision> {
+    ForwardingTransferRelation<CLUAnalysisState<VariableUsageState>, CLUAnalysisState<VariableUsageState>, Precision> {
 
   private final LogManagerWithoutDuplicates logger;
   private final MachineModel machineModel;
@@ -68,14 +68,14 @@ public class CLUAnanylsisTransferRelation extends
   }
 
   @Override
-  protected CLUAnalysisState<VariableUsageDomain>
+  protected CLUAnalysisState<VariableUsageState>
       handleDeclarationEdge(CDeclarationEdge pCfaEdge, CDeclaration pDecl)
           throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected CLUAnalysisState<VariableUsageDomain> handleBlankEdge(BlankEdge pCfaEdge) {
+  protected CLUAnalysisState<VariableUsageState> handleBlankEdge(BlankEdge pCfaEdge) {
     try {
       return delegateEdgeHandling(pCfaEdge);
     } catch (CPATransferException e) {
@@ -85,7 +85,7 @@ public class CLUAnanylsisTransferRelation extends
   }
 
   @Override
-  protected CLUAnalysisState<VariableUsageDomain> handleFunctionCallEdge(
+  protected CLUAnalysisState<VariableUsageState> handleFunctionCallEdge(
       CFunctionCallEdge pCfaEdge,
       List<CExpression> pArguments,
       List<CParameterDeclaration> pParameters,
@@ -95,7 +95,7 @@ public class CLUAnanylsisTransferRelation extends
   }
 
   @Override
-  protected CLUAnalysisState<VariableUsageDomain> handleFunctionReturnEdge(
+  protected CLUAnalysisState<VariableUsageState> handleFunctionReturnEdge(
       CFunctionReturnEdge pCfaEdge,
       CFunctionSummaryEdge pFnkCall,
       CFunctionCall pSummaryExpr,
@@ -105,50 +105,59 @@ public class CLUAnanylsisTransferRelation extends
   }
 
   @Override
-  protected CLUAnalysisState<VariableUsageDomain>
+  protected CLUAnalysisState<VariableUsageState>
       handleFunctionSummaryEdge(CFunctionSummaryEdge pCfaEdge) throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected CLUAnalysisState<VariableUsageDomain>
+  protected CLUAnalysisState<VariableUsageState>
       handleReturnStatementEdge(CReturnStatementEdge pCfaEdge) throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected CLUAnalysisState<VariableUsageDomain>
+  protected CLUAnalysisState<VariableUsageState>
       handleStatementEdge(CStatementEdge pCfaEdge, CStatement pStatement)
           throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected CLUAnalysisState<VariableUsageDomain>
+  protected CLUAnalysisState<VariableUsageState>
       handleAssumption(CAssumeEdge pCfaEdge, CExpression pExpression, boolean pTruthAssumption)
           throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
 
   }
 
-  private CLUAnalysisState<VariableUsageDomain> delegateEdgeHandling(AbstractCFAEdge pCfaEdge)
+  /**
+   * Applies the transfer functions of the included analysis to a copy of the current state
+   *
+   * @param pCfaEdge the current edge
+   * @return the element obtained by the transfer functions
+   * @throws CPATransferException if any transfer function throws one or more than one result is
+   *         returned
+   */
+  private CLUAnalysisState<VariableUsageState> delegateEdgeHandling(AbstractCFAEdge pCfaEdge)
       throws CPATransferException {
     if (super.state == null) {
       return state;
     }
-    Collection<ArraySegmentationState<VariableUsageDomain>> arraySegmentation =
+    // Clone the state
+    Collection<ArraySegmentationState<VariableUsageState>> arraySegmentation =
         usageTransfer
             .getAbstractSuccessorsForEdge(
                 state.getArraySegmentation().clone(),
                 getPrecision(),
                 pCfaEdge);
-    // Check if a single reslt is returned
+    // Check if a single result is returned
     if (arraySegmentation.size() != 1) {
       throw new CPATransferException(
           PREFIX
               + "The UsageAnalysis transfer function could not determine a single sucessor, hence computation is abported");
     }
-    List<ArraySegmentationState<VariableUsageDomain>> transformedSeg =
+    List<ArraySegmentationState<VariableUsageState>> transformedSeg =
         new ArrayList<>(arraySegmentation);
     // Determine the correct successor of the the current location
 

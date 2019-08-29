@@ -38,7 +38,7 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CRightHandSide;
 import org.sosy_lab.cpachecker.cfa.ast.c.CStatement;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageType;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
@@ -62,16 +62,16 @@ public class UsageTransformer {
     visitor = pVisitor;
   }
 
-  public @Nullable ArraySegmentationState<VariableUsageDomain>
-      use(CStatement pStatement, ArraySegmentationState<VariableUsageDomain> state) {
+  public @Nullable ArraySegmentationState<VariableUsageState>
+      use(CStatement pStatement, ArraySegmentationState<VariableUsageState> state) {
     List<CArraySubscriptExpression> arrayUses = getUses(pStatement);
     return explUse(arrayUses, state);
   }
 
-  public @Nullable ArraySegmentationState<VariableUsageDomain>
+  public @Nullable ArraySegmentationState<VariableUsageState>
       explUse(
           List<CArraySubscriptExpression> pArrayUses,
-          ArraySegmentationState<VariableUsageDomain> state) {
+          ArraySegmentationState<VariableUsageState> state) {
     CBinaryExpressionBuilder builder = new CBinaryExpressionBuilder(machineModel, logger);
     for (CArraySubscriptExpression use : pArrayUses) {
       // Check, if the expression used to access the array element is present in the current state
@@ -91,7 +91,7 @@ public class UsageTransformer {
       } else {
         // Create a new segment after the segment containing the expression to access the array
         // elements and mark this as used
-        ArraySegment<VariableUsageDomain> leftBound = state.getSegments().get(pos);
+        ArraySegment<VariableUsageState> leftBound = state.getSegments().get(pos);
         CExpression exprPlus1;
         try {
           exprPlus1 =
@@ -115,11 +115,11 @@ public class UsageTransformer {
           // Add the segment bound
           List<AExpression> bounds = new ArrayList<>();
           bounds.add(exprPlus1);
-          ArraySegment<VariableUsageDomain> newSeg =
+          ArraySegment<VariableUsageState> newSeg =
               new ArraySegment<>(bounds, leftBound.getAnalysisInformation(), true, null);
           state.addSegment(newSeg, leftBound);
         }
-        leftBound.setAnalysisInformation(new VariableUsageDomain(VariableUsageType.USED));
+        leftBound.setAnalysisInformation(new VariableUsageState(VariableUsageType.USED));
         leftBound.setPotentiallyEmpty(false);
       }
 

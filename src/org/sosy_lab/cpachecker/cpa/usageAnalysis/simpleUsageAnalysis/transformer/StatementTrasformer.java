@@ -42,7 +42,7 @@ import org.sosy_lab.cpachecker.cfa.types.c.CBasicType;
 import org.sosy_lab.cpachecker.cfa.types.c.CSimpleType;
 import org.sosy_lab.cpachecker.cfa.types.c.CType;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.EmptyVariableUsageElement;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageDomain;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ErrorSegmentation;
@@ -70,8 +70,15 @@ public class StatementTrasformer {
     this.usageTransformer = pUsageTransformer;
   }
 
-  public @Nullable ArraySegmentationState<VariableUsageDomain>
-      transform(ArraySegmentationState<VariableUsageDomain> state, CStatement pStatement)
+  /**
+   *
+   * @param state a COPY of the current state
+   * @param pStatement the statement to apply the transformation on
+   * @return a modified version of the state NOT A COPY!
+   * @throws CPATransferException if some errors occurred during cleanup
+   */
+  public @Nullable ArraySegmentationState<VariableUsageState>
+      transform(ArraySegmentationState<VariableUsageState> state, CStatement pStatement)
           throws CPATransferException {
 
     // Check, if the RHS contains any usage of the array
@@ -110,7 +117,7 @@ public class StatementTrasformer {
           // Check, if the current last segment contains any analysis information, if not, add _|_?
           // to it. Anyway, mark it as potentially empty
 
-          List<ArraySegment<VariableUsageDomain>> segments = state.getSegments();
+          List<ArraySegment<VariableUsageState>> segments = state.getSegments();
           int posCurrenLast = segments.size() - 1;
           if (segments.get(posCurrenLast)
               .getAnalysisInformation() instanceof EmptyVariableUsageElement) {
@@ -119,17 +126,17 @@ public class StatementTrasformer {
           segments.get(posCurrenLast).setPotentiallyEmpty(true);
           ArrayList<AExpression> bounds = new ArrayList<>();
           bounds.add(call.getLeftHandSide());
-          ArraySegment<VariableUsageDomain> lastSegment =
+          ArraySegment<VariableUsageState> lastSegment =
               new ArraySegment<>(
                   bounds,
-                  VariableUsageDomain.getEmptyElement(),
+                  VariableUsageState.getEmptyElement(),
                   false,
-                  new FinalSegSymbol<>(VariableUsageDomain.getEmptyElement()));
+                  new FinalSegSymbol<>(VariableUsageState.getEmptyElement()));
           state.addSegment(lastSegment, state.getSegments().get(state.getSegments().size() - 1));
 
           return state;
         } else {
-          throw new CPATransferException("Could not cleanup the segment bound" + state.toString());
+          throw new CPATransferException("Could not cleanup the segment bound");
 
         }
       } else if (call.getLeftHandSide() instanceof CIdExpression) {
@@ -147,15 +154,14 @@ public class StatementTrasformer {
     return state;
   }
 
-  public ArraySegmentationState<VariableUsageDomain>
+  public ArraySegmentationState<VariableUsageState>
       reassign(
           CIdExpression pVar,
           CExpression pRightHandSide,
-          ArraySegmentationState<VariableUsageDomain> state) {
+          ArraySegmentationState<VariableUsageState> state) {
     CExpression canoncialForm = getCanonicalForm(pRightHandSide);
-    List<ArraySegment<VariableUsageDomain>> exprList = new ArrayList<>();
-    // FIXME: FIX this to correctly detect values
-    for (ArraySegment<VariableUsageDomain> s : state.getSegments()) {
+    List<ArraySegment<VariableUsageState>> exprList = new ArrayList<>();
+    for (ArraySegment<VariableUsageState> s : state.getSegments()) {
       for (AExpression e : s.getSegmentBound()) {
         if (e.equals(canoncialForm)) {
           exprList.add(s);
@@ -183,9 +189,7 @@ public class StatementTrasformer {
         logger.log(
             Level.FINE,
             UsageAnalysisTransferRelation.PREFIX
-                + "The cleanup for the segmentation "
-                + state.toDOTLabel()
-                + " and expression "
+                + "The cleanup for the  current segmentation and expression "
                 + pVar.toASTString()
                 + " has failed. The error label is returned");
         return new ErrorSegmentation<>();
@@ -209,8 +213,7 @@ public class StatementTrasformer {
           logger.log(
               Level.FINE,
               UsageAnalysisTransferRelation.PREFIX
-                  + "The cleanup for the segmentation "
-                  + " and expression "
+                  + "The cleanup for the current segmentation and expression "
                   + pVar.toASTString()
                   + " has failed. The error label is returned");
           return new ErrorSegmentation<>();
@@ -225,16 +228,16 @@ public class StatementTrasformer {
         // 0
         boolean isAdded = false;
         for (int i = 1; i < state.getSegments().size(); i++) {
-          ArraySegment<VariableUsageDomain> s = state.getSegments().get(i);
+          ArraySegment<VariableUsageState> s = state.getSegments().get(i);
           BigInteger curValue = s.evaluateToInteger(visitor);
           if (curValue.compareTo(valueOfExpr) > 0) {
             // This is the first segment that is greater than the one needs to be added, hence add
             // it between the previous and this segment
-            ArraySegment<VariableUsageDomain> prevSeg = state.getSegments().get(i - 1);
+            ArraySegment<VariableUsageState> prevSeg = state.getSegments().get(i - 1);
             List<AExpression> segBounds = new ArrayList<>();
             segBounds.add(pVar);
             segBounds.add(pRightHandSide);
-            ArraySegment<VariableUsageDomain> newSeg =
+            ArraySegment<VariableUsageState> newSeg =
                 new ArraySegment<>(
                     segBounds,
                     prevSeg.getAnalysisInformation(),
@@ -250,12 +253,12 @@ public class StatementTrasformer {
         // single segment is present, nothing can be done!
 
         if (!isAdded && state.getSegments().size() > 1) {
-          ArraySegment<VariableUsageDomain> prevSeg =
+          ArraySegment<VariableUsageState> prevSeg =
               state.getSegments().get(state.getSegments().size() - 2);
           List<AExpression> segBounds = new ArrayList<>();
           segBounds.add(pVar);
           segBounds.add(pRightHandSide);
-          ArraySegment<VariableUsageDomain> newSeg =
+          ArraySegment<VariableUsageState> newSeg =
               new ArraySegment<>(
                   segBounds,
                   prevSeg.getAnalysisInformation(),
@@ -287,15 +290,15 @@ public class StatementTrasformer {
    * @param state
    * @return
    */
-  private ArraySegmentationState<VariableUsageDomain>
+  private ArraySegmentationState<VariableUsageState>
       replace(
           CIdExpression pVar,
           CExpression pRightHandSide,
-          @Nullable ArraySegmentationState<VariableUsageDomain> state) {
+          @Nullable ArraySegmentationState<VariableUsageState> state) {
     CExpression reversedExpr = reverseIfNeccessary(pRightHandSide);
     CExpression canoncialForm = getCanonicalForm(reversedExpr);
     for (int i = 0; i < state.getSegments().size(); i++) {
-      ArraySegment<VariableUsageDomain> s = state.getSegments().get(i);
+      ArraySegment<VariableUsageState> s = state.getSegments().get(i);
       s.replaceVar(pVar, canoncialForm, visitor);
     }
     return state;
