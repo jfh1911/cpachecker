@@ -48,6 +48,7 @@ import org.sosy_lab.cpachecker.core.interfaces.StopOperator;
 import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.EmptyVariableUsageElement;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageType;
 
 @Options(prefix = "cpa.usageCPA")
 public class UsageAnalysisCPA extends AbstractCPA {
@@ -80,10 +81,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
    *
    * @param config the configuration of the CPAinterval analysis CPA.
    */
-  public UsageAnalysisCPA(
-      Configuration config,
-      LogManager pLogger,
-      CFA cfa)
+  public UsageAnalysisCPA(Configuration config, LogManager pLogger, CFA cfa)
       throws InvalidConfigurationException {
     super(
         "join",
@@ -177,7 +175,11 @@ public class UsageAnalysisCPA extends AbstractCPA {
             new FinalSegSymbol<>(VariableUsageState.getEmptyElement()));
 
     ArraySegment<VariableUsageState> first =
-        new ArraySegment<>(pSBFirst, VariableUsageState.getBottom(), true, second);
+        new ArraySegment<>(
+            pSBFirst,
+            new VariableUsageState(VariableUsageType.NOT_USED),
+            true,
+            second);
 
     List<ArraySegment<VariableUsageState>> segments = new ArrayList<>();
     segments.add(first);
@@ -186,13 +188,9 @@ public class UsageAnalysisCPA extends AbstractCPA {
     ArrayList<AIdExpression> listOfIDElements = new ArrayList<>();
     arrayAccessVars.parallelStream()
         .forEach(v -> listOfIDElements.add(new CIdExpression(v.getFileLocation(), v)));
-    return
-    new ArraySegmentationState<>(
+    return new ArraySegmentationState<>(
         segments,
-        VariableUsageState.getBottom(),
-        VariableUsageState.getTop(),
         VariableUsageState.getEmptyElement(),
-        VariableUsageState.getMeetOperator(),
         listOfIDElements,
         new CIdExpression(arrayVar.getFileLocation(), arrayVar),
         logger);

@@ -24,8 +24,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
-import java.util.function.BinaryOperator;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
@@ -37,19 +37,19 @@ import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.util.ArrayModificationException;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.util.SegmentationModifier;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
 
-public class ArraySegmentationState<T extends LatticeAbstractState<T>> implements Serializable,
-    LatticeAbstractState<ArraySegmentationState<T>>, AbstractState, Graphable {
+public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractState<T>> implements
+    Serializable, LatticeAbstractState<ArraySegmentationState<T>>, AbstractState, Graphable {
 
   private static final long serialVersionUID = 85908607562101422L;
   private List<ArraySegment<T>> segments;
   private SegmentUnifier<T> unifier;
-  protected T tBottom, tTop;
-  protected BinaryOperator<T> tMeet;
+
   protected List<AIdExpression> tLisOfArrayVariables;
   protected AIdExpression tArray;
   private T tEmptyElement;
@@ -58,21 +58,15 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
   /**
    *
    * @param pSegments
-   * @param pTBottom
-   * @param pTTop
    * @param pEmptyElement an element that is not part of the lattice. It is used to avoid uses of
    *        null!
-   * @param pTMeet
    * @param pLisOfArrayVariables
    * @param pArray
    * @param pLogger
    */
   public ArraySegmentationState(
       List<ArraySegment<T>> pSegments,
-      T pTBottom,
-      T pTTop,
       T pEmptyElement,
-      BinaryOperator<T> pTMeet,
       List<AIdExpression> pLisOfArrayVariables,
       AIdExpression pArray,
       LogManager pLogger) {
@@ -91,9 +85,6 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
       }
     }
     unifier = new SegmentUnifier<>();
-    tBottom = pTBottom;
-    tTop = pTTop;
-    tMeet = pTMeet;
     tEmptyElement = pEmptyElement;
     tLisOfArrayVariables = pLisOfArrayVariables;
     tArray = pArray;
@@ -128,7 +119,11 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     ArraySegmentationState<T> second = pOther.clone();
 
     Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
-        unifier.unifyMerge(first, second, tBottom, tBottom);
+        unifier.unifyMerge(
+            first,
+            second,
+            tEmptyElement.getBottomElement(),
+            tEmptyElement.getBottomElement());
 
     List<ArraySegment<T>> res = new ArrayList<>();
     List<ArraySegment<T>> firstSegs = unifiedSegs.getFirst().getSegments();
@@ -169,10 +164,7 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     }
     return new ArraySegmentationState<>(
         res,
-        this.gettBottom(),
-        this.tTop,
         this.tEmptyElement,
-        this.tMeet,
         this.tLisOfArrayVariables,
         this.tArray,
         this.logger);
@@ -187,7 +179,12 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     }
 
     Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
-        unifier.unifyCompare(this, pOther, tBottom, tBottom, tMeet);
+        unifier.unifyCompare(
+            this,
+            pOther,
+            tEmptyElement.getBottomElement(),
+            tEmptyElement.getBottomElement(),
+            tEmptyElement.getMeetOperator());
 
     // Come corner cases for error and unreachable segmentations
     if (unifiedSegs.getFirst() instanceof UnreachableArraySegmentation) {
@@ -403,29 +400,7 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     segments = pSegments;
   }
 
-  public T gettBottom() {
-    return tBottom;
-  }
 
-  public void settBottom(T pTBottom) {
-    tBottom = pTBottom;
-  }
-
-  public T gettTop() {
-    return tTop;
-  }
-
-  public void settTop(T pTTop) {
-    tTop = pTTop;
-  }
-
-  public BinaryOperator<T> gettMeet() {
-    return tMeet;
-  }
-
-  public void settMeet(BinaryOperator<T> pTMeet) {
-    tMeet = pTMeet;
-  }
 
   public List<AIdExpression> gettLisOfArrayVariables() {
     return tLisOfArrayVariables;
@@ -457,13 +432,28 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
 
   @Override
   public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((segments == null) ? 0 : segments.hashCode());
-    result = prime * result + ((tBottom == null) ? 0 : tBottom.hashCode());
-    result = prime * result + ((tMeet == null) ? 0 : tMeet.hashCode());
-    result = prime * result + ((tTop == null) ? 0 : tTop.hashCode());
-    return result;
+    return Objects.hash(segments, tEmptyElement);
+  }
+
+  /**
+   * This implementation checks syntactical equality. For a formal definition see Analyzing Data
+   * Usage in Array Programs, page 30 By Jan Haltermann
+   */
+  @SuppressWarnings("unchecked")
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    ArraySegmentationState<T> other = (ArraySegmentationState<T>) obj;
+    return Objects.deepEquals(segments, other.segments)
+        && Objects.equals(tEmptyElement, other.tEmptyElement);
   }
 
   // Creates a Deep copy of the object. In the lower level (ArraySegment), only the lists but not
@@ -476,70 +466,15 @@ public class ArraySegmentationState<T extends LatticeAbstractState<T>> implement
     this.segments.forEach(s -> copiedElements.add(s.clone()));
     return new ArraySegmentationState<>(
         this.unifier.conc(copiedElements, tEmptyElement),
-        this.tBottom,
-        this.tTop,
+
         this.tEmptyElement,
-        this.tMeet,
+
         this.tLisOfArrayVariables,
         this.tArray,
         logger);
   }
 
-  /**
-   * This implementation checks syntactical equality. For a formal definition see Analyzing Data
-   * Usage in Array Programs, page 30 By Jan Haltermann
-   */
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    @SuppressWarnings("unchecked")
-    ArraySegmentationState<T> other = (ArraySegmentationState<T>) obj;
-    if (segments == null) {
-      if (other.segments != null) {
-        return false;
-      }
-    }
-    if (other.getSegments().size() != this.segments.size()) {
-      return false;
-    }
-    for (int i = 0; i < this.segments.size(); i++) {
-      ArraySegment<T> seg1 = segments.get(i);
-      ArraySegment<T> seg2 = other.getSegments().get(i);
-      if (!seg1.equals(seg2)) {
-        return false;
-      }
-    }
-    if (tBottom == null) {
-      if (other.tBottom != null) {
-        return false;
-      }
-    } else if (!tBottom.equals(other.tBottom)) {
-      return false;
-    }
-    if (tMeet == null) {
-      if (other.tMeet != null) {
-        return false;
-      }
-    } else if (!tMeet.equals(other.tMeet)) {
-      return false;
-    }
-    if (tTop == null) {
-      if (other.tTop != null) {
-        return false;
-      }
-    } else if (!tTop.equals(other.tTop)) {
-      return false;
-    }
-    return true;
-  }
+
 
   @Override
   public String toString() {

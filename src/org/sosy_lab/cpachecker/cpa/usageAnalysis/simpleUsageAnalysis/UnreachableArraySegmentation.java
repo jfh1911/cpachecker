@@ -20,17 +20,17 @@
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
 
 import java.util.ArrayList;
-import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-public class UnreachableArraySegmentation<T extends LatticeAbstractState<T>> extends
+public class UnreachableArraySegmentation<T extends ExtendedCompletLatticeAbstractState<T>> extends
 ArraySegmentationState<T> {
 
   public UnreachableArraySegmentation() {
     // This is bad stlye, but whenever the error or unreachable segment is used, the information are
     // not needed
     // TODO infer a more elegant way
-    super(new ArrayList<>(), null, null, null, null, null, null, null);
+    super(new ArrayList<>(), null, null, null, null);
   }
 
   private static final long serialVersionUID = -3937221925009806448L;

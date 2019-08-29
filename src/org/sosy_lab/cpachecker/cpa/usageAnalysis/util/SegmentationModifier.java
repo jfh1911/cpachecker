@@ -30,13 +30,13 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
-import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 
-public class SegmentationModifier<T extends LatticeAbstractState<T>> {
+public class SegmentationModifier<T extends ExtendedCompletLatticeAbstractState<T>> {
 
   private LogManager logger;
   private MachineModel machineModel;

@@ -132,8 +132,7 @@ public class UpdateTransformer {
 
     } else {
       // Check, if the variable is present in any state:
-      List<ArraySegment<VariableUsageState>> segmentsContainingVar =
-          getSegmentsContainingExpr(var);
+      List<ArraySegment<VariableUsageState>> segmentsContainingVar = getSegmentsContainingExpr(var);
       if (segmentsContainingVar.isEmpty()) {
         // Case 3.1.3
         segmentsContainingOp2.get(0).addSegmentBound(var);
@@ -213,10 +212,7 @@ public class UpdateTransformer {
           }
           return new ArraySegmentationState<>(
               newSegments,
-              state.gettBottom(),
-              state.gettTop(),
               state.gettEmptyElement(),
-              state.gettMeet(),
               state.gettLisOfArrayVariables(),
               state.gettArray(),
               logger);
