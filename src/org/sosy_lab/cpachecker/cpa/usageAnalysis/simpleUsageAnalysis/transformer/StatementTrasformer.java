@@ -121,7 +121,8 @@ public class StatementTrasformer {
           int posCurrenLast = segments.size() - 1;
           if (segments.get(posCurrenLast)
               .getAnalysisInformation() instanceof EmptyVariableUsageElement) {
-            segments.get(posCurrenLast).setAnalysisInformation(state.gettBottom());
+            segments.get(posCurrenLast)
+                .setAnalysisInformation(state.gettEmptyElement().getBottomElement());
           }
           segments.get(posCurrenLast).setPotentiallyEmpty(true);
           ArrayList<AExpression> bounds = new ArrayList<>();

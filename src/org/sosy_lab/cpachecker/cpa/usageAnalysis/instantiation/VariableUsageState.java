@@ -21,10 +21,11 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation;
 
 import java.io.Serializable;
 import java.util.function.BinaryOperator;
-import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-public class VariableUsageState implements LatticeAbstractState<VariableUsageState>, Serializable {
+public class VariableUsageState
+    implements ExtendedCompletLatticeAbstractState<VariableUsageState>, Serializable {
 
   private static final long serialVersionUID = -3799697790388179030L;
   private VariableUsageType type;
@@ -61,26 +62,23 @@ public class VariableUsageState implements LatticeAbstractState<VariableUsageSta
   }
 
   /**
-   * The meet function looks as follows:
-   * this / pOther    | U N
-   *                U | U N
-   *                N | N N
+   * The meet function looks as follows: this / pOther | U N U | U N N | N N
    */
- public static  BinaryOperator<VariableUsageState> getMeetOperator(){
-  return new BinaryOperator<VariableUsageState>() {
+  @Override
+  public BinaryOperator<VariableUsageState> getMeetOperator() {
+    return new BinaryOperator<VariableUsageState>() {
 
-    @Override
-    public VariableUsageState apply(VariableUsageState pT, VariableUsageState pU) {
-      if (pT.getType().equals(VariableUsageType.NOT_USED)) {
-        return new VariableUsageState(VariableUsageType.NOT_USED);
-      }
-    else {
-      return new VariableUsageState(pU.getType());
-    }
+      @Override
+      public VariableUsageState apply(VariableUsageState pT, VariableUsageState pU) {
+        if (pT.getType().equals(VariableUsageType.NOT_USED)) {
+          return new VariableUsageState(VariableUsageType.NOT_USED);
+        } else {
+          return new VariableUsageState(pU.getType());
+        }
       }
     };
 
- }
+  }
 
   /**
    * _|_ = N <= U = T
@@ -92,23 +90,25 @@ public class VariableUsageState implements LatticeAbstractState<VariableUsageSta
         && pOther.getType().equals(VariableUsageType.NOT_USED)) {
       return false;
     }
-        return true;
+    return true;
   }
 
-  public static VariableUsageType getBottomElement() {
+  public VariableUsageType getBottomValue() {
     return VariableUsageType.NOT_USED;
   }
 
-  public static VariableUsageState getBottom() {
-    return new VariableUsageState(getBottomElement());
-  }
-
-  public static VariableUsageState getTop() {
-    return new VariableUsageState(getTopElement());
-  }
-
-  public static VariableUsageType getTopElement() {
+  public VariableUsageType getTopValue() {
     return VariableUsageType.USED;
+  }
+
+  @Override
+  public VariableUsageState getBottomElement() {
+    return new VariableUsageState(getBottomValue());
+  }
+
+  @Override
+  public VariableUsageState getTopElement() {
+    return new VariableUsageState(getTopValue());
   }
 
   public VariableUsageType getType() {
@@ -117,6 +117,11 @@ public class VariableUsageState implements LatticeAbstractState<VariableUsageSta
 
   public void setType(VariableUsageType pType) {
     type = pType;
+  }
+
+  @Override
+  public VariableUsageState clone() {
+    return new VariableUsageState(this.getType());
   }
 
   @Override
@@ -163,4 +168,8 @@ public class VariableUsageState implements LatticeAbstractState<VariableUsageSta
     return new EmptyVariableUsageElement();
   }
 
+  @Override
+  public VariableUsageState constructEmptyInstance() {
+    return new EmptyVariableUsageElement();
+  }
 }

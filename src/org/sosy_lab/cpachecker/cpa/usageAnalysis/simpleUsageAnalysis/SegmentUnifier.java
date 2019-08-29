@@ -25,11 +25,11 @@ import java.util.function.BiPredicate;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
-import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
 
-public class SegmentUnifier<T extends LatticeAbstractState<T>> {
+public class SegmentUnifier<T extends ExtendedCompletLatticeAbstractState<T>> {
   private BiPredicate<Boolean, Boolean> curleyVee = new BiPredicate<Boolean, Boolean>() {
     @Override
     public boolean test(Boolean pArg0, Boolean pArg1) {
