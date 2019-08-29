@@ -22,29 +22,22 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.transforme
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
-import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CArraySubscriptExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CAssignment;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
-import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCall;
 import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCallExpression;
-import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CRightHandSide;
 import org.sosy_lab.cpachecker.cfa.ast.c.CStatement;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageType;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ErrorSegmentation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.UsageAnalysisTransferRelation;
-import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 
 public class UsageTransformer {
 
@@ -68,61 +61,20 @@ public class UsageTransformer {
     return explUse(arrayUses, state);
   }
 
-  public @Nullable ArraySegmentationState<VariableUsageState>
-      explUse(
-          List<CArraySubscriptExpression> pArrayUses,
-          ArraySegmentationState<VariableUsageState> state) {
-    CBinaryExpressionBuilder builder = new CBinaryExpressionBuilder(machineModel, logger);
+  public @Nullable ArraySegmentationState<VariableUsageState> explUse(
+      List<CArraySubscriptExpression> pArrayUses,
+      ArraySegmentationState<VariableUsageState> state) {
     for (CArraySubscriptExpression use : pArrayUses) {
-      // Check, if the expression used to access the array element is present in the current state
-      CExpression subscriptExpr = use.getSubscriptExpression();
-      int pos = state.getSegBoundContainingExpr(subscriptExpr);
-      if (pos < 0) {
-        logger.log(
-            Level.FINE,
-            UsageAnalysisTransferRelation.PREFIX
-                + "Cannot create a usage sincethe variable "
-                + subscriptExpr.toASTString()
-                + " is not present in the segmentation, hence the error symbol is returned. Current State is: "
-                + state.toDOTLabel()
-                + " for the expression :"
-                + pArrayUses.toString());
-        return new ErrorSegmentation<>();
-      } else {
-        // Create a new segment after the segment containing the expression to access the array
-        // elements and mark this as used
-        ArraySegment<VariableUsageState> leftBound = state.getSegments().get(pos);
-        CExpression exprPlus1;
-        try {
-          exprPlus1 =
-              visitor.visit(
-                  builder.buildBinaryExpression(
-                      subscriptExpr,
-                      CIntegerLiteralExpression.ONE,
-                      CBinaryExpression.BinaryOperator.PLUS));
-        } catch (UnrecognizedCodeException e) {
-          e.printStackTrace();
-          logger.log(
-              Level.FINE,
-              UsageAnalysisTransferRelation.PREFIX
-                  + "Cannot create a usage due to internal problems, hence the error symbol is returned. Current State is: "
-                  + state.toDOTLabel()
-                  + " for the expression :"
-                  + pArrayUses.toString());
-          return new ErrorSegmentation<>();
-        }
-        if (!leftBound.getNextSegment().getSegmentBound().contains(exprPlus1)) {
-          // Add the segment bound
-          List<AExpression> bounds = new ArrayList<>();
-          bounds.add(exprPlus1);
-          ArraySegment<VariableUsageState> newSeg =
-              new ArraySegment<>(bounds, leftBound.getAnalysisInformation(), true, null);
-          state.addSegment(newSeg, leftBound);
-        }
-        leftBound.setAnalysisInformation(new VariableUsageState(VariableUsageType.USED));
-        leftBound.setPotentiallyEmpty(false);
-      }
 
+      CExpression subscriptExpr = use.getSubscriptExpression();
+      if (!state.storeAnalysisInformationAtIndex(
+          subscriptExpr,
+          new VariableUsageState(VariableUsageType.USED),
+          false,
+          machineModel,
+          visitor)) {
+        return new ErrorSegmentation<>();
+      }
     }
     return state;
   }
