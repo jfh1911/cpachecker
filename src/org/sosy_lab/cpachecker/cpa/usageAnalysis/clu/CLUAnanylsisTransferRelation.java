@@ -41,9 +41,10 @@ import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.UsageAnalysisTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.SegmentationTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
 public class CLUAnanylsisTransferRelation extends
@@ -53,7 +54,7 @@ public class CLUAnanylsisTransferRelation extends
   private final MachineModel machineModel;
 
   private static final String PREFIX = "CLU_ANALYSIS:";
-  private final UsageAnalysisTransferRelation usageTransfer;
+  private final SegmentationTransferRelation<VariableUsageState> usageTransfer;
   private LocationStateFactory locFactory;
 
   public CLUAnanylsisTransferRelation(
@@ -63,7 +64,12 @@ public class CLUAnanylsisTransferRelation extends
     super();
     logger = pLogger;
     machineModel = pMachineModel;
-    usageTransfer = new UsageAnalysisTransferRelation(logger, machineModel);
+    usageTransfer =
+        new SegmentationTransferRelation<>(
+            new UsageAnalysisTransferRelation(pLogger, pMachineModel),
+            pLogger,
+            pMachineModel,
+            "CLU");
     this.locFactory = pLocFactory;
   }
 
@@ -146,11 +152,10 @@ public class CLUAnanylsisTransferRelation extends
     }
     // Clone the state
     Collection<ArraySegmentationState<VariableUsageState>> arraySegmentation =
-        usageTransfer
-            .getAbstractSuccessorsForEdge(
-                state.getArraySegmentation().clone(),
-                getPrecision(),
-                pCfaEdge);
+        usageTransfer.getAbstractSuccessorsForEdge(
+            state.getArraySegmentation().clone(),
+            getPrecision(),
+            pCfaEdge);
     // Check if a single result is returned
     if (arraySegmentation.size() != 1) {
       throw new CPATransferException(

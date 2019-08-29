@@ -17,13 +17,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain;
 
-import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
-import org.sosy_lab.cpachecker.core.interfaces.Precision;
+import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 
-public class VariableUsageTransferFunction
-    extends ForwardingTransferRelation<VariableUsageState, VariableUsageState, Precision> {
+public interface ClonableLatticeAbstractState<T extends ClonableLatticeAbstractState<T>>
+    extends LatticeAbstractState<T> {
 
+  /**
+   *
+   * @return a deep copy of the object
+   */
+  T clone();
 
 }

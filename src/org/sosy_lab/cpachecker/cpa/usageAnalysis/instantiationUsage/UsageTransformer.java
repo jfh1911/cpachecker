@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.transformer;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,10 +34,8 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CRightHandSide;
 import org.sosy_lab.cpachecker.cfa.ast.c.CStatement;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageType;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ArraySegmentationState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis.ErrorSegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ErrorSegmentation;
 
 public class UsageTransformer {
 
@@ -62,9 +60,9 @@ public class UsageTransformer {
   }
 
   public @Nullable ArraySegmentationState<VariableUsageState> explUse(
-      List<CArraySubscriptExpression> pArrayUses,
+      Collection<CArraySubscriptExpression> pUses,
       ArraySegmentationState<VariableUsageState> state) {
-    for (CArraySubscriptExpression use : pArrayUses) {
+    for (CArraySubscriptExpression use : pUses) {
 
       CExpression subscriptExpr = use.getSubscriptExpression();
       if (!state.storeAnalysisInformationAtIndex(
@@ -73,7 +71,7 @@ public class UsageTransformer {
           false,
           machineModel,
           visitor)) {
-        return new ErrorSegmentation<>();
+        return new ErrorSegmentation<>(logger);
       }
     }
     return state;

@@ -1,8 +1,3 @@
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
-import static org.junit.Assert.fail;
-
-import org.junit.Test;
-
 /*
  *  CPAchecker is a tool for configurable software verification.
  *  This file is part of CPAchecker.
@@ -22,17 +17,27 @@ import org.junit.Test;
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain;
 
-public class unificationTest {
+import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
+
+/**
+ * A Segment that is by default empty, to indicate that the segment pointing to this is the last
+ * segment (avoiding null as value)
+ */
+public class FinalSegment<T extends LatticeAbstractState<T>> extends ArraySegment<T> {
 
 
-  @Test
-  public void test() {
-    // Set up two array segmentations
-    // ArraySegmentationState<VariableUsageDomain> seg1 = new
-    // ArraySegmentationState<VariableUsageDomain>();
+  private static final long serialVersionUID = -5615014169972238864L;
 
-    fail("Not yet implemented");
+  public FinalSegment(T emptyElement) {
+    super(null, emptyElement, true, null);
   }
+
+  @Override
+  public String toString() {
+    return "<<EOF>>";
+  }
+
 
 }

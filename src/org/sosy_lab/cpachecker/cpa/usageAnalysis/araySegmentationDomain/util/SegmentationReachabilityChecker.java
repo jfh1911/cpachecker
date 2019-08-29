@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -33,9 +33,19 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CTypeIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CUnaryExpression;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.UnreachableSegmentation;
 
-public class SegmentationReachabilityChecker {
+public class SegmentationReachabilityChecker<T extends ExtendedCompletLatticeAbstractState<T>> {
+
+  LogManager logger;
+
+  public SegmentationReachabilityChecker(LogManager pLogger) {
+    super();
+    logger = pLogger;
+  }
 
   /**
    * Checks, if the given segmentation is reachable w.r.t. Definition 4.10 given by Jan Haltermann
@@ -50,8 +60,8 @@ public class SegmentationReachabilityChecker {
    * @param pVisitor statement simplifaction visitor to compute cannonical form
    * @return true, if the segmentation is reachable, false otherwise
    */
-  public static @Nullable ArraySegmentationState<VariableUsageState> checkReachability(
-      ArraySegmentationState<VariableUsageState> pSegmentation,
+  public @Nullable ArraySegmentationState<T> checkReachability(
+      ArraySegmentationState<T> pSegmentation,
       CIdExpression pVar,
       CExpression pOp2,
       BinaryOperator pOperator,
@@ -60,7 +70,7 @@ public class SegmentationReachabilityChecker {
 
     int segOfVar = pSegmentation.getSegBoundContainingExpr(pVar);
     int segOfExpr = pSegmentation.getSegBoundContainingExpr(pOp2);
-    List<ArraySegment<VariableUsageState>> segments = pSegmentation.getSegments();
+    List<ArraySegment<T>> segments = pSegmentation.getSegments();
     // Case 1: If e = (i = c), i and c are present in different segment bounds and there is a
     // segment {e j }d j {e k } between the segment bounds containing i and c that is not marked
     // with ’?’,
@@ -72,7 +82,7 @@ public class SegmentationReachabilityChecker {
       int max = Integer.max(segOfExpr, segOfVar);
       for (int i = min; i < max; i++) {
         if (!segments.get(i).isPotentiallyEmpty()) {
-          return new UnreachableArraySegmentation<>();
+          return new UnreachableSegmentation<>(logger);
         }
       }
     }
@@ -84,26 +94,26 @@ public class SegmentationReachabilityChecker {
     if (valueOfpOp2 != null && valueOfpOp2 instanceof CIntegerLiteralExpression) {
       BigInteger v = ((CIntegerLiteralExpression) valueOfpOp2).getValue();
       if (segOfVar != -1) {
-        ArraySegment<VariableUsageState> segment = segments.get(segOfVar);
+        ArraySegment<T> segment = segments.get(segOfVar);
         if (segment.getSegmentBound()
             .parallelStream()
             .anyMatch(
                 s -> s instanceof CIntegerLiteralExpression
                     && !((CIntegerLiteralExpression) s).getValue().equals(v))) {
-          return new UnreachableArraySegmentation<>();
+          return new UnreachableSegmentation<>(logger);
         }
       }
     }
 
     // Case 3: e = (i != c) and there is a segment bound containing the expressions c and i.
     if (segOfExpr == segOfVar && pOperator.equals(BinaryOperator.NOT_EQUALS)) {
-      return new UnreachableArraySegmentation<>();
+      return new UnreachableSegmentation<>(logger);
     }
 
     // Case 4: The ordering of segment bounds implies that i ≤ c, but e = (i > c) or vice versa
     if (pOperator.equals(BinaryOperator.GREATER_THAN) && segOfVar < segOfExpr
         || pOperator.equals(BinaryOperator.LESS_THAN) && segOfVar > segOfExpr) {
-      return new UnreachableArraySegmentation<>();
+      return new UnreachableSegmentation<>(logger);
     }
 
     // TODO: implement Case 5: Between two segment bounds e 1 ,e 2 with | e 1 −e 2 |= n are more

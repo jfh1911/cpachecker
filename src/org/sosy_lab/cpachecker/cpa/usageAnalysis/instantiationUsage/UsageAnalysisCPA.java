@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.simpleUsageAnalysis;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,9 +46,10 @@ import org.sosy_lab.cpachecker.core.interfaces.MergeOperator;
 import org.sosy_lab.cpachecker.core.interfaces.StateSpacePartition;
 import org.sosy_lab.cpachecker.core.interfaces.StopOperator;
 import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.EmptyVariableUsageElement;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation.VariableUsageType;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.FinalSegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.SegmentationTransferRelation;
 
 @Options(prefix = "cpa.usageCPA")
 public class UsageAnalysisCPA extends AbstractCPA {
@@ -109,9 +110,13 @@ public class UsageAnalysisCPA extends AbstractCPA {
 
   @Override
   public TransferRelation getTransferRelation() {
-    return new UsageAnalysisTransferRelation(
+    return new SegmentationTransferRelation<VariableUsageState>(
+        new UsageAnalysisTransferRelation(
+            new LogManagerWithoutDuplicates(logger),
+            this.cfa.getMachineModel()),
         new LogManagerWithoutDuplicates(logger),
-        cfa.getMachineModel());
+        cfa.getMachineModel(),
+        "SimpleUsage");
   }
 
   @Override
@@ -172,7 +177,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
             pSBSecond,
             new EmptyVariableUsageElement(),
             false,
-            new FinalSegSymbol<>(VariableUsageState.getEmptyElement()));
+            new FinalSegment<>(VariableUsageState.getEmptyElement()));
 
     ArraySegment<VariableUsageState> first =
         new ArraySegment<>(

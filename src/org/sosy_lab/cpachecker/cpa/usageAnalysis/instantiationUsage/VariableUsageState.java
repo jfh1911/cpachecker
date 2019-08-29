@@ -17,11 +17,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiation;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
 
 import java.io.Serializable;
 import java.util.function.BinaryOperator;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.ExtendedCompletLatticeAbstractState;
+import java.util.function.Predicate;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 public class VariableUsageState
@@ -78,6 +79,17 @@ public class VariableUsageState
       }
     };
 
+  }
+
+  @Override
+  public Predicate<VariableUsageState> getIsDefaultValueAndCanBeRemoved() {
+    return new Predicate<VariableUsageState>() {
+
+      @Override
+      public boolean test(VariableUsageState pT) {
+        return pT.getType().equals(getEmptyElementType());
+      }
+    };
   }
 
   /**
