@@ -163,12 +163,18 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       res.add(0, current);
 
     }
-    return new ArraySegmentationState<>(
+    ArraySegmentationState<T> mergedSeg =
+        new ArraySegmentationState<>(
         res,
         this.tEmptyElement,
         this.tLisOfArrayVariables,
         this.tArray,
         this.logger);
+    if (mergedSeg.equals(pOther)) {
+      return pOther;
+    } else {
+      return mergedSeg;
+    }
   }
 
   @Override
