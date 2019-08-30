@@ -52,14 +52,14 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysi
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
-public class StatementTrasformer<T extends ExtendedCompletLatticeAbstractState<T>> {
+public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<T>> {
 
   private TransformationHelper<T> helper;
   private LogManager logger;
   ExpressionSimplificationVisitor visitor;
 
 
-  public StatementTrasformer(
+  public CStatementTrasformer(
       LogManager pLogger,
       ExpressionSimplificationVisitor pVisitor) {
     this.helper = new TransformationHelper<>(pLogger);
@@ -129,7 +129,8 @@ public class StatementTrasformer<T extends ExtendedCompletLatticeAbstractState<T
                   bounds,
                   state.gettEmptyElement(),
                   false,
-                  new FinalSegment<>(state.gettEmptyElement()));
+                  new FinalSegment<>(state.gettEmptyElement()),
+                  state.getLanguage());
           state.addSegment(lastSegment, state.getSegments().get(state.getSegments().size() - 1));
 
           return state;
@@ -240,7 +241,8 @@ public class StatementTrasformer<T extends ExtendedCompletLatticeAbstractState<T
                     segBounds,
                     prevSeg.getAnalysisInformation(),
                     prevSeg.isPotentiallyEmpty(),
-                    s);
+                    s,
+                    state.getLanguage());
             state.addSegment(newSeg, prevSeg);
             isAdded = true;
           }
@@ -261,7 +263,8 @@ public class StatementTrasformer<T extends ExtendedCompletLatticeAbstractState<T
                   segBounds,
                   prevSeg.getAnalysisInformation(),
                   prevSeg.isPotentiallyEmpty(),
-                  state.getSegments().get(state.getSegments().size() - 1));
+                  state.getSegments().get(state.getSegments().size() - 1),
+                  state.getLanguage());
           state.addSegment(newSeg, prevSeg);
         } else {
           // At this point, we know that: 1. 0 = SIZE, and the variable pVar := x , x \in N & x > 0.

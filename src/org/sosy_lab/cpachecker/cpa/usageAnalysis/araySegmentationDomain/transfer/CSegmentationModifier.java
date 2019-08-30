@@ -37,14 +37,14 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.Arr
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 
-public class SegmentationModifier<T extends ExtendedCompletLatticeAbstractState<T>> {
+public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState<T>> {
 
   private LogManager logger;
   private MachineModel machineModel;
   private ExpressionSimplificationVisitor visitor;
   private CBinaryExpressionBuilder builder;
 
-  public SegmentationModifier(
+  public CSegmentationModifier(
       LogManager pLogger,
       MachineModel pMachineModel,
       ExpressionSimplificationVisitor pVisitor) {
@@ -104,8 +104,9 @@ public class SegmentationModifier<T extends ExtendedCompletLatticeAbstractState<
             new ArraySegment<>(
                 bounds,
                 leftBound.getAnalysisInformation(),
-                pNewSegmentIsPotentiallyEmpty,
-                null);
+                true,
+                null,
+                state.getLanguage());
         state.addSegment(newSeg, leftBound);
       }
       return storeAnalysisInformationAtIndexWithoutAddingBounds(

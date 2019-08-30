@@ -49,7 +49,7 @@ import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.FinalSegment;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.SegmentationTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.CSegmentationTransferRelation;
 
 @Options(prefix = "cpa.usageCPA")
 public class UsageAnalysisCPA extends AbstractCPA {
@@ -110,7 +110,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
 
   @Override
   public TransferRelation getTransferRelation() {
-    return new SegmentationTransferRelation<VariableUsageState>(
+    return new CSegmentationTransferRelation<VariableUsageState>(
         new UsageAnalysisTransferRelation(
             new LogManagerWithoutDuplicates(logger),
             this.cfa.getMachineModel()),
@@ -167,6 +167,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
     }
 
     List<AExpression> pSBSecond = new ArrayList<>();
+    // TODO: add handling for Java programs
     // Assume that the Size-var is defined in main method
     pSBSecond.add(new CIdExpression(sizeVar.getFileLocation(), sizeVar));
     List<AExpression> pSBFirst = new ArrayList<>();
@@ -177,14 +178,16 @@ public class UsageAnalysisCPA extends AbstractCPA {
             pSBSecond,
             new EmptyVariableUsageElement(),
             false,
-            new FinalSegment<>(VariableUsageState.getEmptyElement()));
+            new FinalSegment<>(VariableUsageState.getEmptyElement()),
+            cfa.getLanguage());
 
     ArraySegment<VariableUsageState> first =
         new ArraySegment<>(
             pSBFirst,
             new VariableUsageState(VariableUsageType.NOT_USED),
             true,
-            second);
+            second,
+            cfa.getLanguage());
 
     List<ArraySegment<VariableUsageState>> segments = new ArrayList<>();
     segments.add(first);
@@ -198,6 +201,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
         VariableUsageState.getEmptyElement(),
         listOfIDElements,
         new CIdExpression(arrayVar.getFileLocation(), arrayVar),
+        cfa.getLanguage(),
         logger);
   }
 }

@@ -26,8 +26,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import org.sosy_lab.cpachecker.cfa.Language;
 import org.sosy_lab.cpachecker.cfa.ast.ABinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
+import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AbstractExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CAddressOfLabelExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
@@ -49,13 +51,15 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
   private T analysisInformation;
   private boolean isPotentiallyEmpty;
   private ArraySegment<T> nextSegment;
+  private Language language;
 
   public ArraySegment(
       // TODO: Think about to replace AbstractExpression by a boolean expression
       List<AExpression> pSegmentBound,
       T pAnalysisInformation,
       boolean pIsPotentiallyEmpty,
-      ArraySegment<T> pNextSegment) {
+      ArraySegment<T> pNextSegment,
+      Language pLanguage) {
     super();
 
     if (pAnalysisInformation == null) {
@@ -66,6 +70,7 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
     analysisInformation = pAnalysisInformation;
     isPotentiallyEmpty = pIsPotentiallyEmpty;
     nextSegment = pNextSegment;
+    language = pLanguage;
   }
 
   public List<AExpression> getSegmentBound() {
@@ -75,7 +80,6 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
   public void setSegmentBound(List<AExpression> pSegmentBound) {
     segmentBound = pSegmentBound;
   }
-
 
   public T getAnalysisInformation() {
     return analysisInformation;
@@ -101,6 +105,14 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
     nextSegment = pNextSegment;
   }
 
+  public Language getLanguage() {
+    return language;
+  }
+
+  public void setLanguage(Language pLanguage) {
+    language = pLanguage;
+  }
+
   @SuppressWarnings("unchecked")
   @Override
   public ArraySegment<T> clone() {
@@ -111,10 +123,9 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
         boundsCopy,
         this.analysisInformation,
         this.isPotentiallyEmpty,
-        null);
+        null,
+        language);
   }
-
-
 
   /**
    * Remove the elements @param toRemove from the list of segment bounds
@@ -187,10 +198,9 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
       if (other.segmentBound != null) {
         return false;
       }
-    } else if (!Arrays
-        .deepEquals(
-            segmentBound.toArray(new AbstractExpression[segmentBound.size()]),
-            other.segmentBound.toArray(new AbstractExpression[other.getSegmentBound().size()]))) {
+    } else if (!Arrays.deepEquals(
+        segmentBound.toArray(new AbstractExpression[segmentBound.size()]),
+        other.segmentBound.toArray(new AbstractExpression[other.getSegmentBound().size()]))) {
       return false;
     }
     return true;
@@ -206,12 +216,13 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
    * @return the (Strengthened) segment
    */
   public ArraySegment<T> strengthn(AExpression pE) {
+    if (language.equals(Language.C)) {
     if (pE instanceof CBinaryExpression) {
         CBinaryExpression expr = (CBinaryExpression) pE;
-        //If the expression is a variable
+        // If the expression is a variable
       if (expr.getOperand1() instanceof CIdExpression &&
-          //it is present in the segment bounds
-         this.segmentBound.contains(expr.getOperand1()) &&
+        // it is present in the segment bounds
+            this.segmentBound.contains(expr.getOperand1()) &&
           // and the other operator is present in the segment bounds of the following segment
           this.nextSegment.getSegmentBound().contains(expr.getOperand2()) &&
           // and the operator is <
@@ -230,15 +241,17 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
           // and the operator is >
           expr.getOperator().equals(CBinaryExpression.BinaryOperator.GREATER_THAN) &&
           // and the segment is potentially empty
-          this.isPotentiallyEmpty
-      ) {
+            this.isPotentiallyEmpty) {
         // then, we can remove the ?
         this.isPotentiallyEmpty = false;
-            }
         }
+      }
     // TODO: Add more complex strengthening functions
     // TODO: Add a extension for java programs!
-    return this;
+      return this;
+    } else {
+      throw new UnsupportedOperationException();
+    }
   }
 
   public void addSegmentBound(AExpression pExpr) {
@@ -270,12 +283,15 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
       }
     }
 
-
     // Simplify the expression in the segment bound
+    if (language.equals(Language.C)) {
     ArrayList<AExpression> simplifiedList = new ArrayList<>();
     modifiedBound.forEach(e -> simplifiedList.add(getSimplified(e, visitor)));
     this.segmentBound = simplifiedList;
-    return this;
+      return this;
+    } else {
+      throw new UnsupportedOperationException();
+    }
   }
 
   private AExpression getSimplified(AExpression pExpr, ExpressionSimplificationVisitor pVisitor) {
@@ -295,6 +311,7 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
   }
 
   private AExpression update(AExpression toReplace, AExpression var, AExpression replacement) {
+
     if (toReplace.equals(var)) {
       return replacement;
     } else if (toReplace instanceof CBinaryExpression) {
@@ -315,8 +332,7 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
           (JExpression) update(expr.getOperand1(), var, replacement),
           (JExpression) update(expr.getOperand2(), var, replacement),
           expr.getOperator());
-      }
-    else {
+    } else {
       return toReplace;
     }
   }
@@ -333,10 +349,11 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
 
   /**
    * Removes the all expressions from the segment bound, containing subExpr
+   *
    * @param subExpr to check for
    * @return the modified ArraySegment
    */
-  public ArraySegment<T> removeExprContainingSubExpr(CIdExpression subExpr) {
+  public ArraySegment<T> removeExprContainingSubExpr(AIdExpression subExpr) {
     List<AExpression> toRemove = new ArrayList<>();
     for (AExpression e : this.segmentBound) {
       if (contains(e, subExpr)) {
@@ -354,6 +371,7 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
    * @return either -1, if no constant value is found or the constant value
    */
   public BigInteger evaluateToInteger(ExpressionSimplificationVisitor pVisitor) {
+    if (language.equals(Language.C)) {
     for (AExpression e : this.segmentBound) {
       CExpression simplified;
       if (e instanceof CBinaryExpression) {
@@ -366,6 +384,9 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
       }
     }
     return BigInteger.valueOf(-1);
+  } else {
+      throw new UnsupportedOperationException();
+    }
   }
 
 }

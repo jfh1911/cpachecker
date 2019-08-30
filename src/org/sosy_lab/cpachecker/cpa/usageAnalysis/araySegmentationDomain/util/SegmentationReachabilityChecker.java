@@ -23,12 +23,13 @@ import java.math.BigInteger;
 import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
+import org.sosy_lab.cpachecker.cfa.ast.AExpression;
+import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CAddressOfLabelExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression.BinaryOperator;
 import org.sosy_lab.cpachecker.cfa.ast.c.CCastExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
-import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CTypeIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CUnaryExpression;
@@ -62,8 +63,8 @@ public class SegmentationReachabilityChecker<T extends ExtendedCompletLatticeAbs
    */
   public @Nullable ArraySegmentationState<T> checkReachability(
       ArraySegmentationState<T> pSegmentation,
-      CIdExpression pVar,
-      CExpression pOp2,
+      AIdExpression pVar,
+      AExpression pOp2,
       BinaryOperator pOperator,
       LogManager pLogger,
       ExpressionSimplificationVisitor pVisitor) {
@@ -90,7 +91,7 @@ public class SegmentationReachabilityChecker<T extends ExtendedCompletLatticeAbs
     // Case 2: if e = (i = c) and there is a second expression e 0 , such that i and e 0 are present
     // in one segment bound, but c != e 0 holds
     // Check if the RHS evaluates to a integer value
-    CExpression valueOfpOp2 = getValueOrNull(pOp2, pVisitor);
+    AExpression valueOfpOp2 = getValueOrNull(pOp2, pVisitor);
     if (valueOfpOp2 != null && valueOfpOp2 instanceof CIntegerLiteralExpression) {
       BigInteger v = ((CIntegerLiteralExpression) valueOfpOp2).getValue();
       if (segOfVar != -1) {
@@ -133,21 +134,25 @@ public class SegmentationReachabilityChecker<T extends ExtendedCompletLatticeAbs
 
   }
 
-  private static CExpression
-      getValueOrNull(CExpression pExpr, ExpressionSimplificationVisitor visitor) {
-    CExpression returnExpr = null;
-    if (pExpr instanceof CAddressOfLabelExpression) {
-      returnExpr = visitor.visit((CAddressOfLabelExpression) pExpr);
-    } else if (pExpr instanceof CBinaryExpression) {
-      returnExpr = visitor.visit((CBinaryExpression) pExpr);
-    } else if (pExpr instanceof CCastExpression) {
-      returnExpr = visitor.visit((CCastExpression) pExpr);
-    } else if (pExpr instanceof CTypeIdExpression) {
-      returnExpr = visitor.visit((CTypeIdExpression) pExpr);
-    } else if (pExpr instanceof CUnaryExpression) {
-      returnExpr = visitor.visit((CUnaryExpression) pExpr);
+  private static AExpression
+      getValueOrNull(AExpression pOp2, ExpressionSimplificationVisitor visitor) {
+    if (pOp2 instanceof CExpression) {
+      CExpression returnExpr = null;
+      if (pOp2 instanceof CAddressOfLabelExpression) {
+        returnExpr = visitor.visit((CAddressOfLabelExpression) pOp2);
+      } else if (pOp2 instanceof CBinaryExpression) {
+        returnExpr = visitor.visit((CBinaryExpression) pOp2);
+      } else if (pOp2 instanceof CCastExpression) {
+        returnExpr = visitor.visit((CCastExpression) pOp2);
+      } else if (pOp2 instanceof CTypeIdExpression) {
+        returnExpr = visitor.visit((CTypeIdExpression) pOp2);
+      } else if (pOp2 instanceof CUnaryExpression) {
+        returnExpr = visitor.visit((CUnaryExpression) pOp2);
+      }
+      return returnExpr;
+    } else {
+      throw new UnsupportedOperationException();
     }
-    return returnExpr;
   }
 
 }
