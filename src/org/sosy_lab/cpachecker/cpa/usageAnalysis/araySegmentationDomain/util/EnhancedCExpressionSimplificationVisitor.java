@@ -30,9 +30,9 @@ import org.sosy_lab.cpachecker.cpa.value.AbstractExpressionValueVisitor;
 import org.sosy_lab.cpachecker.cpa.value.type.NumericValue;
 import org.sosy_lab.cpachecker.cpa.value.type.Value;
 
-public class EnhancedExpressionSimplificationVisitor extends ExpressionSimplificationVisitor {
+public class EnhancedCExpressionSimplificationVisitor extends ExpressionSimplificationVisitor {
 
-  public EnhancedExpressionSimplificationVisitor(
+  public EnhancedCExpressionSimplificationVisitor(
       MachineModel pMm,
       LogManagerWithoutDuplicates pLogger) {
     super(pMm, pLogger);

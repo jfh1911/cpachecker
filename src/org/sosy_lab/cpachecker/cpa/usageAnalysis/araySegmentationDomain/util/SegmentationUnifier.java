@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.function.BiPredicate;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
+import org.sosy_lab.cpachecker.cfa.Language;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
@@ -92,6 +93,7 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
       BiPredicate<Boolean, Boolean> hatr)
       throws CPAException {
 
+    Language language = pD1.getLanguage();
     ArraySegmentationState<T> d1 = pD1.clone();
     ArraySegmentationState<T> d2 = pD2.clone();
 
@@ -167,8 +169,9 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
                 b1Bar,
                 b1.getAnalysisInformation(),
                 b1.isPotentiallyEmpty(),
-                b1.getNextSegment());
-        ArraySegment<T> temp1 = new ArraySegment<>(subsetOfB1_B2, il, true, temp2);
+                b1.getNextSegment(),
+                language);
+        ArraySegment<T> temp1 = new ArraySegment<>(subsetOfB1_B2, il, true, temp2, language);
         b1 = temp1;
         continue;
       }
@@ -190,8 +193,9 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
                 b2Bar,
                 b2.getAnalysisInformation(),
                 b2.isPotentiallyEmpty(),
-                b2.getNextSegment());
-        ArraySegment<T> temp1 = new ArraySegment<>(subsetOfB1_B2, ir, true, temp2);
+                b2.getNextSegment(),
+                language);
+        ArraySegment<T> temp1 = new ArraySegment<>(subsetOfB1_B2, ir, true, temp2, language);
         b2 = temp1;
         continue;
       }
@@ -218,8 +222,9 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
                   b2Bar,
                   b2.getAnalysisInformation(),
                   b2.isPotentiallyEmpty(),
-                  b2.getNextSegment());
-          ArraySegment<T> temp1 = new ArraySegment<>(subsetOfB1_B2, ir, true, temp2);
+                  b2.getNextSegment(),
+                  language);
+          ArraySegment<T> temp1 = new ArraySegment<>(subsetOfB1_B2, ir, true, temp2, language);
           b2 = temp1;
           continue;
         } else if (b2Bar.isEmpty()) {
@@ -231,8 +236,9 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
                   b1Bar,
                   b1.getAnalysisInformation(),
                   b1.isPotentiallyEmpty(),
-                  b1.getNextSegment());
-          ArraySegment<T> temp1 = new ArraySegment<>(subsetOfB1_B2, il, true, temp2);
+                  b1.getNextSegment(),
+                  language);
+          ArraySegment<T> temp1 = new ArraySegment<>(subsetOfB1_B2, il, true, temp2, language);
           b1 = temp1;
           b2.setSegmentBound(subsetOfB1_B2);
           continue;
@@ -241,13 +247,13 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
           // element and create a new one pointing to this
           ArraySegment<T> b1Temp = b1.removeExprFromBound(b1Bar);
           // Create B1Bar Il ? B1\B1Bar
-          b1 = new ArraySegment<>(b1Bar, il, true, b1Temp);
+          b1 = new ArraySegment<>(b1Bar, il, true, b1Temp, language);
           // Firstly, remove b2Bar from B2 for the second argument named b2Temp, than use this
           // element
           // and create a new one pointing to this
           ArraySegment<T> b2Temp = b2.removeExprFromBound(b2Bar);
           // Create B2Bar Ir ? B2\B2Bar
-          b2 = new ArraySegment<>(b2Bar, ir, true, b2Temp);
+          b2 = new ArraySegment<>(b2Bar, ir, true, b2Temp, language);
           continue;
         }
       }
@@ -277,7 +283,8 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
                   b1Bar,
                   b1.getAnalysisInformation(),
                   b1.isPotentiallyEmpty(),
-                  b1.getNextSegment()));
+                  b1.getNextSegment(),
+                  language));
           b1 = b0;
           // Merge the analysis information from B2 into B0' and remove the segment B2
           b0Prime.setAnalysisInformation(
@@ -300,7 +307,8 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
                   b2Bar,
                   b2.getAnalysisInformation(),
                   b2.isPotentiallyEmpty(),
-                  b2.getNextSegment()));
+                  b2.getNextSegment(),
+                  language));
           b2 = b0Prime;
 
           continue;

@@ -53,10 +53,10 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySeg
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ErrorSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.UnreachableSegmentation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.EnhancedExpressionSimplificationVisitor;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
-public class SegmentationTransferRelation<T extends ExtendedCompletLatticeAbstractState<T>> extends
+public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstractState<T>> extends
     ForwardingTransferRelation<ArraySegmentationState<T>, ArraySegmentationState<T>, Precision> {
 
   private final LogManagerWithoutDuplicates logger;
@@ -65,8 +65,8 @@ public class SegmentationTransferRelation<T extends ExtendedCompletLatticeAbstra
   private ExpressionSimplificationVisitor visitor;
 
   TransferRelation transferRelationForInnerDomain;
-  StatementTrasformer<T> statementTransformer;
-  UpdateTransformer<T> updateTransformer;
+  CStatementTrasformer<T> statementTransformer;
+  CUpdateTransformer<T> updateTransformer;
 
   /**
    *
@@ -75,7 +75,7 @@ public class SegmentationTransferRelation<T extends ExtendedCompletLatticeAbstra
    * @param pMachineModel
    * @param typeOfAnalysis
    */
-  public SegmentationTransferRelation(
+  public CSegmentationTransferRelation(
       TransferRelation transferRelationForInnerDomain,
       LogManagerWithoutDuplicates pLogger,
       MachineModel pMachineModel,
@@ -83,12 +83,12 @@ public class SegmentationTransferRelation<T extends ExtendedCompletLatticeAbstra
     super();
     logger = pLogger;
     machineModel = pMachineModel;
-    visitor = new EnhancedExpressionSimplificationVisitor(machineModel, logger);
+    visitor = new EnhancedCExpressionSimplificationVisitor(machineModel, logger);
     PREFIX = typeOfAnalysis + "_ANALYSIS:";
 
     this.transferRelationForInnerDomain = transferRelationForInnerDomain;
-    statementTransformer = new StatementTrasformer<>(logger, visitor);
-    updateTransformer = new UpdateTransformer<>();
+    statementTransformer = new CStatementTrasformer<>(logger, visitor);
+    updateTransformer = new CUpdateTransformer<>();
   }
 
   @SuppressWarnings("unchecked")

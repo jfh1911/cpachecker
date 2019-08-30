@@ -31,7 +31,7 @@ public class FinalSegment<T extends LatticeAbstractState<T>> extends ArraySegmen
   private static final long serialVersionUID = -5615014169972238864L;
 
   public FinalSegment(T emptyElement) {
-    super(null, emptyElement, true, null);
+    super(null, emptyElement, true, null, null);
   }
 
   @Override

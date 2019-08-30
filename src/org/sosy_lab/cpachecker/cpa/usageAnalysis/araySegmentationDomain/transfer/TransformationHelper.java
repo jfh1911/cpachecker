@@ -22,7 +22,7 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfe
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
-import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
+import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
@@ -46,7 +46,7 @@ public class TransformationHelper<T extends ExtendedCompletLatticeAbstractState<
   @Nullable
   public ArraySegmentationState<T>
       cleanExprFromSegBounds(
-      CIdExpression pVar,
+          AIdExpression pVar,
           ArraySegmentationState<T> state) {
     state.getSegments().forEach(s -> s.removeExprContainingSubExpr(pVar));
     try {

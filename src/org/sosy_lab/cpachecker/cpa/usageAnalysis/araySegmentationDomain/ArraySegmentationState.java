@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.sosy_lab.common.log.LogManager;
+import org.sosy_lab.cpachecker.cfa.Language;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
@@ -37,7 +38,7 @@ import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.SegmentationModifier;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.CSegmentationModifier;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.ArrayModificationException;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.SegmentationUnifier;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
@@ -53,6 +54,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   protected List<AIdExpression> tLisOfArrayVariables;
   protected AIdExpression tArray;
   private T tEmptyElement;
+  private Language language;
 
   private LogManager logger;
 
@@ -70,6 +72,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       T pEmptyElement,
       List<AIdExpression> pLisOfArrayVariables,
       AIdExpression pArray,
+      Language pLanguage,
       LogManager pLogger) {
     super();
     segments = pSegments;
@@ -89,6 +92,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     tEmptyElement = pEmptyElement;
     tLisOfArrayVariables = pLisOfArrayVariables;
     tArray = pArray;
+    language = pLanguage;
     logger = pLogger;
 
   }
@@ -159,7 +163,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
               firstSeg.getSegmentBound(),
               firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()),
               firstSeg.isPotentiallyEmpty() | secondSeg.isPotentiallyEmpty(),
-              last);
+              last,
+              this.language);
       res.add(0, current);
 
     }
@@ -168,7 +173,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
         res,
         this.tEmptyElement,
         this.tLisOfArrayVariables,
-        this.tArray,
+            this.tArray,
+            language,
         this.logger);
     if (mergedSeg.equals(pOther)) {
       return pOther;
@@ -309,24 +315,28 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
    * @return true, if the operation was successful
    */
   public boolean storeAnalysisInformationAtIndex(
-      CExpression index,
+      AExpression index,
       T analysisInfo,
       boolean newSegmentIsPotentiallyEmpty,
       MachineModel machineModel,
       ExpressionSimplificationVisitor pVisitor) {
-    SegmentationModifier<T> modifier = new SegmentationModifier<>(logger, machineModel, pVisitor);
+    if (language.equals(Language.C) && index instanceof CExpression) {
+    CSegmentationModifier<T> modifier = new CSegmentationModifier<>(logger, machineModel, pVisitor);
     try {
       ArraySegmentationState<T> res =
           modifier.storeAnalysisInformationAtIndex(
               this.clone(),
-              index,
+                (CExpression) index,
               analysisInfo,
               newSegmentIsPotentiallyEmpty);
       this.segments = res.getSegments();
     } catch (ArrayModificationException e) {
       return false;
     }
-    return true;
+      return true;
+    } else {
+      throw new UnsupportedOperationException();
+    }
   }
 
   /**
@@ -346,7 +356,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       boolean newSegmentIsPotentiallyEmpty,
       MachineModel machineModel,
       ExpressionSimplificationVisitor pVisitor) {
-    SegmentationModifier<T> modifier = new SegmentationModifier<>(logger, machineModel, pVisitor);
+    CSegmentationModifier<T> modifier = new CSegmentationModifier<>(logger, machineModel, pVisitor);
     try {
       ArraySegmentationState<T> res =
           modifier.storeAnalysisInformationAtIndexWithoutAddingBounds(
@@ -387,12 +397,12 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
   /**
    *
-   * @param pSubscriptExpr the expression to search for
+   * @param pOp2 the expression to search for
    * @return the position of the segmentation or -1, if not present
    */
-  public int getSegBoundContainingExpr(CExpression pSubscriptExpr) {
+  public int getSegBoundContainingExpr(AExpression pOp2) {
     for (int i = 0; i < this.segments.size(); i++) {
-      if (segments.get(i).getSegmentBound().contains(pSubscriptExpr)) {
+      if (segments.get(i).getSegmentBound().contains(pOp2)) {
         return i;
       }
     }
@@ -437,6 +447,14 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     return logger;
   }
 
+  public Language getLanguage() {
+    return language;
+  }
+
+  public void setLanguage(Language pLanguage) {
+    language = pLanguage;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(segments, tEmptyElement);
@@ -473,11 +491,10 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     this.segments.forEach(s -> copiedElements.add(s.clone()));
     return new ArraySegmentationState<>(
         this.unifier.conc(copiedElements, tEmptyElement),
-
         this.tEmptyElement,
-
         this.tLisOfArrayVariables,
         this.tArray,
+        this.language,
         logger);
   }
 

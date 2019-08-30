@@ -42,7 +42,7 @@ import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.SegmentationTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.CSegmentationTransferRelation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
@@ -54,7 +54,7 @@ public class CLUAnanylsisTransferRelation extends
   private final MachineModel machineModel;
 
   private static final String PREFIX = "CLU_ANALYSIS:";
-  private final SegmentationTransferRelation<VariableUsageState> usageTransfer;
+  private final CSegmentationTransferRelation<VariableUsageState> usageTransfer;
   private LocationStateFactory locFactory;
 
   public CLUAnanylsisTransferRelation(
@@ -65,7 +65,7 @@ public class CLUAnanylsisTransferRelation extends
     logger = pLogger;
     machineModel = pMachineModel;
     usageTransfer =
-        new SegmentationTransferRelation<>(
+        new CSegmentationTransferRelation<>(
             new UsageAnalysisTransferRelation(pLogger, pMachineModel),
             pLogger,
             pMachineModel,

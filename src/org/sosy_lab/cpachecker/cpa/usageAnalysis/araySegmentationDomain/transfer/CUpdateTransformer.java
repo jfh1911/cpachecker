@@ -39,7 +39,7 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.Extended
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.SegmentationReachabilityChecker;
 
-public class UpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>> {
+public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>> {
 
   private ArraySegmentationState<T> state;
   private LogManager logger;
@@ -47,7 +47,7 @@ public class UpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
   ExpressionSimplificationVisitor visitor;
   private SegmentationReachabilityChecker<T> checker;
 
-  public UpdateTransformer() {
+  public CUpdateTransformer() {
     checker = new SegmentationReachabilityChecker<>(logger);
   }
 
@@ -212,6 +212,7 @@ public class UpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
               state.gettEmptyElement(),
               state.gettLisOfArrayVariables(),
               state.gettArray(),
+              this.state.getLanguage(),
               logger);
         }
       }
