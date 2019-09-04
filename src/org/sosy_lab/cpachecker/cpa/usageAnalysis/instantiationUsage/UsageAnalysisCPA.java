@@ -196,11 +196,12 @@ public class UsageAnalysisCPA extends AbstractCPA {
     ArrayList<AIdExpression> listOfIDElements = new ArrayList<>();
     arrayAccessVars.parallelStream()
         .forEach(v -> listOfIDElements.add(new CIdExpression(v.getFileLocation(), v)));
-    return new ArraySegmentationState<>(
+    return new ArraySegmentationState<VariableUsageState>(
         segments,
         VariableUsageState.getEmptyElement(),
         listOfIDElements,
         new CIdExpression(arrayVar.getFileLocation(), arrayVar),
+        new CIdExpression(sizeVar.getFileLocation(), sizeVar),
         cfa.getLanguage(),
         logger);
   }

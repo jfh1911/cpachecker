@@ -10,13 +10,10 @@ int main()
 	{		
 		int a[SIZE];
 		
-		while (i < SIZE-1)		{
+		while (i < SIZE)		{
 			a[i]=a[i]-1;
 			i = i +1;
 		}
-	}
-	else{
-		;
 	}
 	return 0;
 }

@@ -25,11 +25,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.sosy_lab.cpachecker.cfa.Language;
 import org.sosy_lab.cpachecker.cfa.ast.ABinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
+import org.sosy_lab.cpachecker.cfa.ast.AUnaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AbstractExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CAddressOfLabelExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
@@ -217,37 +220,41 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
    */
   public ArraySegment<T> strengthn(AExpression pE) {
     if (language.equals(Language.C)) {
-    if (pE instanceof CBinaryExpression) {
+      if (pE instanceof CBinaryExpression) {
         CBinaryExpression expr = (CBinaryExpression) pE;
         // If the expression is a variable
-      if (expr.getOperand1() instanceof CIdExpression &&
+        if (expr.getOperand1() instanceof CIdExpression &&
         // it is present in the segment bounds
             this.segmentBound.contains(expr.getOperand1()) &&
-          // and the other operator is present in the segment bounds of the following segment
-          this.nextSegment.getSegmentBound().contains(expr.getOperand2()) &&
-          // and the operator is <
-          expr.getOperator().equals(CBinaryExpression.BinaryOperator.LESS_THAN) &&
-          // and the segment is potentially empty
-          this.isPotentiallyEmpty) {
-        // then, we can remove the ?
-        this.isPotentiallyEmpty = false;
-      }
-      // Else If the expression is a variable
-      else if (expr.getOperand2() instanceof CIdExpression &&
-      // it is present in the following segment bounds
-          this.segmentBound.contains(expr.getOperand2()) &&
-          // and the other operand is present in this segment bound
-          this.nextSegment.getSegmentBound().contains(expr.getOperand1()) &&
-          // and the operator is >
-          expr.getOperator().equals(CBinaryExpression.BinaryOperator.GREATER_THAN) &&
-          // and the segment is potentially empty
+            // The segment has a next segment bound that is not the final one
+            !(this.nextSegment instanceof FinalSegment) &&
+            // and the other operator is present in the segment bounds of the following segment
+            this.nextSegment.getSegmentBound().contains(expr.getOperand2()) &&
+            // and the operator is <
+            expr.getOperator().equals(CBinaryExpression.BinaryOperator.LESS_THAN) &&
+            // and the segment is potentially empty
             this.isPotentiallyEmpty) {
-        // then, we can remove the ?
-        this.isPotentiallyEmpty = false;
+          // then, we can remove the ?
+          this.isPotentiallyEmpty = false;
+        }
+        // Else If the expression is a variable
+        else if (expr.getOperand2() instanceof CIdExpression &&
+        // it is present in the following segment bounds
+            this.segmentBound.contains(expr.getOperand2()) &&
+            // The segment has a next segment bound that is not the final one
+            !(this.nextSegment instanceof FinalSegment) &&
+            // and the other operand is present in this segment bound
+            this.nextSegment.getSegmentBound().contains(expr.getOperand1()) &&
+            // and the operator is >
+            expr.getOperator().equals(CBinaryExpression.BinaryOperator.GREATER_THAN) &&
+            // and the segment is potentially empty
+            this.isPotentiallyEmpty) {
+          // then, we can remove the ?
+          this.isPotentiallyEmpty = false;
         }
       }
-    // TODO: Add more complex strengthening functions
-    // TODO: Add a extension for java programs!
+      // TODO: Add more complex strengthening functions
+      // TODO: Add a extension for java programs!
       return this;
     } else {
       throw new UnsupportedOperationException();
@@ -285,9 +292,9 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
 
     // Simplify the expression in the segment bound
     if (language.equals(Language.C)) {
-    ArrayList<AExpression> simplifiedList = new ArrayList<>();
-    modifiedBound.forEach(e -> simplifiedList.add(getSimplified(e, visitor)));
-    this.segmentBound = simplifiedList;
+      ArrayList<AExpression> simplifiedList = new ArrayList<>();
+      modifiedBound.forEach(e -> simplifiedList.add(getSimplified(e, visitor)));
+      this.segmentBound = simplifiedList;
       return this;
     } else {
       throw new UnsupportedOperationException();
@@ -372,21 +379,42 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
    */
   public BigInteger evaluateToInteger(ExpressionSimplificationVisitor pVisitor) {
     if (language.equals(Language.C)) {
-    for (AExpression e : this.segmentBound) {
-      CExpression simplified;
-      if (e instanceof CBinaryExpression) {
-        simplified = pVisitor.visit((CBinaryExpression) e);
-        if (simplified instanceof CIntegerLiteralExpression) {
-          return ((CIntegerLiteralExpression) simplified).getValue();
-        } else if (e instanceof CIntegerLiteralExpression) {
-          return ((CIntegerLiteralExpression) e).getValue();
+      for (AExpression e : this.segmentBound) {
+        CExpression simplified;
+        if (e instanceof CBinaryExpression) {
+          simplified = pVisitor.visit((CBinaryExpression) e);
+          if (simplified instanceof CIntegerLiteralExpression) {
+            return ((CIntegerLiteralExpression) simplified).getValue();
+          } else if (e instanceof CIntegerLiteralExpression) {
+            return ((CIntegerLiteralExpression) e).getValue();
+          }
         }
       }
-    }
-    return BigInteger.valueOf(-1);
-  } else {
+      return BigInteger.valueOf(-1);
+    } else {
       throw new UnsupportedOperationException();
     }
+  }
+
+  public Collection<? extends AIdExpression> getVariablesPresent() {
+    Set<AIdExpression> res = new HashSet<>();
+    this.segmentBound.parallelStream().forEach(b -> res.addAll(getVarsFromExpr(b)));
+    return res;
+  }
+
+  private Collection<? extends AIdExpression> getVarsFromExpr(AExpression pExpr) {
+    Set<AIdExpression> res = new HashSet<>();
+    if (pExpr instanceof ABinaryExpression) {
+      res.addAll(getVarsFromExpr(((ABinaryExpression) pExpr).getOperand1()));
+      res.addAll(getVarsFromExpr(((ABinaryExpression) pExpr).getOperand2()));
+    }
+    if (pExpr instanceof AUnaryExpression) {
+      res.addAll(getVarsFromExpr(((AUnaryExpression) pExpr).getOperand()));
+    }
+    if (pExpr instanceof AIdExpression) {
+      res.add((AIdExpression) pExpr);
+    }
+    return res;
   }
 
 }

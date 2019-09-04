@@ -32,6 +32,7 @@ import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.java.JBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
@@ -53,25 +54,30 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
   protected List<AIdExpression> tLisOfArrayVariables;
   protected AIdExpression tArray;
+  private AIdExpression sizeVar;
   private T tEmptyElement;
   private Language language;
 
   private LogManager logger;
+  private boolean shouldBeHighlighted;
+
 
   /**
    *
    * @param pSegments
    * @param pEmptyElement an element that is not part of the lattice. It is used to avoid uses of
    *        null!
-   * @param pLisOfArrayVariables
-   * @param pArray
-   * @param pLogger
+   * @param pLisOfArrayVariables containing all variables used to access array elements
+   * @param pArray the array variable to be analyzed
+   * @param pSizeVar the variable that denotes the length of the array
+   * @param pLogger for logging
    */
   public ArraySegmentationState(
       List<ArraySegment<T>> pSegments,
       T pEmptyElement,
       List<AIdExpression> pLisOfArrayVariables,
       AIdExpression pArray,
+      AIdExpression pSizeVar,
       Language pLanguage,
       LogManager pLogger) {
     super();
@@ -92,6 +98,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     tEmptyElement = pEmptyElement;
     tLisOfArrayVariables = pLisOfArrayVariables;
     tArray = pArray;
+    sizeVar = pSizeVar;
     language = pLanguage;
     logger = pLogger;
 
@@ -170,12 +177,13 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     }
     ArraySegmentationState<T> mergedSeg =
         new ArraySegmentationState<>(
-        res,
-        this.tEmptyElement,
-        this.tLisOfArrayVariables,
+            res,
+            this.tEmptyElement,
+            this.tLisOfArrayVariables,
             this.tArray,
+            sizeVar,
             language,
-        this.logger);
+            this.logger);
     if (mergedSeg.equals(pOther)) {
       return pOther;
     } else {
@@ -321,18 +329,19 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       MachineModel machineModel,
       ExpressionSimplificationVisitor pVisitor) {
     if (language.equals(Language.C) && index instanceof CExpression) {
-    CSegmentationModifier<T> modifier = new CSegmentationModifier<>(logger, machineModel, pVisitor);
-    try {
-      ArraySegmentationState<T> res =
-          modifier.storeAnalysisInformationAtIndex(
-              this.clone(),
+      CSegmentationModifier<T> modifier =
+          new CSegmentationModifier<>(logger, machineModel, pVisitor);
+      try {
+        ArraySegmentationState<T> res =
+            modifier.storeAnalysisInformationAtIndex(
+                this.clone(),
                 (CExpression) index,
-              analysisInfo,
-              newSegmentIsPotentiallyEmpty);
-      this.segments = res.getSegments();
-    } catch (ArrayModificationException e) {
-      return false;
-    }
+                analysisInfo,
+                newSegmentIsPotentiallyEmpty);
+        this.segments = res.getSegments();
+      } catch (ArrayModificationException e) {
+        return false;
+      }
       return true;
     } else {
       throw new UnsupportedOperationException();
@@ -372,6 +381,16 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   }
 
   /**
+   *
+   * @return a list containing all AIDExpressions present in the segment bounds
+   */
+  public List<AIdExpression> getVariablesPresent() {
+    Set<AIdExpression> res = new HashSet<>();
+    this.segments.forEach(s -> res.addAll(s.getVariablesPresent()));
+    return new ArrayList<>(res);
+  }
+
+  /**
    * Computes the set of all expressions, that are present in the segment bounds, where collecting
    * is started at "startOFCollection". THe function is mainly used during unification
    *
@@ -392,7 +411,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
   @Override
   public boolean shouldBeHighlighted() {
-    return false;
+    return shouldBeHighlighted;
   }
 
   /**
@@ -417,8 +436,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     segments = pSegments;
   }
 
-
-
   public List<AIdExpression> gettLisOfArrayVariables() {
     return tLisOfArrayVariables;
   }
@@ -435,12 +452,29 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     tArray = pTArray;
   }
 
+  public AIdExpression getSizeVar() {
+    return sizeVar;
+  }
+
+  public void setSizeVar(CIdExpression pSizeVar) {
+    sizeVar = pSizeVar;
+  }
+
   public T gettEmptyElement() {
     return tEmptyElement;
   }
 
   public void settEmptyElement(T pTEmptyElement) {
     tEmptyElement = pTEmptyElement;
+  }
+
+
+  public boolean isShouldBeHighlighted() {
+    return shouldBeHighlighted;
+  }
+
+  public void setShouldBeHighlighted(boolean pShouldBeHighlighted) {
+    shouldBeHighlighted = pShouldBeHighlighted;
   }
 
   public LogManager getLogger() {
@@ -494,11 +528,10 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
         this.tEmptyElement,
         this.tLisOfArrayVariables,
         this.tArray,
+        this.sizeVar,
         this.language,
         logger);
   }
-
-
 
   @Override
   public String toString() {

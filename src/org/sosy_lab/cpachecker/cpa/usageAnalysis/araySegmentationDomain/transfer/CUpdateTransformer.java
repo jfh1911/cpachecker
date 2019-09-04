@@ -212,6 +212,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
               state.gettEmptyElement(),
               state.gettLisOfArrayVariables(),
               state.gettArray(),
+              state.getSizeVar(),
               this.state.getLanguage(),
               logger);
         }
