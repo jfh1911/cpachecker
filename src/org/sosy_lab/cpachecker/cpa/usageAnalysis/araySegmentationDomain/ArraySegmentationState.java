@@ -63,7 +63,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
   private LogManager logger;
   private boolean shouldBeHighlighted;
-
+  private boolean canBeEmpty;
 
   /**
    *
@@ -82,6 +82,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       AIdExpression pArray,
       AIdExpression pSizeVar,
       Language pLanguage,
+      boolean pCanBeEmpty,
       LogManager pLogger) {
     super();
     segments = pSegments;
@@ -103,6 +104,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     tArray = pArray;
     sizeVar = pSizeVar;
     language = pLanguage;
+    this.canBeEmpty = pCanBeEmpty;
     logger = pLogger;
 
   }
@@ -140,9 +142,25 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
             tEmptyElement.getBottomElement(),
             tEmptyElement.getBottomElement());
 
+    // TO get a more precise result, we check, if exectly one segment is empty. Then, returning the
+    // unified version of the other leads to a more precise result. To denote that, the flag
+    // "canBeEmpty" is set for the non-empty segment
+    if (first.isEmptyArray() && !second.isEmptyArray()) {
+      @Nullable
+      ArraySegmentationState<T> resSeg = unifiedSegs.getSecond();
+      resSeg.setCanBeEmpty(true);
+      return resSeg;
+    } else if (!first.isEmptyArray() && second.isEmptyArray()) {
+      @Nullable
+      ArraySegmentationState<T> resSeg = unifiedSegs.getFirst();
+      resSeg.setCanBeEmpty(true);
+      return resSeg;
+    }
+
     List<ArraySegment<T>> res = new ArrayList<>();
     List<ArraySegment<T>> firstSegs = unifiedSegs.getFirst().getSegments();
     List<ArraySegment<T>> secondSegs = unifiedSegs.getSecond().getSegments();
+
 
     if (firstSegs.isEmpty()) {
       throw new CPAException("The unification has fail!");
@@ -186,12 +204,17 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
             this.tArray,
             sizeVar,
             language,
+            unifiedSegs.getFirst().isCanBeEmpty() || unifiedSegs.getSecond().isCanBeEmpty(),
             this.logger);
     if (mergedSeg.equals(pOther)) {
       return pOther;
     } else {
       return mergedSeg;
     }
+  }
+
+  public void setCanBeEmpty(boolean pB) {
+    this.canBeEmpty = pB;
   }
 
   @Override
@@ -291,6 +314,15 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   }
 
   /**
+   *
+   * @return true, if the array that is analyzed is currently empty, else false
+   */
+  public boolean isEmptyArray() {
+    // If only one segment is present, by assumption the array analyzed is empty
+    return segments.size() <= 1;
+  }
+
+  /**
    * Adds a segment at after the segment {@code after} and set the next parameter correctly.
    *
    * @param toAdd segment to add
@@ -382,6 +414,14 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     return true;
   }
 
+  public PropertySpec<T> getSegmentsForProperty(
+      T pProperty,
+      EnhancedCExpressionSimplificationVisitor pVisitor,
+      CBinaryExpressionBuilder pBuilder)
+      throws CPAException {
+    return new PropertySpec<>(this, pProperty, pVisitor, pBuilder);
+  }
+
   /**
    *
    * @return a list containing all AIDExpressions present in the segment bounds
@@ -470,7 +510,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     tEmptyElement = pTEmptyElement;
   }
 
-
   public boolean isShouldBeHighlighted() {
     return shouldBeHighlighted;
   }
@@ -481,6 +520,11 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
   public LogManager getLogger() {
     return logger;
+  }
+
+
+  public boolean isCanBeEmpty() {
+    return canBeEmpty;
   }
 
   public Language getLanguage() {
@@ -514,6 +558,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     }
     ArraySegmentationState<T> other = (ArraySegmentationState<T>) obj;
     return Objects.deepEquals(segments, other.segments)
+        && Objects.equals(this.canBeEmpty, other.canBeEmpty)
         && Objects.equals(tEmptyElement, other.tEmptyElement);
   }
 
@@ -532,6 +577,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
         this.tArray,
         this.sizeVar,
         this.language,
+        this.canBeEmpty,
         logger);
   }
 
@@ -539,6 +585,9 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   public String toString() {
     StringBuilder builder = new StringBuilder();
     this.segments.stream().forEachOrdered(s -> builder.append(s.toString()));
+    if (canBeEmpty) {
+      builder.append(" " + (char) 709 + " ARRAY_IS_EMPTY");
+    }
     return builder.toString();
 
   }
