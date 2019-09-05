@@ -20,10 +20,14 @@
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util;
 
 import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
+import org.sosy_lab.cpachecker.cfa.ast.c.CAddressOfLabelExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression.BinaryOperator;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
+import org.sosy_lab.cpachecker.cfa.ast.c.CCastExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CTypeIdExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CUnaryExpression;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.cpa.value.AbstractExpressionValueVisitor;
@@ -37,6 +41,22 @@ public class EnhancedCExpressionSimplificationVisitor extends ExpressionSimplifi
       LogManagerWithoutDuplicates pLogger) {
     super(pMm, pLogger);
 
+  }
+
+  public CExpression visit(CExpression pExpr) {
+    if (pExpr instanceof CAddressOfLabelExpression) {
+      return this.visit((CAddressOfLabelExpression) pExpr);
+    } else if (pExpr instanceof CBinaryExpression) {
+      return this.visit((CBinaryExpression) pExpr);
+    } else if (pExpr instanceof CCastExpression) {
+      return this.visit((CCastExpression) pExpr);
+    } else if (pExpr instanceof CTypeIdExpression) {
+      return this.visit((CTypeIdExpression) pExpr);
+    } else if (pExpr instanceof CUnaryExpression) {
+      return this.visit((CUnaryExpression) pExpr);
+    } else {
+      return pExpr;
+    }
   }
 
   @Override
@@ -125,5 +145,6 @@ public class EnhancedCExpressionSimplificationVisitor extends ExpressionSimplifi
         && !(((CBinaryExpression) pOp2).getOperand1() instanceof CBinaryExpression)
         && !(((CBinaryExpression) pOp2).getOperand2() instanceof CBinaryExpression);
   }
+
 
 }

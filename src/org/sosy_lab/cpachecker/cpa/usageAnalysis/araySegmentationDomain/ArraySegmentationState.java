@@ -26,11 +26,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.Language;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.java.JBinaryExpression;
@@ -41,6 +43,7 @@ import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.CSegmentationModifier;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.ArrayModificationException;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.SegmentationUnifier;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
@@ -257,14 +260,13 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
    * @throws InterruptedException if the join in the underlying domain fails
    * @throws CPAException if the segmentation is empty
    */
-  public void mergeSegmentsWithEmptySegmentBounds() throws CPAException, InterruptedException {
+  public void joinSegmentsWithEmptySegmentBounds() throws CPAException, InterruptedException {
     if (this.getSegments().isEmpty()) {
       throw new CPAException(
           "The segmentation "
               + this.toString()
               + " does not conaint a single segmentation, hence the computation is aborted");
     }
-
     // By assumption, the segmentation contains at least one segment!
     ArraySegment<T> prevSegment = this.segments.get(0);
     List<ArraySegment<T>> newSegments = new ArrayList<>();
