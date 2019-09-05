@@ -203,6 +203,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
         new CIdExpression(arrayVar.getFileLocation(), arrayVar),
         new CIdExpression(sizeVar.getFileLocation(), sizeVar),
         cfa.getLanguage(),
+        false,
         logger);
   }
 }
