@@ -50,7 +50,7 @@ public class TransformationHelper<T extends ExtendedCompletLatticeAbstractState<
           ArraySegmentationState<T> state) {
     state.getSegments().forEach(s -> s.removeExprContainingSubExpr(pVar));
     try {
-      state.mergeSegmentsWithEmptySegmentBounds();
+      state.joinSegmentsWithEmptySegmentBounds();
     } catch (CPAException | InterruptedException e) {
       logger.log(
           Level.SEVERE,
