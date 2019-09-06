@@ -20,6 +20,7 @@
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,7 @@ import org.sosy_lab.cpachecker.exceptions.CPAException;
 /**
  * A way to represent the segments of an array, where a specific property holds
  */
-public class PropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
+public class CPropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
 
   private List<CGenericInterval> segmentintervals;
   private Map<AExpression, AExpression> lowerMappingOfExpr;
@@ -49,7 +50,7 @@ public class PropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
   private Language language;
   private AIdExpression sizeVar;
 
-  public PropertySpec(
+  public CPropertySpec(
       ArraySegmentationState<T> state,
       T pProperty,
       EnhancedCExpressionSimplificationVisitor pVisitor,
@@ -58,12 +59,38 @@ public class PropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
     property = pProperty;
     this.language = state.getLanguage();
     sizeVar = state.getSizeVar();
+    if (state instanceof UnreachableSegmentation) {
+      if (property.equals(state.gettEmptyElement().getBottomElement())) {
+        // Return a single interval with all array indices fulfilling the property
+        segmentintervals = getFullInterval(state);
+      } else {
+        segmentintervals = new ArrayList<>();
+      }
+      lowerMappingOfExpr = new HashMap<>();
+      upperMappingOfExpr = new HashMap<>();
+
+    } else if (state instanceof ErrorSegmentation) {
+      if (property.equals(state.gettEmptyElement().getTopElement())) {
+        // Return a single interval with all array indices fulfilling the property
+        segmentintervals = getFullInterval(state);
+      } else {
+        segmentintervals = new ArrayList<>();
+      }
+      lowerMappingOfExpr = new HashMap<>();
+      upperMappingOfExpr = new HashMap<>();
+    } else {
     segmentintervals = computeIntervals(state, property);
-    computeMapping(state, pVisitor, pBuilder);
+      computeMapping(state, pVisitor, pBuilder);
+    }
 
   }
 
-  public PropertySpec(
+  private List<CGenericInterval> getFullInterval(ArraySegmentationState<T> pState) {
+    return Collections.singletonList(
+        new CGenericInterval(CIntegerLiteralExpression.ZERO, (CExpression) pState.getSizeVar()));
+  }
+
+  public CPropertySpec(
       List<CGenericInterval> pSegmentintervals,
       Map<AExpression, AExpression> pLowerMappingOfExpr,
       Map<AExpression, AExpression> pUpperMappingOfExpr,
@@ -284,7 +311,7 @@ public class PropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    PropertySpec other = (PropertySpec) obj;
+    CPropertySpec other = (CPropertySpec) obj;
     return Objects.equals(lowerMappingOfExpr, other.lowerMappingOfExpr)
         && Objects.equals(property, other.property)
         && Objects.equals(segmentintervals, other.segmentintervals)

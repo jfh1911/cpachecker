@@ -20,17 +20,32 @@
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain;
 
 import java.util.ArrayList;
+import java.util.function.Predicate;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-public class UnreachableSegmentation<T extends ExtendedCompletLatticeAbstractState<T>> extends
-ArraySegmentationState<T> {
+public class UnreachableSegmentation<T extends ExtendedCompletLatticeAbstractState<T>>
+    extends ArraySegmentationState<T> {
 
-  public UnreachableSegmentation(LogManager pLogger) {
+  public UnreachableSegmentation(
+      LogManager pLogger,
+      String pCpaName,
+      Predicate<ArraySegmentationState<T>> pPropertyPredicate,
+      T pEmptyElement) {
     // This is bad stlye, but whenever the error or unreachable segment is used, the information are
     // not needed
     // TODO infer a more elegant way
-    super(new ArrayList<>(), null, null, null, null, null, false, pLogger);
+    super(
+        new ArrayList<>(),
+        pEmptyElement,
+        null,
+        null,
+        null,
+        null,
+        false,
+        pCpaName,
+        pPropertyPredicate,
+        pLogger);
   }
 
   private static final long serialVersionUID = -3937221925009806448L;
