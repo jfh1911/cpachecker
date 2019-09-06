@@ -115,9 +115,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   @Override
   public ArraySegmentationState<T> join(final ArraySegmentationState<T> pOther)
       throws CPAException, InterruptedException {
-    if (!pOther.getClass().equals(this.getClass())) {
-      throw new CPAException("The join cannot be applied for two differently initalized generics");
-    }
 
     // Some corner cases for error and unreachable segmentations
     if (this instanceof UnreachableSegmentation) {

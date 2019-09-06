@@ -33,6 +33,7 @@ import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.FinalSegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.ArrayModificationException;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
@@ -95,6 +96,10 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
                 + pIndex.toString();
         logger.log(Level.FINE, errorMsg);
         throw new ArrayModificationException(errorMsg, e);
+      }
+      if (leftBound.getNextSegment() instanceof FinalSegment) {
+        throw new ArrayModificationException(
+            "Cannot add information for an index nt present in the array range!");
       }
       if (!leftBound.getNextSegment().getSegmentBound().contains(exprPlus1)) {
         // Add the segment bound

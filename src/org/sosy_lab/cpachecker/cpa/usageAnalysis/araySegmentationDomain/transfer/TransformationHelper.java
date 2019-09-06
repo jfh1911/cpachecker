@@ -45,9 +45,7 @@ public class TransformationHelper<T extends ExtendedCompletLatticeAbstractState<
    */
   @Nullable
   public ArraySegmentationState<T>
-      cleanExprFromSegBounds(
-          AIdExpression pVar,
-          ArraySegmentationState<T> state) {
+      cleanExprFromSegBounds(AIdExpression pVar, ArraySegmentationState<T> state) {
     state.getSegments().forEach(s -> s.removeExprContainingSubExpr(pVar));
     try {
       state.joinSegmentsWithEmptySegmentBounds();
