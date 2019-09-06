@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.Language;
@@ -39,6 +40,7 @@ import org.sosy_lab.cpachecker.cfa.ast.java.JBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
+import org.sosy_lab.cpachecker.core.interfaces.AbstractQueryableState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.CSegmentationModifier;
@@ -46,10 +48,12 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.Arr
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.SegmentationUnifier;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
+import org.sosy_lab.cpachecker.exceptions.InvalidQueryException;
 import org.sosy_lab.cpachecker.util.Pair;
 
-public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractState<T>> implements
-    Serializable, LatticeAbstractState<ArraySegmentationState<T>>, AbstractState, Graphable {
+public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractState<T>>
+    implements Serializable, LatticeAbstractState<ArraySegmentationState<T>>, AbstractState,
+    Graphable, AbstractQueryableState {
 
   private static final long serialVersionUID = 85908607562101422L;
   private List<ArraySegment<T>> segments;
@@ -64,10 +68,12 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   private LogManager logger;
   private boolean shouldBeHighlighted;
   private boolean canBeEmpty;
+  private final String cpaName;
+  private final Predicate<ArraySegmentationState<T>> propertyPredicate;
 
   /**
    *
-   * @param pSegments
+   * @param pSegments list of segments present
    * @param pEmptyElement an element that is not part of the lattice. It is used to avoid uses of
    *        null!
    * @param pLisOfArrayVariables containing all variables used to access array elements
@@ -83,6 +89,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       AIdExpression pSizeVar,
       Language pLanguage,
       boolean pCanBeEmpty,
+      String pCpaName,
+      Predicate<ArraySegmentationState<T>> pPropertyPredicate,
       LogManager pLogger) {
     super();
     segments = pSegments;
@@ -105,6 +113,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     sizeVar = pSizeVar;
     language = pLanguage;
     this.canBeEmpty = pCanBeEmpty;
+    cpaName = pCpaName;
+    propertyPredicate = pPropertyPredicate;
     logger = pLogger;
 
   }
@@ -158,7 +168,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     List<ArraySegment<T>> firstSegs = unifiedSegs.getFirst().getSegments();
     List<ArraySegment<T>> secondSegs = unifiedSegs.getSecond().getSegments();
 
-
     if (firstSegs.isEmpty()) {
       throw new CPAException("The unification has fail!");
     }
@@ -202,6 +211,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
             sizeVar,
             language,
             unifiedSegs.getFirst().isCanBeEmpty() || unifiedSegs.getSecond().isCanBeEmpty(),
+            this.cpaName,
+            this.propertyPredicate,
             this.logger);
     if (mergedSeg.equals(pOther)) {
       return pOther;
@@ -411,12 +422,12 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     return true;
   }
 
-  public PropertySpec<T> getSegmentsForProperty(
+  public CPropertySpec<T> getSegmentsForProperty(
       T pProperty,
       EnhancedCExpressionSimplificationVisitor pVisitor,
       CBinaryExpressionBuilder pBuilder)
       throws CPAException {
-    return new PropertySpec<>(this, pProperty, pVisitor, pBuilder);
+    return new CPropertySpec<>(this, pProperty, pVisitor, pBuilder);
   }
 
   /**
@@ -519,7 +530,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     return logger;
   }
 
-
   public boolean isCanBeEmpty() {
     return canBeEmpty;
   }
@@ -530,6 +540,10 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
   public void setLanguage(Language pLanguage) {
     language = pLanguage;
+  }
+
+  public Predicate<ArraySegmentationState<T>> getPropertyPredicate() {
+    return propertyPredicate;
   }
 
   @Override
@@ -575,6 +589,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
         this.sizeVar,
         this.language,
         this.canBeEmpty,
+        this.cpaName,
+        this.propertyPredicate,
         logger);
   }
 
@@ -592,6 +608,16 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   @Override
   public String toDOTLabel() {
     return this.toString();
+  }
+
+  @Override
+  public String getCPAName() {
+    return this.cpaName;
+  }
+
+  @Override
+  public boolean checkProperty(String pProperty) throws InvalidQueryException {
+    return propertyPredicate.test(this);
   }
 
 }

@@ -22,6 +22,7 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Predicate;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.configuration.Option;
@@ -31,6 +32,7 @@ import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CVariableDeclaration;
@@ -48,10 +50,15 @@ import org.sosy_lab.cpachecker.core.interfaces.StopOperator;
 import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.CGenericInterval;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.CPropertySpec;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.FinalSegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.CSegmentationTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
+import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-@Options(prefix = "cpa.usageCPA")
+@Options(prefix = UsageAnalysisCPA.NAME_OF_ANALYSIS)
 public class UsageAnalysisCPA extends AbstractCPA {
 
   @Option(
@@ -74,6 +81,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
   public static final String VARMANE_FOR_ARRAY_LENGTH = "SIZE";
   private static final String VARNAME_ARRAY = "a";
   private static final String[] temp = {"i"};
+  public static final String NAME_OF_ANALYSIS = "cpa.usageCPA";
   private static final List<String> ARRAY_ACCESS_VARS = Arrays.asList(temp);
   private final CFA cfa;
 
@@ -196,7 +204,42 @@ public class UsageAnalysisCPA extends AbstractCPA {
     ArrayList<AIdExpression> listOfIDElements = new ArrayList<>();
     arrayAccessVars.parallelStream()
         .forEach(v -> listOfIDElements.add(new CIdExpression(v.getFileLocation(), v)));
-    return new ArraySegmentationState<VariableUsageState>(
+    Predicate<ArraySegmentationState<VariableUsageState>> predicate = null;
+    EnhancedCExpressionSimplificationVisitor visitor =
+        new EnhancedCExpressionSimplificationVisitor(
+            cfa.getMachineModel(),
+            new LogManagerWithoutDuplicates(logger));
+    CBinaryExpressionBuilder builder = new CBinaryExpressionBuilder(cfa.getMachineModel(), logger);
+
+    predicate = new Predicate<ArraySegmentationState<VariableUsageState>>() {
+      @Override
+      public boolean test(ArraySegmentationState<VariableUsageState> pT) {
+        if (pT instanceof UnreachableSegmentation) {
+          return false;
+        }
+
+        CPropertySpec<VariableUsageState> properties = null;
+        try {
+          properties =
+              pT.getSegmentsForProperty(
+                  new VariableUsageState(VariableUsageType.USED),
+                  visitor,
+                  builder);
+        } catch (CPAException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+        List<CGenericInterval> overApproxP = properties.getOverApproxIntervals();
+        boolean isCorrect =
+            pT.isEmptyArray()
+                || (overApproxP.size() == 1
+            && overApproxP.get(0).getLow().equals(CIntegerLiteralExpression.ZERO)
+                    && overApproxP.get(0).getHigh().equals(pT.getSizeVar()));
+        return !isCorrect;
+      }
+    };
+
+    return new ArraySegmentationState<>(
         segments,
         VariableUsageState.getEmptyElement(),
         listOfIDElements,
@@ -204,6 +247,9 @@ public class UsageAnalysisCPA extends AbstractCPA {
         new CIdExpression(sizeVar.getFileLocation(), sizeVar),
         cfa.getLanguage(),
         false,
+        "UsageAnalysisCPA",
+        predicate,
         logger);
+
   }
 }
