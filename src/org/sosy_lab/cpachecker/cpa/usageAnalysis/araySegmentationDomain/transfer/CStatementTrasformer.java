@@ -58,10 +58,7 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
   private LogManager logger;
   ExpressionSimplificationVisitor visitor;
 
-
-  public CStatementTrasformer(
-      LogManager pLogger,
-      ExpressionSimplificationVisitor pVisitor) {
+  public CStatementTrasformer(LogManager pLogger, ExpressionSimplificationVisitor pVisitor) {
     this.helper = new TransformationHelper<>(pLogger);
     this.logger = pLogger;
     this.visitor = pVisitor;
@@ -78,8 +75,6 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
   public @Nullable ArraySegmentationState<T>
       transform(ArraySegmentationState<T> state, CStatement pStatement)
           throws CPATransferException {
-
-
 
     // Check, if the LHS is a variable, else return
     if (pStatement instanceof CExpressionAssignmentStatement
@@ -154,10 +149,7 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
   }
 
   public ArraySegmentationState<T>
-      reassign(
-          CIdExpression pVar,
-          CExpression pRightHandSide,
-          ArraySegmentationState<T> state) {
+      reassign(CIdExpression pVar, CExpression pRightHandSide, ArraySegmentationState<T> state) {
     CExpression canoncialForm = getCanonicalForm(pRightHandSide);
     List<ArraySegment<T>> exprList = new ArrayList<>();
     for (ArraySegment<T> s : state.getSegments()) {
@@ -253,8 +245,7 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
         // single segment is present, nothing can be done!
 
         if (!isAdded && state.getSegments().size() > 1) {
-          ArraySegment<T> prevSeg =
-              state.getSegments().get(state.getSegments().size() - 2);
+          ArraySegment<T> prevSeg = state.getSegments().get(state.getSegments().size() - 2);
           List<AExpression> segBounds = new ArrayList<>();
           segBounds.add(pVar);
           segBounds.add(pRightHandSide);
@@ -291,11 +282,10 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
    * @param state
    * @return
    */
-  public ArraySegmentationState<T>
-      replace(
-          CIdExpression pVar,
-          CExpression pRightHandSide,
-          @Nullable ArraySegmentationState<T> state) {
+  public ArraySegmentationState<T> replace(
+      CIdExpression pVar,
+      CExpression pRightHandSide,
+      @Nullable ArraySegmentationState<T> state) {
     CExpression reversedExpr = reverseIfNeccessary(pRightHandSide);
     CExpression canoncialForm = getCanonicalForm(reversedExpr);
     for (int i = 0; i < state.getSegments().size(); i++) {

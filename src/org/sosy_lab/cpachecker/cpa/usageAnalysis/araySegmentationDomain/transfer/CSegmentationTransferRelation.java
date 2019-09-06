@@ -19,7 +19,6 @@
  */
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -27,15 +26,12 @@ import java.util.List;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
-import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
-import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
 import org.sosy_lab.cpachecker.cfa.ast.c.CDeclaration;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCall;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CInitializerExpression;
-import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CParameterDeclaration;
 import org.sosy_lab.cpachecker.cfa.ast.c.CStatement;
 import org.sosy_lab.cpachecker.cfa.ast.c.CVariableDeclaration;
@@ -62,13 +58,6 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.Unreacha
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.formula.FormulaState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
-import org.sosy_lab.cpachecker.util.predicates.pathformula.SSAMap;
-import org.sosy_lab.cpachecker.util.predicates.pathformula.ctoformula.CtoFormulaConverter;
-import org.sosy_lab.cpachecker.util.predicates.smt.FormulaManagerView;
-import org.sosy_lab.java_smt.api.BooleanFormula;
-import org.sosy_lab.java_smt.api.Formula;
-import org.sosy_lab.java_smt.api.FormulaType;
-import org.sosy_lab.java_smt.api.SolverException;
 
 public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstractState<T>> extends
     ForwardingTransferRelation<ArraySegmentationState<T>, ArraySegmentationState<T>, Precision> {
@@ -308,81 +297,14 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
         }
       }
       if (formulaState != null) {
-        // There is a formula to strengthen the segmentation, hence continue;
-        // Check, if the formula has any information about the variables present in the formula
-        SSAMap ssa = formulaState.getPathFormula().getSsa();
-        FormulaManagerView manager = formulaState.getPr().getFormulaManager();
-        List<AIdExpression> varsInSeg = s.getVariablesPresent();
-        boolean temp = true;// varsInSeg.parallelStream().anyMatch(v ->
-                            // ssa.containsVariable(v.getName()));
-        boolean temp2 = ssa.containsVariable(s.getSizeVar().getName());
-        boolean isWorthUpdating =
-            temp
-                && temp2
-                && ssa.containsVariable(
-                    s.gettLisOfArrayVariables().get(0).getDeclaration().getQualifiedName());
-        if (isWorthUpdating) {
-
-          CtoFormulaConverter converter = formulaState.getPr().getConverter();
-
-          String sizeVarStr = s.getSizeVar().getName();
-          String arrayVarStr =
-              s.gettLisOfArrayVariables().get(0).getDeclaration().getQualifiedName();
-          FormulaType<?> typeSizeVar = converter.getFormulaTypeFromCType(ssa.getType(sizeVarStr));
-          Formula varSize = manager.makeVariable(typeSizeVar, sizeVarStr, ssa.getIndex(sizeVarStr));
-          FormulaType<?> typeArrayVar = converter.getFormulaTypeFromCType(ssa.getType(arrayVarStr));
-          Formula varI = manager.makeVariable(typeArrayVar, arrayVarStr, ssa.getIndex(arrayVarStr));
-
-          BooleanFormula iSmallerSize = manager.makeLessThan(varI, varSize, false);
-          BooleanFormula sizeSmallerZero =
-              manager.makeLessOrEqual(
-                  varSize,
-                  manager.makeNumber(typeSizeVar, BigInteger.ZERO),
-                  false);
-          CBinaryExpressionBuilder binExprBuilder =
-              new CBinaryExpressionBuilder(machineModel, logger);
-          try {
-            // // Mostly for debugging:
-            // if (formulaState.getPr()
-            // .getSolver()
-            // .implies(
-            // formulaState.getPathFormula().getFormula(),
-            // manager.makeOr(iSmallerSize, sizeSmallerZero))) {
-            // s.setShouldBeHighlighted(true);
-            // }
-
-            // Check to remove some questionsmarks
-            if (formulaState.getPr()
-                .getSolver()
-                .implies(formulaState.getPathFormula().getFormula(), iSmallerSize)) {
-
-              CBinaryExpression formula =
-                  binExprBuilder.buildBinaryExpressionUnchecked(
-                      (CExpression) s.gettLisOfArrayVariables().get(0),
-                      (CExpression) s.getSizeVar(),
-                      CBinaryExpression.BinaryOperator.LESS_THAN);
-              s = s.strengthn(Collections.singleton(formula));
-            }
-            // Check, if the array analyzed is empty (if size < 1)
-            if (formulaState.getPr()
-                .getSolver()
-                .implies(formulaState.getPathFormula().getFormula(), sizeSmallerZero)) {
-              CBinaryExpression formula =
-                  binExprBuilder.buildBinaryExpressionUnchecked(
-                      CIntegerLiteralExpression.ZERO,
-                      (CExpression) s.getSizeVar(),
-                      CBinaryExpression.BinaryOperator.EQUALS);
-              s = this.updateTransformer.update(formula, true, s, logger, visitor);
-
-            }
-
-          } catch (SolverException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-          }
-
+        CSegmentationStrengthener<T> strengthener =
+            new CSegmentationStrengthener<>(machineModel, logger, updateTransformer);
+        // FIXME: Just for test
+        if (pCfaEdge.getLineNumber() == 13) {
+          System.out.println();
         }
 
+        s = strengthener.strengthen(s, formulaState, formulaState.getPathFormula(), pCfaEdge);
         return Collections.singleton(s);
       }
 
