@@ -6,7 +6,7 @@ int main()
 {
 	SIZE = __VERIFIER_nondet_int();
 	int i = 0;
-	if (1 <= SIZE)
+	if (0 <= SIZE)
 	{		
 		int a[SIZE];
 		
@@ -14,6 +14,8 @@ int main()
 			a[i]=a[i]-1;
 			i = i +1;
 		}
+	}else{
+		;
 	}
 	return 0;
 }
