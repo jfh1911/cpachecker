@@ -132,8 +132,8 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
               new FormulaState(
                   new PathFormula(
                       pf,
-                  ssa,
-                  pPathFormula.getPointerTargetSet(),
+                      ssa,
+                      pPathFormula.getPointerTargetSet(),
                       pPathFormula.getLength() + 1),
                   pFormulaState.getPr());
 
@@ -146,9 +146,7 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
                   manager,
                   converter);
 
-          if (!pSegmentation.equals(copyAfterFirstiteration)) {
-            pSegmentation.setCanBeEmpty(true);
-          }
+          pSegmentation.setCanBeEmpty(true);
 
         }
       }
@@ -158,6 +156,12 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
           "An solver error occured while strengthening the current segmentation: "
               + pSegmentation.toString()
               + e.toString());
+    }
+    // To avoid that a segmentation, containing only a single element (and thereby being obviously
+    // empty) is marked as empty!
+    // FIXME: Find a more elegant way for that
+    if (pSegmentation.getSegments().size() == 1) {
+      pSegmentation.setCanBeEmpty(false);
     }
 
     logger.log(
