@@ -285,7 +285,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       @SuppressWarnings("unchecked")
       ArraySegmentationState<T> s = (ArraySegmentationState<T>) pState;
       if (isCornerCase(s)) {
-        return Collections.emptyList();
+        return Collections.singleton(s);
       }
 
       // Try to extract information for the array segmentations:
