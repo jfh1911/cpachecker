@@ -145,8 +145,9 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
                   ssa,
                   manager,
                   converter);
-
-          pSegmentation.setCanBeEmpty(true);
+          if (!copyAfterFirstiteration.equals(pSegmentation)) {
+            pSegmentation.setCanBeEmpty(true);
+          }
 
         }
       }
@@ -156,12 +157,6 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
           "An solver error occured while strengthening the current segmentation: "
               + pSegmentation.toString()
               + e.toString());
-    }
-    // To avoid that a segmentation, containing only a single element (and thereby being obviously
-    // empty) is marked as empty!
-    // FIXME: Find a more elegant way for that
-    if (pSegmentation.getSegments().size() == 1) {
-      pSegmentation.setCanBeEmpty(false);
     }
 
     logger.log(
@@ -191,8 +186,8 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
         return Optional.of(bfGEQOptional.get().getFirst());
       }
     } catch (UnrecognizedCodeException e) {
-      // TODO Auto-generated catch block
       e.printStackTrace();
+      return Optional.empty();
     }
     return Optional.empty();
 

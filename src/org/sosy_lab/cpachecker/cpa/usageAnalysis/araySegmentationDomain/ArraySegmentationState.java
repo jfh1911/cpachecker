@@ -120,6 +120,36 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   }
 
   /**
+   * Minimal constructor, only usable for error segmentation or unreachable segmentation, because
+   * the attributes set to null are never requested
+   * 
+   * @param pEmptyElement the empty element
+   * @param pCpaName the name of the anaylsis
+   * @param pPropertyPredicate the predicate used to compute the intervals of a segmentation
+   *        fulfilling a property
+   * @param pLogger the logger
+   */
+  protected ArraySegmentationState(
+      T pEmptyElement,
+      String pCpaName,
+      Predicate<ArraySegmentationState<T>> pPropertyPredicate,
+      LogManager pLogger) {
+    super();
+    segments = new ArrayList<>();
+
+    unifier = new SegmentationUnifier<>();
+    tEmptyElement = pEmptyElement;
+    tLisOfArrayVariables = new ArrayList<>();
+    tArray = null;
+    sizeVar = null;
+    language = null;
+    this.canBeEmpty = false;
+    cpaName = pCpaName;
+    propertyPredicate = pPropertyPredicate;
+    logger = pLogger;
+  }
+
+  /**
    * Returns a copy of the elements given as arguments
    */
   @Override
@@ -221,17 +251,9 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     }
   }
 
-  public void setCanBeEmpty(boolean pB) {
-    this.canBeEmpty = pB;
-  }
-
   @Override
   public boolean isLessOrEqual(ArraySegmentationState<T> pOther)
       throws CPAException, InterruptedException {
-    if (!pOther.getClass().equals(this.getClass())) {
-      throw new CPAException(
-          "The comparison  cannot be applied for two differently initalized generics");
-    }
 
     Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
         unifier.unifyCompare(
@@ -257,6 +279,11 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
     if (firstSegs.isEmpty()) {
       throw new CPAException("The unification has fail!");
+    }
+
+    // Check if the empty
+    if (unifiedSegs.getFirst().canBeEmpty != unifiedSegs.getSecond().canBeEmpty) {
+      return false;
     }
 
     for (int i = 0; i < firstSegs.size(); i++) {
@@ -462,6 +489,10 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   @Override
   public boolean shouldBeHighlighted() {
     return shouldBeHighlighted;
+  }
+
+  public void setCanBeEmpty(boolean pB) {
+    this.canBeEmpty = pB;
   }
 
   /**

@@ -299,11 +299,6 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       if (formulaState != null) {
         CSegmentationStrengthener<T> strengthener =
             new CSegmentationStrengthener<>(machineModel, logger, updateTransformer);
-        // FIXME: Just for test
-        if (pCfaEdge.getLineNumber() == 13) {
-          System.out.println();
-        }
-
         s = strengthener.strengthen(s, formulaState, formulaState.getPathFormula(), pCfaEdge);
         return Collections.singleton(s);
       }
