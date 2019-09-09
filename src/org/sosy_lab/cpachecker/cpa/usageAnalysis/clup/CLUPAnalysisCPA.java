@@ -48,7 +48,7 @@ import org.sosy_lab.cpachecker.cpa.ifcsecurity.DominanceFrontier;
 import org.sosy_lab.cpachecker.cpa.ifcsecurity.Dominators;
 import org.sosy_lab.cpachecker.cpa.location.LocationCPA;
 import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.formula.FormulaRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.formula.FormulaRelation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.clu.CLUAnalysisState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisCPA;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;

@@ -2,7 +2,7 @@
  *  CPAchecker is a tool for configurable software verification.
  *  This file is part of CPAchecker.
  *
- *  Copyright (C) 2007-2014  Dirk Beyer
+ *  Copyright (C) 2007-2019  Dirk Beyer
  *  All rights reserved.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,12 +16,18 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
- *
- *  CPAchecker web page:
- *    http://cpachecker.sosy-lab.org
  */
-/**
- * Formula CPA
- */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.formula;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain;
+
+import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
+
+public interface ClonableLatticeAbstractState<T extends ClonableLatticeAbstractState<T>>
+    extends LatticeAbstractState<T> {
+
+  /**
+   *
+   * @return a deep copy of the object
+   */
+  T clone();
+
+}
