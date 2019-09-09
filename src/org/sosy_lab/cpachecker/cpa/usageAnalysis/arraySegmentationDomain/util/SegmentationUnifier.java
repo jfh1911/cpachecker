@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,12 +26,12 @@ import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import org.sosy_lab.cpachecker.cfa.Language;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegment;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ArraySegmentationState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ErrorSegmentation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.ExtendedCompletLatticeAbstractState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.FinalSegment;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.UnreachableSegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ErrorSegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.FinalSegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
 

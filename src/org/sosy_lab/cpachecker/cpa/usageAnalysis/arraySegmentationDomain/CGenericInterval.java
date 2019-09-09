@@ -21,7 +21,7 @@
  *  CPAchecker web page:
  *    http://cpachecker.sosy-lab.org
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain;
 
 import static com.google.common.base.Preconditions.checkState;
 

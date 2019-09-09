@@ -21,7 +21,7 @@
  *  CPAchecker web page:
  *    http://cpachecker.sosy-lab.org
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.formula;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.formula;
 
 import java.util.Map;
 import java.util.NavigableSet;
@@ -55,7 +55,6 @@ import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
 import org.sosy_lab.cpachecker.cpa.ifcsecurity.ControlDependenceComputer;
 import org.sosy_lab.cpachecker.cpa.ifcsecurity.DominanceFrontier;
 import org.sosy_lab.cpachecker.cpa.ifcsecurity.Dominators;
-
 
 @Options(prefix="cpa.ifcsecurity")
 public class FormulaCPA implements ConfigurableProgramAnalysis {

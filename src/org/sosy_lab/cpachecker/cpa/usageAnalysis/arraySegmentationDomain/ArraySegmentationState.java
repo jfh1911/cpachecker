@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -43,10 +43,10 @@ import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractQueryableState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.transfer.CSegmentationModifier;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.ArrayModificationException;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain.util.SegmentationUnifier;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.transfer.CSegmentationModifier;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.ArrayModificationException;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.SegmentationUnifier;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.exceptions.InvalidQueryException;
 import org.sosy_lab.cpachecker.util.Pair;
