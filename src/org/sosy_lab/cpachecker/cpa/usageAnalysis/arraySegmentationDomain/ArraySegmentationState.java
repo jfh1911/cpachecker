@@ -122,7 +122,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   /**
    * Minimal constructor, only usable for error segmentation or unreachable segmentation, because
    * the attributes set to null are never requested
-   * 
+   *
    * @param pEmptyElement the empty element
    * @param pCpaName the name of the anaylsis
    * @param pPropertyPredicate the predicate used to compute the intervals of a segmentation
@@ -281,7 +281,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       throw new CPAException("The unification has fail!");
     }
 
-    // Check if the empty
+    // Check if both segmentations are empty or not
     if (unifiedSegs.getFirst().canBeEmpty != unifiedSegs.getSecond().canBeEmpty) {
       return false;
     }

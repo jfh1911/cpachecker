@@ -48,7 +48,6 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.Extende
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.FinalSegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.EmptyVariableUsageElement;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisCPA;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
@@ -101,8 +100,7 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
       // Only in case if the variable is SIZE, we can reuse the assumption that all variables in the
       // segment are smaller to SIZE
       if (call.getLeftHandSide() instanceof CIdExpression
-          && ((CIdExpression) call.getLeftHandSide()).getName()
-              .equalsIgnoreCase(UsageAnalysisCPA.VARMANE_FOR_ARRAY_LENGTH)) {
+          && ((CIdExpression) call.getLeftHandSide()).equals(state.getSizeVar())) {
         // First, remove the expression and than add it to the end
         state = helper.cleanExprFromSegBounds((CIdExpression) call.getLeftHandSide(), state);
         if (null != state) {

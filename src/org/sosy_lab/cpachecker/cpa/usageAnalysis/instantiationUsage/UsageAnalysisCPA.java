@@ -19,8 +19,8 @@
  */
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
 
+import com.google.common.collect.Lists;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 import org.sosy_lab.common.configuration.Configuration;
@@ -77,13 +77,19 @@ public class UsageAnalysisCPA extends AbstractCPA {
     description = "which stop operator to use for UsageOfArrayElemensCPA")
   private String stopType = "SEP";
 
-  private final LogManager logger;
-  public static final String VARMANE_FOR_ARRAY_LENGTH = "SIZE";
-  private static final String VARNAME_ARRAY = "a";
-  private static final String[] temp = {"i"};
-  public static final String NAME_OF_ANALYSIS = "cpa.usageCPA";
-  private static final List<String> ARRAY_ACCESS_VARS = Arrays.asList(temp);
+  @Option(name = "arraySize", toUppercase = false, description = "")
+  public String VARMANE_FOR_ARRAY_LENGTH = "";
+
+  @Option(name = "arrayName", toUppercase = false, description = "")
+  private String VARNAME_ARRAY = "";
+
+  @Option(name = "arrayAccessVar", toUppercase = false, description = "")
+  private String arrayAccessVar = "";
+
+  private List<String> ARRAY_ACCESS_VARS = Lists.newArrayList(arrayAccessVar);
   private final CFA cfa;
+  public static final String NAME_OF_ANALYSIS = "cpa.usageCPA";
+  private final LogManager logger;
 
   /**
    * This method acts as the constructor of the interval analysis CPA.
@@ -149,11 +155,11 @@ public class UsageAnalysisCPA extends AbstractCPA {
               && ((CDeclarationEdge) e).getDeclaration() instanceof CVariableDeclaration) {
             CVariableDeclaration decl =
                 (CVariableDeclaration) ((CDeclarationEdge) e).getDeclaration();
-            if (decl.getName().equalsIgnoreCase(UsageAnalysisCPA.VARMANE_FOR_ARRAY_LENGTH)) {
+            if (decl.getName().equalsIgnoreCase(this.VARMANE_FOR_ARRAY_LENGTH)) {
               sizeVar = decl;
             } else if (ARRAY_ACCESS_VARS.contains(decl.getName())) {
               arrayAccessVars.add(decl);
-            } else if (decl.getName().equalsIgnoreCase(UsageAnalysisCPA.VARNAME_ARRAY)) {
+            } else if (decl.getName().equalsIgnoreCase(this.VARNAME_ARRAY)) {
               arrayVar = decl;
             }
           }
@@ -164,13 +170,13 @@ public class UsageAnalysisCPA extends AbstractCPA {
     if (sizeVar == null) {
       throw new InterruptedException(
           "The program cannot be analyed, since the assumption, that the main function defines a variable named '"
-              + UsageAnalysisCPA.VARMANE_FOR_ARRAY_LENGTH
+              + this.VARMANE_FOR_ARRAY_LENGTH
               + "' is not met!");
     }
     if (arrayVar == null) {
       throw new InterruptedException(
           "The program cannot be analyed, since the array that needs to be ananlyzed in the main function named'"
-              + UsageAnalysisCPA.VARMANE_FOR_ARRAY_LENGTH
+              + this.VARMANE_FOR_ARRAY_LENGTH
               + "' is not defined!");
     }
 
