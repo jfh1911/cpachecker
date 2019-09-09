@@ -22,18 +22,17 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.sosy_lab.cpachecker.cfa.Language;
 import org.sosy_lab.cpachecker.cfa.ast.ABinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AUnaryExpression;
-import org.sosy_lab.cpachecker.cfa.ast.AbstractExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CAddressOfLabelExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CCastExpression;
@@ -201,9 +200,8 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
       if (other.segmentBound != null) {
         return false;
       }
-    } else if (!Arrays.deepEquals(
-        segmentBound.toArray(new AbstractExpression[segmentBound.size()]),
-        other.segmentBound.toArray(new AbstractExpression[other.getSegmentBound().size()]))) {
+    } else if (!Objects
+        .deepEquals(new HashSet<>(segmentBound), new HashSet<>(other.getSegmentBound()))) {
       return false;
     }
     return true;

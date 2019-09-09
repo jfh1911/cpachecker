@@ -19,7 +19,6 @@
  */
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.araySegmentationDomain;
 
-import java.util.ArrayList;
 import java.util.function.Predicate;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
@@ -32,17 +31,8 @@ public class ErrorSegmentation<T extends ExtendedCompletLatticeAbstractState<T>>
       String pCpaName,
       Predicate<ArraySegmentationState<T>> pPropertyPredicate,
       T pEmptyElement) {
-    // This is bad stlye, but whenever the error or unreachable segment is used, the information are
-    // not needed
-    // TODO infer a more elegant way
     super(
-        new ArrayList<>(),
         pEmptyElement,
-        null,
-        null,
-        null,
-        null,
-        false,
         pCpaName,
         pPropertyPredicate,
         pLogger);

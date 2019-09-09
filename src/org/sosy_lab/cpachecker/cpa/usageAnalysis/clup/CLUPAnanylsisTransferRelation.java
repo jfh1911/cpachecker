@@ -217,7 +217,7 @@ public class CLUPAnanylsisTransferRelation extends
         // formula is UNSAT
         // Hence, we can return the unreachable Array Segmentation [x]
 
-        // TODO: USe something like false (e.g.
+        // TODO: USe something like true (e.g.
         // formulaTransfer.getFormulaManager().getBooleanFormulaManager().makeFalse()),)
         return Collections.singleton(
             new CLUPAnalysisState<VariableUsageState>(
