@@ -23,6 +23,7 @@ import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.configuration.Option;
@@ -33,6 +34,7 @@ import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
+import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CVariableDeclaration;
@@ -40,6 +42,7 @@ import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.cfa.model.FunctionEntryNode;
 import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
+import org.sosy_lab.cpachecker.cfa.types.c.CArrayType;
 import org.sosy_lab.cpachecker.core.defaults.AbstractCPA;
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.defaults.DelegateAbstractDomain;
@@ -77,13 +80,17 @@ public class UsageAnalysisCPA extends AbstractCPA {
     description = "which stop operator to use for UsageOfArrayElemensCPA")
   private String stopType = "SEP";
 
-  @Option(name = "arraySize", toUppercase = false, description = "")
-  public String VARMANE_FOR_ARRAY_LENGTH = "";
 
-  @Option(name = "arrayName", toUppercase = false, description = "")
+  @Option(
+    name = "arrayName",
+    toUppercase = false,
+    description = "The array that needs to be analyzed")
   private String VARNAME_ARRAY = "";
 
-  @Option(name = "arrayAccessVar", toUppercase = false, description = "")
+  @Option(
+    name = "arrayAccessVar",
+    toUppercase = false,
+    description = "The variables used to access array elements")
   private String arrayAccessVar = "";
 
   private List<String> ARRAY_ACCESS_VARS = Lists.newArrayList(arrayAccessVar);
@@ -137,53 +144,63 @@ public class UsageAnalysisCPA extends AbstractCPA {
   public ArraySegmentationState<VariableUsageState>
       getInitialState(CFANode pNode, StateSpacePartition pPartition) throws InterruptedException {
 
-    // The initial state consists of two segments: {0} N? {SIZE}, where SIZE is a variable used to
+ // The initial state consists of two segments: {0} N? {SIZE}, where SIZE is a variable used to
     // denote the length of the array used in the program
 
     // Iterate through the cfa to get the assignments of the variable that are predefined (SIZE; the
     // array, the variables used to access the array)
 
-    CVariableDeclaration sizeVar = null;
+    @Nullable
+    CExpression sizeVar = null;
     List<CVariableDeclaration> arrayAccessVars = new ArrayList<>();
     CVariableDeclaration arrayVar = null;
+
 
     for (CFANode node : cfa.getAllNodes()) {
       if (!(node instanceof FunctionEntryNode)) {
         for (int i = 0; i < node.getNumLeavingEdges(); i++) {
           CFAEdge e = node.getLeavingEdge(i);
-          if (e instanceof CDeclarationEdge
-              && ((CDeclarationEdge) e).getDeclaration() instanceof CVariableDeclaration) {
-            CVariableDeclaration decl =
-                (CVariableDeclaration) ((CDeclarationEdge) e).getDeclaration();
-            if (decl.getName().equalsIgnoreCase(this.VARMANE_FOR_ARRAY_LENGTH)) {
-              sizeVar = decl;
-            } else if (ARRAY_ACCESS_VARS.contains(decl.getName())) {
-              arrayAccessVars.add(decl);
-            } else if (decl.getName().equalsIgnoreCase(this.VARNAME_ARRAY)) {
-              arrayVar = decl;
+          if (e instanceof CDeclarationEdge) {
+            if (((CDeclarationEdge) e).getDeclaration() instanceof CVariableDeclaration) {
+              CVariableDeclaration decl =
+                  (CVariableDeclaration) ((CDeclarationEdge) e).getDeclaration();
+              // if (decl.getName().equalsIgnoreCase(this.VARMANE_FOR_ARRAY_LENGTH)) {
+              // sizeVar = decl;
+              // } else
+              if (ARRAY_ACCESS_VARS.contains(decl.getName())) {
+                arrayAccessVars.add(decl);
+              } else if (decl.getName().equalsIgnoreCase(this.VARNAME_ARRAY)) {
+                arrayVar = decl;
+                if (decl.getType() instanceof CArrayType) {
+                  CArrayType t = (CArrayType) decl.getType();
+                  sizeVar = t.getLength();
+                } else {
+                  // TODO Log error
+                }
+              }
             }
+            // else if (((CDeclarationEdge) e).getDeclaration()) {
+            // }
           }
         }
       }
     }
 
-    if (sizeVar == null) {
-      throw new InterruptedException(
-          "The program cannot be analyed, since the assumption, that the main function defines a variable named '"
-              + this.VARMANE_FOR_ARRAY_LENGTH
-              + "' is not met!");
-    }
+    // Check if the sizeVar is a constant:
+
+
     if (arrayVar == null) {
       throw new InterruptedException(
           "The program cannot be analyed, since the array that needs to be ananlyzed in the main function named'"
-              + this.VARMANE_FOR_ARRAY_LENGTH
+              + this.VARNAME_ARRAY
               + "' is not defined!");
     }
+
 
     List<AExpression> pSBSecond = new ArrayList<>();
     // TODO: add handling for Java programs
     // Assume that the Size-var is defined in main method
-    pSBSecond.add(new CIdExpression(sizeVar.getFileLocation(), sizeVar));
+    pSBSecond.add(sizeVar);
     List<AExpression> pSBFirst = new ArrayList<>();
     pSBFirst.add(CIntegerLiteralExpression.ZERO);
 
@@ -250,7 +267,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
         VariableUsageState.getEmptyElement(),
         listOfIDElements,
         new CIdExpression(arrayVar.getFileLocation(), arrayVar),
-        new CIdExpression(sizeVar.getFileLocation(), sizeVar),
+        sizeVar,
         cfa.getLanguage(),
         false,
         "UsageAnalysisCPA",

@@ -34,7 +34,9 @@ import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ErrorSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.formula.FormulaState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
@@ -74,6 +76,12 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
       PathFormula pPathFormula,
       CFAEdge pCfaEdge)
       throws InterruptedException, UnrecognizedCodeException {
+
+    // Firstly, check for corner cases Unreachable and Error segment
+    if (pSegmentation instanceof UnreachableSegmentation
+        || pSegmentation instanceof ErrorSegmentation) {
+      return pSegmentation;
+    }
 
     // For logging:
     ArraySegmentationState<T> copy = pSegmentation.clone();
@@ -158,10 +166,10 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
               + pSegmentation.toString()
               + e.toString());
     }
-
-    logger.log(
-        Level.FINE,
-        "Strengthend the array segmentation" + copy + " to:  " + pSegmentation.toString());
+    if (!copy.equals(pSegmentation)) {
+      logger
+          .log(Level.FINE, "Strengthend the array segmentation" + copy + " to:  " + pSegmentation);
+    }
     return pSegmentation;
   }
 
