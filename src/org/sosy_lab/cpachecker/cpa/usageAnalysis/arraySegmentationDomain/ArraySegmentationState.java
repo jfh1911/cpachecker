@@ -61,7 +61,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
   protected List<AIdExpression> tLisOfArrayVariables;
   protected AIdExpression tArray;
-  private AIdExpression sizeVar;
+  private AExpression sizeVar;
   private T tEmptyElement;
   private Language language;
 
@@ -86,7 +86,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       T pEmptyElement,
       List<AIdExpression> pLisOfArrayVariables,
       AIdExpression pArray,
-      AIdExpression pSizeVar,
+      AExpression pSizeVar,
       Language pLanguage,
       boolean pCanBeEmpty,
       String pCpaName,
@@ -533,7 +533,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     tArray = pTArray;
   }
 
-  public AIdExpression getSizeVar() {
+  public AExpression getSizeVar() {
     return sizeVar;
   }
 

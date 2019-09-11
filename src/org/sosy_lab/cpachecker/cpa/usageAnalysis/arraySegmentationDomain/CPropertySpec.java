@@ -48,7 +48,7 @@ public class CPropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
   private Map<AExpression, AExpression> upperMappingOfExpr;
   private T property;
   private Language language;
-  private AIdExpression sizeVar;
+  private AExpression sizeVar;
 
   public CPropertySpec(
       ArraySegmentationState<T> state,
@@ -234,9 +234,9 @@ public class CPropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
     for (ArraySegment<T> s : pState.getSegments()) {
       if (s.getAnalysisInformation().equals(pProperty)) {
 
-        CExpression low = geMostConcreteValue(s.getSegmentBound(), pState.getSizeVar());
+        CExpression low = getMostConcreteValue(s.getSegmentBound(), pState.getSizeVar());
         CExpression high =
-            geMostConcreteValue(s.getNextSegment().getSegmentBound(), pState.getSizeVar());
+            getMostConcreteValue(s.getNextSegment().getSegmentBound(), pState.getSizeVar());
         CGenericInterval interval = new CGenericInterval(low, high);
         res.add(interval);
       }
@@ -256,7 +256,7 @@ public class CPropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
 
   }
 
-  private CExpression geMostConcreteValue(List<AExpression> pSegmentBound, AIdExpression pSizeVar) {
+  private CExpression getMostConcreteValue(List<AExpression> pSegmentBound, AExpression pSizeVar) {
     Optional<AExpression> literal =
         pSegmentBound.parallelStream()
             .filter(p -> p instanceof CIntegerLiteralExpression)
@@ -338,7 +338,7 @@ public class CPropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
     return language;
   }
 
-  public AIdExpression getSizeVar() {
+  public AExpression getSizeVar() {
     return sizeVar;
   }
 
