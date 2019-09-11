@@ -101,7 +101,13 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
             manager,
             converter);
 
-    // FIXME: This is a rather radical approach, needs to be verified on a theoretical point
+    // Again, check for corner cases Unreachable and Error segment
+    if (pSegmentation instanceof UnreachableSegmentation
+        || pSegmentation instanceof ErrorSegmentation) {
+      return pSegmentation;
+    }
+
+    // This is a rather radical approach, needs to be verified on a theoretical point
     // We are now checking, if the array may be empty. If yes, we conjunct the path formula with the
     // clause (SIZE != 0) and see, if we can infer a more precise result. Since we made the
     // Assumption that the array segmentation belongs to an empty array, we set the flag
@@ -196,6 +202,8 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
     } catch (UnrecognizedCodeException e) {
       e.printStackTrace();
       return Optional.empty();
+    } catch (Throwable e) {
+      System.out.println();
     }
     return Optional.empty();
 

@@ -19,8 +19,8 @@
  */
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
 
-import com.google.common.collect.Lists;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -32,16 +32,26 @@ import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
-import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CArraySubscriptExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CAssignment;
+import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCall;
+import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCallExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CRightHandSide;
+import org.sosy_lab.cpachecker.cfa.ast.c.CUnaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CVariableDeclaration;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.cfa.model.FunctionEntryNode;
+import org.sosy_lab.cpachecker.cfa.model.c.CAssumeEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
+import org.sosy_lab.cpachecker.cfa.model.c.CFunctionCallEdge;
+import org.sosy_lab.cpachecker.cfa.model.c.CFunctionReturnEdge;
+import org.sosy_lab.cpachecker.cfa.model.c.CStatementEdge;
 import org.sosy_lab.cpachecker.cfa.types.c.CArrayType;
 import org.sosy_lab.cpachecker.core.defaults.AbstractCPA;
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
@@ -80,20 +90,13 @@ public class UsageAnalysisCPA extends AbstractCPA {
     description = "which stop operator to use for UsageOfArrayElemensCPA")
   private String stopType = "SEP";
 
-
   @Option(
     name = "arrayName",
     toUppercase = false,
     description = "The array that needs to be analyzed")
   private String VARNAME_ARRAY = "";
 
-  @Option(
-    name = "arrayAccessVar",
-    toUppercase = false,
-    description = "The variables used to access array elements")
-  private String arrayAccessVar = "";
 
-  private List<String> ARRAY_ACCESS_VARS = Lists.newArrayList(arrayAccessVar);
   private final CFA cfa;
   public static final String NAME_OF_ANALYSIS = "cpa.usageCPA";
   private final LogManager logger;
@@ -144,7 +147,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
   public ArraySegmentationState<VariableUsageState>
       getInitialState(CFANode pNode, StateSpacePartition pPartition) throws InterruptedException {
 
- // The initial state consists of two segments: {0} N? {SIZE}, where SIZE is a variable used to
+    // The initial state consists of two segments: {0} N? {SIZE}, where SIZE is a variable used to
     // denote the length of the array used in the program
 
     // Iterate through the cfa to get the assignments of the variable that are predefined (SIZE; the
@@ -152,9 +155,8 @@ public class UsageAnalysisCPA extends AbstractCPA {
 
     @Nullable
     CExpression sizeVar = null;
-    List<CVariableDeclaration> arrayAccessVars = new ArrayList<>();
+    List<AExpression> arrayAccessVars = new ArrayList<>();
     CVariableDeclaration arrayVar = null;
-
 
     for (CFANode node : cfa.getAllNodes()) {
       if (!(node instanceof FunctionEntryNode)) {
@@ -164,23 +166,39 @@ public class UsageAnalysisCPA extends AbstractCPA {
             if (((CDeclarationEdge) e).getDeclaration() instanceof CVariableDeclaration) {
               CVariableDeclaration decl =
                   (CVariableDeclaration) ((CDeclarationEdge) e).getDeclaration();
-              // if (decl.getName().equalsIgnoreCase(this.VARMANE_FOR_ARRAY_LENGTH)) {
-              // sizeVar = decl;
-              // } else
-              if (ARRAY_ACCESS_VARS.contains(decl.getName())) {
-                arrayAccessVars.add(decl);
-              } else if (decl.getName().equalsIgnoreCase(this.VARNAME_ARRAY)) {
+              if (decl.getName().equalsIgnoreCase(this.VARNAME_ARRAY)) {
                 arrayVar = decl;
                 if (decl.getType() instanceof CArrayType) {
                   CArrayType t = (CArrayType) decl.getType();
                   sizeVar = t.getLength();
                 } else {
-                  // TODO Log error
+                  throw new InterruptedException(
+                      "The program cannot be analyed, since the array that needs to be ananlyzed in the main function named'"
+                          + this.VARNAME_ARRAY
+                          + "' is not definedas a array variable!");
                 }
               }
             }
-            // else if (((CDeclarationEdge) e).getDeclaration()) {
-            // }
+
+          }
+          // Next, determine the variables / expressions used to access any array
+          else if (e instanceof CStatementEdge) {
+            CStatementEdge s = (CStatementEdge) e;
+            if (s.getStatement() instanceof CAssignment) {
+              // Only consider the RHS, since LHS is not an usage (only an assignment)
+              arrayAccessVars
+                  .addAll(computeVars(((CAssignment) s.getStatement()).getRightHandSide()));
+            } else if (s.getStatement() instanceof CFunctionCall) {
+              arrayAccessVars.addAll(
+                  computeVars(((CFunctionCall) s.getStatement()).getFunctionCallExpression()));
+            }
+          } else if (e instanceof CFunctionCallEdge) {
+            ((CFunctionCallEdge) e).getArguments()
+                .forEach(a -> arrayAccessVars.addAll(computeVars(a)));
+          } else if (e instanceof CAssumeEdge) {
+            arrayAccessVars.addAll(computeVars(((CAssumeEdge) e).getExpression()));
+          } else if (e instanceof CFunctionReturnEdge) {
+            // TODO: Considere this
           }
         }
       }
@@ -188,14 +206,12 @@ public class UsageAnalysisCPA extends AbstractCPA {
 
     // Check if the sizeVar is a constant:
 
-
     if (arrayVar == null) {
       throw new InterruptedException(
           "The program cannot be analyed, since the array that needs to be ananlyzed in the main function named'"
               + this.VARNAME_ARRAY
               + "' is not defined!");
     }
-
 
     List<AExpression> pSBSecond = new ArrayList<>();
     // TODO: add handling for Java programs
@@ -224,9 +240,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
     segments.add(first);
     segments.add(second);
 
-    ArrayList<AIdExpression> listOfIDElements = new ArrayList<>();
-    arrayAccessVars.parallelStream()
-        .forEach(v -> listOfIDElements.add(new CIdExpression(v.getFileLocation(), v)));
+
     Predicate<ArraySegmentationState<VariableUsageState>> predicate = null;
     EnhancedCExpressionSimplificationVisitor visitor =
         new EnhancedCExpressionSimplificationVisitor(
@@ -256,7 +270,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
         boolean isCorrect =
             pT.isEmptyArray()
                 || (overApproxP.size() == 1
-            && overApproxP.get(0).getLow().equals(CIntegerLiteralExpression.ZERO)
+                    && overApproxP.get(0).getLow().equals(CIntegerLiteralExpression.ZERO)
                     && overApproxP.get(0).getHigh().equals(pT.getSizeVar()));
         return !isCorrect;
       }
@@ -265,7 +279,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
     return new ArraySegmentationState<>(
         segments,
         VariableUsageState.getEmptyElement(),
-        listOfIDElements,
+        arrayAccessVars,
         new CIdExpression(arrayVar.getFileLocation(), arrayVar),
         sizeVar,
         cfa.getLanguage(),
@@ -274,5 +288,24 @@ public class UsageAnalysisCPA extends AbstractCPA {
         predicate,
         logger);
 
+  }
+
+  private Collection<CExpression> computeVars(CRightHandSide pExpr) {
+    List<CExpression> res = new ArrayList<CExpression>();
+
+    if (pExpr instanceof CFunctionCallExpression) {
+      ((CFunctionCallExpression) pExpr).getParameterExpressions()
+          .forEach(e -> res.addAll(computeVars(e)));
+    } else if (pExpr instanceof CBinaryExpression) {
+      CBinaryExpression bin = (CBinaryExpression) pExpr;
+      res.addAll(computeVars(bin.getOperand1()));
+      res.addAll(computeVars(bin.getOperand2()));
+    } else if (pExpr instanceof CUnaryExpression) {
+      res.addAll(computeVars(((CUnaryExpression) pExpr).getOperand()));
+    } else if (pExpr instanceof CArraySubscriptExpression) {
+      res.add(((CArraySubscriptExpression) pExpr).getSubscriptExpression());
+    }
+
+    return res;
   }
 }

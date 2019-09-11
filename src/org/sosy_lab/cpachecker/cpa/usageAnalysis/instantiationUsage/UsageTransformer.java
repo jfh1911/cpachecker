@@ -84,7 +84,8 @@ public class UsageTransformer {
   public List<CArraySubscriptExpression> getUses(CStatement pStatement) {
     List<CArraySubscriptExpression> uses = new ArrayList<>();
     if (pStatement instanceof CAssignment) {
-      uses.addAll(getUses(((CAssignment) pStatement).getLeftHandSide()));
+      // The LHS is not considered, since it is not an usage (only reassignment)
+      // uses.addAll(getUses(((CAssignment) pStatement).getLeftHandSide()));
       uses.addAll(getUses(((CAssignment) pStatement).getRightHandSide()));
     } else if (pStatement instanceof CFunctionCall) {
       uses.addAll(getUses(((CFunctionCall) pStatement).getFunctionCallExpression()));

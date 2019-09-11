@@ -59,7 +59,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   private List<ArraySegment<T>> segments;
   private SegmentationUnifier<T> unifier;
 
-  protected List<AIdExpression> tLisOfArrayVariables;
+  protected List<AExpression> tLisOfArrayVariables;
   protected AIdExpression tArray;
   private AExpression sizeVar;
   private T tEmptyElement;
@@ -84,7 +84,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   public ArraySegmentationState(
       List<ArraySegment<T>> pSegments,
       T pEmptyElement,
-      List<AIdExpression> pLisOfArrayVariables,
+      List<AExpression> pLisOfArrayVariables,
       AIdExpression pArray,
       AExpression pSizeVar,
       Language pLanguage,
@@ -517,11 +517,11 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     segments = pSegments;
   }
 
-  public List<AIdExpression> gettLisOfArrayVariables() {
+  public List<AExpression> gettListOfArrayVariables() {
     return tLisOfArrayVariables;
   }
 
-  public void settLisOfArrayVariables(List<AIdExpression> pTLisOfArrayVariables) {
+  public void settLisOfArrayVariables(List<AExpression> pTLisOfArrayVariables) {
     tLisOfArrayVariables = pTLisOfArrayVariables;
   }
 

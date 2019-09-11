@@ -74,9 +74,9 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
   /**
    *
    * @param transferRelationForInnerDomain needs to return a single element!
-   * @param pLogger
-   * @param pMachineModel
-   * @param typeOfAnalysis
+   * @param pLogger for logging
+   * @param pMachineModel of the machine used
+   * @param typeOfAnalysis string for logging
    */
   public CSegmentationTransferRelation(
       TransferRelation transferRelationForInnerDomain,
@@ -115,12 +115,15 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
         && ((CVariableDeclaration) pDecl).getInitializer() instanceof CInitializerExpression) {
       CVariableDeclaration varDecl = (CVariableDeclaration) pDecl;
       // Now ensure that the variable needs to be checked (is a array variable
+      CIdExpression var = new CIdExpression(pDecl.getFileLocation(), pDecl);
+      if (state.gettListOfArrayVariables().contains(var) || var.equals(state.getSizeVar())) {
       return logTransformation(
           inputArgumentsAsString,
           statementTransformer.reassign(
-              new CIdExpression(pDecl.getFileLocation(), pDecl),
+                var,
               ((CInitializerExpression) varDecl.getInitializer()).getExpression(),
               resState));
+      }
     }
     return logTransformation(inputArgumentsAsString, state != null ? state.clone() : state);
   }
