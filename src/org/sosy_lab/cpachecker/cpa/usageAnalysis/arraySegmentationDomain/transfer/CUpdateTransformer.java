@@ -114,7 +114,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
     List<ArraySegment<T>> segmentsContainingOp2 = getSegmentsContainingExpr(pOp2);
     if (segmentsContainingOp2.isEmpty()) {
       // Case 3.1.1 and 3.1.2
-      return state;
+      return this.validate(state, var, pOp2, pOperator);
     } else if (segmentsContainingOp2.size() > 1) {
       // The analysis seems to be not working, since there is more than one segment bound
       // containing an expression. This is an illegal state of the analysis, hence the analysis is
@@ -129,11 +129,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
               + pVar.toASTString()
               + " := "
               + pOp2.toASTString());
-      return new ErrorSegmentation<>(
-          logger,
-          state.getCPAName(),
-          state.getPropertyPredicate(),
-          state.gettEmptyElement());
+      return new ErrorSegmentation<>(state);
 
     } else {
       // Check, if the variable is present in any state:
@@ -156,11 +152,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
                 + pVar.toASTString()
                 + " := "
                 + pOp2.toASTString());
-        return new ErrorSegmentation<>(
-            logger,
-            state.getCPAName(),
-            state.getPropertyPredicate(),
-            state.gettEmptyElement());
+        return new ErrorSegmentation<>(state);
       } else {
 
         @Nullable
@@ -184,11 +176,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
                       + pVar.toASTString()
                       + pOperator.toString()
                       + pOp2.toASTString());
-              return new ErrorSegmentation<>(
-                  logger,
-                  state.getCPAName(),
-                  state.getPropertyPredicate(),
-                  state.gettEmptyElement());
+              return new ErrorSegmentation<>(state);
             }
           }
           // We can safely merge the segment bounds between posSegmentContainsVar and
@@ -240,11 +228,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
     if (state.getSegments()
         .parallelStream()
         .anyMatch(s -> s.getSegmentBound().contains(op1) && s.getSegmentBound().contains(pOp2))) {
-      return new UnreachableSegmentation<>(
-          logger,
-          state.getCPAName(),
-          state.getPropertyPredicate(),
-          state.gettEmptyElement());
+      return new UnreachableSegmentation<>(state);
     } else {
       // Check if they var and op2 are present in consecutive segments and remove a ? in that case
 
@@ -255,11 +239,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
         // The analysis seems to be not working, since there is more than one segment bound
         // containing an expression. This is an illegal state of the analysis, hence the analysis is
         // aborted by returning the errorSymbol!
-        return new ErrorSegmentation<>(
-            logger,
-            state.getCPAName(),
-            state.getPropertyPredicate(),
-            state.gettEmptyElement());
+        return new ErrorSegmentation<>(state);
       } else {
         // Check, if the variable is present in any state:
         List<ArraySegment<T>> segmentsContainingOp1 = getSegmentsContainingExpr(op1);
@@ -278,11 +258,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
                   + op1.toASTString()
                   + " != "
                   + pOp2.toASTString());
-          return new ErrorSegmentation<>(
-              logger,
-              state.getCPAName(),
-              state.getPropertyPredicate(),
-              state.gettEmptyElement());
+          return new ErrorSegmentation<>(state);
         } else if (segmentsContainingOp1.size() == 1) {
           // Check, if the segment bounds are consecutive:
           int posSegmentContainsOp1 = state.getSegments().indexOf(segmentsContainingOp1.get(0));
@@ -317,21 +293,13 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
               + greater.toASTString()
               + " > "
               + smaller.toASTString());
-      return new ErrorSegmentation<>(
-          logger,
-          state.getCPAName(),
-          state.getPropertyPredicate(),
-          state.gettEmptyElement());
+      return new ErrorSegmentation<>(state);
     } else {
       // check if the two segments are ordered correctly!
       int posSmaller = state.getSegments().indexOf(segmentsContainingSmaller.get(0));
       int posGreater = state.getSegments().indexOf(segmentsContainingGreater.get(0));
       if (posSmaller >= posGreater) {
-        return new UnreachableSegmentation<>(
-            logger,
-            state.getCPAName(),
-            state.getPropertyPredicate(),
-            state.gettEmptyElement());
+        return new UnreachableSegmentation<>(state);
       } else if (posGreater - posSmaller == 1) {
         state.getSegments().get(posSmaller).setPotentiallyEmpty(false);
       }
@@ -343,10 +311,10 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
       updateGreaterEq(CExpression greater, CExpression smaller) {
     List<ArraySegment<T>> segmentsContainingGreater = getSegmentsContainingExpr(greater);
     List<ArraySegment<T>> segmentsContainingSmaller = getSegmentsContainingExpr(smaller);
+
     // CHeck, if both expressions are present in exactly one segment bound
     if (segmentsContainingGreater.isEmpty() || segmentsContainingSmaller.isEmpty()) {
       // Nothing to change
-      return state;
     } else if (segmentsContainingGreater.size() > 1 || segmentsContainingSmaller.size() > 1) {
       logger.log(
           Level.FINE,
@@ -358,11 +326,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
               + greater.toASTString()
               + " >= "
               + smaller.toASTString());
-      return new ErrorSegmentation<>(
-          logger,
-          state.getCPAName(),
-          state.getPropertyPredicate(),
-          state.gettEmptyElement());
+      return new ErrorSegmentation<>(state);
     } else {
       // check if the two segments are ordered correctly!
       int posSmaller = state.getSegments().indexOf(segmentsContainingSmaller.get(0));
@@ -373,10 +337,29 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
 
         } else if (isVarType(greater)) {
           return this.updateEquals(greater, smaller, CBinaryExpression.BinaryOperator.EQUALS);
-        } else {
-          return state;
-        }
+
       }
+      }
+    }
+    // Check, if the segmentation and the condition leads to unreachability (e.g. {0,i} and i >=10)
+    if (isVarType(smaller)) {
+      return checker.checkReachability(
+          state,
+          (CIdExpression) smaller,
+          greater,
+          BinaryOperator.LESS_EQUAL,
+          logger,
+          visitor);
+
+    } else if (isVarType(greater)) {
+
+      return checker.checkReachability(
+          state,
+          (CIdExpression) greater,
+          smaller,
+          BinaryOperator.GREATER_EQUAL,
+          logger,
+          visitor);
     }
     return state;
   }

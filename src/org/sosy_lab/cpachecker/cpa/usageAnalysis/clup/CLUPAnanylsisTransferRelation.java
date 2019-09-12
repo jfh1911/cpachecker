@@ -222,11 +222,7 @@ public class CLUPAnanylsisTransferRelation extends
         return Collections.singleton(
             new CLUPAnalysisState<VariableUsageState>(
                 s.getLocation(),
-                new UnreachableSegmentation<VariableUsageState>(
-                    logger,
-                    s.getArraySegmentation().getCPAName(),
-                    s.getArraySegmentation().getPropertyPredicate(),
-                    s.getArraySegmentation().gettEmptyElement()),
+                new UnreachableSegmentation<>(s.getArraySegmentation()),
                 s.getPathFormula(),
                 logger));
       }

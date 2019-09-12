@@ -168,11 +168,7 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
               + pVar.toASTString()
               + " := "
               + pRightHandSide.toASTString());
-      return new ErrorSegmentation<>(
-          logger,
-          state.getCPAName(),
-          state.getPropertyPredicate(),
-          state.gettEmptyElement());
+      return new ErrorSegmentation<>(state);
     } else if (exprList.size() == 1) {
       // Here, we are changing the ordering ( in the original transfer relation, the elements are
       // added firstly, than the others are removed. Anyway, changing these two steps leads to the
@@ -185,11 +181,7 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
                 + "The cleanup for the  current segmentation and expression "
                 + pVar.toASTString()
                 + " has failed. The error label is returned");
-        return new ErrorSegmentation<>(
-            logger,
-            state.getCPAName(),
-            state.getPropertyPredicate(),
-            state.gettEmptyElement());
+        return new ErrorSegmentation<>(state);
       }
       // Add pVar to pRightHandSide
       exprList.get(0).addSegmentBound(pVar);
@@ -213,11 +205,7 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
                   + "The cleanup for the current segmentation and expression "
                   + pVar.toASTString()
                   + " has failed. The error label is returned");
-          return new ErrorSegmentation<>(
-              logger,
-              state.getCPAName(),
-              state.getPropertyPredicate(),
-              state.gettEmptyElement());
+          return new ErrorSegmentation<>(state);
         }
 
         // Get the greatest element strictly smaller than pRightHandSide
@@ -271,11 +259,7 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
           // At this point, we know that: 1. 0 = SIZE, and the variable pVar := x , x \in N & x > 0.
           // If x would have been equal to 0, then pVar would have been added. Hence, the assumption
           // pVar <= SIZE is violated and the unreachable Segment is returned!
-          return new UnreachableSegmentation<>(
-              logger,
-              state.getCPAName(),
-              state.getPropertyPredicate(),
-              state.gettEmptyElement());
+          return new UnreachableSegmentation<>(state);
         }
       } else {
 

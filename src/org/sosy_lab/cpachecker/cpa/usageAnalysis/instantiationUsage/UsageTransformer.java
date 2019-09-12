@@ -71,11 +71,7 @@ public class UsageTransformer {
           false,
           machineModel,
           visitor)) {
-        return new ErrorSegmentation<>(
-            logger,
-            state.getCPAName(),
-            state.getPropertyPredicate(),
-            state.gettEmptyElement());
+        return new ErrorSegmentation<>(state);
       }
     }
     return state;

@@ -19,23 +19,13 @@
  */
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain;
 
-import java.util.function.Predicate;
-import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-public class ErrorSegmentation<T extends ExtendedCompletLatticeAbstractState<T>> extends
-    ArraySegmentationState<T> {
+public class ErrorSegmentation<T extends ExtendedCompletLatticeAbstractState<T>>
+    extends ArraySegmentationState<T> {
 
-  public ErrorSegmentation(
-      LogManager pLogger,
-      String pCpaName,
-      Predicate<ArraySegmentationState<T>> pPropertyPredicate,
-      T pEmptyElement) {
-    super(
-        pEmptyElement,
-        pCpaName,
-        pPropertyPredicate,
-        pLogger);
+  public ErrorSegmentation(ArraySegmentationState<T> pPreviousState) {
+    super(pPreviousState);
   }
 
   private static final long serialVersionUID = -3937221925009806448L;
