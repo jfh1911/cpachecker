@@ -255,6 +255,26 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
                   state.getSegments().get(state.getSegments().size() - 1),
                   state.getLanguage());
           state.addSegment(newSeg, prevSeg);
+        } else if (state.getSizeVar().equals(pVar)
+            && state.getSegments().size() == 1
+            && valueOfExpr.compareTo(BigInteger.ZERO) > 0) {
+          // Reassignments of the SIZE, if the segmentation only contains the segmentation
+          // containing 0
+          ArraySegment<T> prevSeg = state.getSegments().get(0);
+          // Since there is only one element present, set the bottom analysis information and mark
+          // it as not empty, since the value SIZE is assigned to is greater to 0
+          prevSeg.setAnalysisInformation(state.gettEmptyElement().getBottomElement());
+          List<AExpression> segBounds = new ArrayList<>();
+          segBounds.add(pVar);
+          segBounds.add(pRightHandSide);
+          ArraySegment<T> newSeg =
+              new ArraySegment<T>(
+                  segBounds,
+                  state.gettEmptyElement(),
+                  prevSeg.isPotentiallyEmpty(),
+                  state.getSegments().get(state.getSegments().size() - 1),
+                  state.getLanguage());
+          state.addSegment(newSeg, prevSeg);
         } else {
           // At this point, we know that: 1. 0 = SIZE, and the variable pVar := x , x \in N & x > 0.
           // If x would have been equal to 0, then pVar would have been added. Hence, the assumption

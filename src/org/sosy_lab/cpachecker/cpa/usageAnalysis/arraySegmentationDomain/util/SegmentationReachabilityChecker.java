@@ -92,7 +92,9 @@ public class SegmentationReachabilityChecker<T extends ExtendedCompletLatticeAbs
     // in one segment bound, but c != e 0 holds
     // Check if the RHS evaluates to a integer value
     AExpression valueOfpOp2 = getValueOrNull(pOp2, pVisitor);
-    if (valueOfpOp2 != null && valueOfpOp2 instanceof CIntegerLiteralExpression) {
+    if (pOperator.equals(BinaryOperator.EQUALS)
+        && valueOfpOp2 != null
+        && valueOfpOp2 instanceof CIntegerLiteralExpression) {
       BigInteger v = ((CIntegerLiteralExpression) valueOfpOp2).getValue();
       if (segOfVar != -1) {
         ArraySegment<T> segment = segments.get(segOfVar);
@@ -130,6 +132,29 @@ public class SegmentationReachabilityChecker<T extends ExtendedCompletLatticeAbs
     //
     // }
     // }
+
+    // // Case 6: The variable is present in a segmentation with a constant, but the expression
+    // implies
+    // // that it is greater than the constant
+    // TODO: Currently, this is not working, comparing equals is false
+    // AExpression simplifiedRHS = getValueOrNull(pOp2, pVisitor);
+    // if (segOfVar >= 0 && simplifiedRHS instanceof AIntegerLiteralExpression) {
+    // ArraySegment<T> segmentOfVar = pSegmentation.getSegments().get(segOfVar);
+    // if (segmentOfVar.getSegmentBound()
+    // .stream()
+    // .anyMatch(s -> s instanceof AIntegerLiteralExpression)) {
+    // AIntegerLiteralExpression constOfSegOfVar =
+    // (AIntegerLiteralExpression) segmentOfVar.getSegmentBound()
+    // .stream()
+    // .filter(s -> s instanceof AIntegerLiteralExpression)
+    // .collect(Collectors.toList())
+    // .get(0);
+    // if (!constOfSegOfVar.getValue()
+    // .equals(((AIntegerLiteralExpression) simplifiedRHS).getValue())) {
+    // return new UnreachableSegmentation<>(pSegmentation);
+    // }
+    // }
+    // }
     return pSegmentation;
 
   }
@@ -148,6 +173,8 @@ public class SegmentationReachabilityChecker<T extends ExtendedCompletLatticeAbs
         returnExpr = visitor.visit((CTypeIdExpression) pOp2);
       } else if (pOp2 instanceof CUnaryExpression) {
         returnExpr = visitor.visit((CUnaryExpression) pOp2);
+      } else if (pOp2 instanceof CIntegerLiteralExpression) {
+        returnExpr = (CIntegerLiteralExpression) pOp2;
       }
       return returnExpr;
     } else {
