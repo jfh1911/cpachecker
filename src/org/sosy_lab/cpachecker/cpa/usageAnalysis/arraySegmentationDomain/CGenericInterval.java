@@ -51,13 +51,13 @@ public class CGenericInterval implements Serializable{
    */
   private CExpression high;
 
-  private static final CGenericInterval EMPTY = new CGenericInterval(null, null);
+  // private static final CGenericInterval EMPTY = new CGenericInterval(null, null);
 //  public static final GenericInterval UNBOUND = new GenericInterval(new AIntegerLiteralExpression(), Long.MAX_VALUE);
 //  public static final GenericInterval BOOLEAN_INTERVAL = new GenericInterval(0L, 1L);
-  public static final CGenericInterval ZERO =
-      new CGenericInterval(CIntegerLiteralExpression.ZERO, CIntegerLiteralExpression.ZERO);
-  public static final CGenericInterval ONE =
-      new CGenericInterval(CIntegerLiteralExpression.ONE, CIntegerLiteralExpression.ONE);
+  // public static final CGenericInterval ZERO =
+  // new CGenericInterval(CIntegerLiteralExpression.ZERO, CIntegerLiteralExpression.ZERO);
+  // public static final CGenericInterval ONE =
+  // new CGenericInterval(CIntegerLiteralExpression.ONE, CIntegerLiteralExpression.ONE);
 
   /**
    * This method acts as constructor for a single-value interval.
@@ -151,9 +151,9 @@ public class CGenericInterval implements Serializable{
    * @return a new interval with the respective bounds
    */
   public CGenericInterval plus(CGenericInterval interval) {
-    if (isEmpty() || interval.isEmpty()) {
-      return EMPTY;
-    }
+    // if (isEmpty() || interval.isEmpty()) {
+    // return EMPTY;
+    // }
 
     return new CGenericInterval(
         saturatedAdd(low, interval.low, CBinaryExpression.BinaryOperator.PLUS),

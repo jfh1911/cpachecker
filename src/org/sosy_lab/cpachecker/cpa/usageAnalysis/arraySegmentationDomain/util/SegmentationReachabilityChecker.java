@@ -83,11 +83,7 @@ public class SegmentationReachabilityChecker<T extends ExtendedCompletLatticeAbs
       int max = Integer.max(segOfExpr, segOfVar);
       for (int i = min; i < max; i++) {
         if (!segments.get(i).isPotentiallyEmpty()) {
-          return new UnreachableSegmentation<>(
-              logger,
-              pSegmentation.getCPAName(),
-              pSegmentation.getPropertyPredicate(),
-              pSegmentation.gettEmptyElement());
+          return new UnreachableSegmentation<>(pSegmentation);
         }
       }
     }
@@ -105,32 +101,20 @@ public class SegmentationReachabilityChecker<T extends ExtendedCompletLatticeAbs
             .anyMatch(
                 s -> s instanceof CIntegerLiteralExpression
                     && !((CIntegerLiteralExpression) s).getValue().equals(v))) {
-          return new UnreachableSegmentation<>(
-              logger,
-              pSegmentation.getCPAName(),
-              pSegmentation.getPropertyPredicate(),
-              pSegmentation.gettEmptyElement());
+          return new UnreachableSegmentation<>(pSegmentation);
         }
       }
     }
 
     // Case 3: e = (i != c) and there is a segment bound containing the expressions c and i.
     if (segOfExpr == segOfVar && pOperator.equals(BinaryOperator.NOT_EQUALS)) {
-      return new UnreachableSegmentation<>(
-          logger,
-          pSegmentation.getCPAName(),
-          pSegmentation.getPropertyPredicate(),
-          pSegmentation.gettEmptyElement());
+      return new UnreachableSegmentation<>(pSegmentation);
     }
 
     // Case 4: The ordering of segment bounds implies that i ≤ c, but e = (i > c) or vice versa
     if (pOperator.equals(BinaryOperator.GREATER_THAN) && segOfVar < segOfExpr
         || pOperator.equals(BinaryOperator.LESS_THAN) && segOfVar > segOfExpr) {
-      return new UnreachableSegmentation<>(
-          logger,
-          pSegmentation.getCPAName(),
-          pSegmentation.getPropertyPredicate(),
-          pSegmentation.gettEmptyElement());
+      return new UnreachableSegmentation<>(pSegmentation);
     }
 
     // TODO: implement Case 5: Between two segment bounds e 1 ,e 2 with | e 1 −e 2 |= n are more

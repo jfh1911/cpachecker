@@ -123,30 +123,23 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
    * Minimal constructor, only usable for error segmentation or unreachable segmentation, because
    * the attributes set to null are never requested
    *
-   * @param pEmptyElement the empty element
-   * @param pCpaName the name of the anaylsis
-   * @param pPropertyPredicate the predicate used to compute the intervals of a segmentation
-   *        fulfilling a property
-   * @param pLogger the logger
+   * @param pPreviousState the previous state, used to get all information needed
    */
   protected ArraySegmentationState(
-      T pEmptyElement,
-      String pCpaName,
-      Predicate<ArraySegmentationState<T>> pPropertyPredicate,
-      LogManager pLogger) {
+      ArraySegmentationState<T> pPreviousState) {
     super();
     segments = new ArrayList<>();
 
     unifier = new SegmentationUnifier<>();
-    tEmptyElement = pEmptyElement;
+    tEmptyElement = pPreviousState.gettEmptyElement();
     tLisOfArrayVariables = new ArrayList<>();
-    tArray = null;
-    sizeVar = null;
-    language = null;
+    tArray = pPreviousState.gettArray();
+    sizeVar = pPreviousState.getSizeVar();
+    language = pPreviousState.getLanguage();
     this.canBeEmpty = false;
-    cpaName = pCpaName;
-    propertyPredicate = pPropertyPredicate;
-    logger = pLogger;
+    cpaName = pPreviousState.getCPAName();
+    propertyPredicate = pPreviousState.getPropertyPredicate();
+    logger = pPreviousState.getLogger();
   }
 
   /**

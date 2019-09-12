@@ -68,6 +68,7 @@ public class CPropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
       }
       lowerMappingOfExpr = new HashMap<>();
       upperMappingOfExpr = new HashMap<>();
+      upperMappingOfExpr.put(state.getSizeVar(), state.getSizeVar());
 
     } else if (state instanceof ErrorSegmentation) {
       if (property.equals(state.gettEmptyElement().getTopElement())) {
@@ -78,6 +79,8 @@ public class CPropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
       }
       lowerMappingOfExpr = new HashMap<>();
       upperMappingOfExpr = new HashMap<>();
+      upperMappingOfExpr.put(state.getSizeVar(), state.getSizeVar());
+
     } else {
     segmentintervals = computeIntervals(state, property);
       computeMapping(state, pVisitor, pBuilder);

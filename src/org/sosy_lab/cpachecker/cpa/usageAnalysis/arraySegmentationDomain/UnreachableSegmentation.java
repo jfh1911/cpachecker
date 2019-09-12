@@ -19,23 +19,13 @@
  */
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain;
 
-import java.util.function.Predicate;
-import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 public class UnreachableSegmentation<T extends ExtendedCompletLatticeAbstractState<T>>
     extends ArraySegmentationState<T> {
 
-  public UnreachableSegmentation(
-      LogManager pLogger,
-      String pCpaName,
-      Predicate<ArraySegmentationState<T>> pPropertyPredicate,
-      T pEmptyElement) {
-    super(
-        pEmptyElement,
-        pCpaName,
-        pPropertyPredicate,
-        pLogger);
+  public UnreachableSegmentation(ArraySegmentationState<T> pPreviousState) {
+    super(pPreviousState);
   }
 
 
