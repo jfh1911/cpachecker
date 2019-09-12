@@ -167,7 +167,6 @@ public class FormulaRelation
     this.rcd = pRcd;
   }
 
-
   public FormulaState makeInitial() {
     FormulaState initialstate = new FormulaState(pathFormulaManager.makeEmptyPathFormula(), this);
     return initialstate;
@@ -223,9 +222,50 @@ public class FormulaRelation
             result = new FormulaState(newformula1, this);
             result.whilebefore = state.whilebefore;
           } else {
-
+            // The non-loop part is not considered here
           }
         }
+        // For each case
+        // TODO: remove redundant code
+        else if (pre.isLoopStart()) {
+          // Since we are in a for each case, there is a statement executed before. hence, look two
+          // statements up:
+          for (int j = 0; j < preEdge.getPredecessor().getNumEnteringEdges(); j++) {
+            CFAEdge prepreEdge = preEdge.getPredecessor().getEnteringEdge(j);
+            if (prepreEdge.getEdgeType().equals(CFAEdgeType.BlankEdge)
+                && prepreEdge.getDescription().contains("for")) {
+              // For loop
+              if (pCfaEdge.getTruthAssumption()) {
+                try {
+                  SSAMap map1 = state.whilebefore;
+                  SSAMapBuilder mb1 = map1.builder();
+                  for (String v : map1.allVariables()) {
+                    mb1.setIndex(v, mb1.getType(v), mb1.getIndex(v) + 1);
+                  }
+                  SSAMap newmap1 = mb1.build();
+
+                  newformula1 =
+                      new PathFormula(
+                          state.formulabefore1.getFormula(),
+                          newmap1,
+                          state.formulabefore1.getPointerTargetSet(),
+                          state.formulabefore1.getLength());
+
+                  newformula1 = pathFormulaManager.makeAnd(newformula1, pCfaEdge);
+
+                } catch (InterruptedException e) {
+
+                }
+
+                result = new FormulaState(newformula1, this);
+                result.whilebefore = state.whilebefore;
+              } else {
+                // The non-loop part is not considered here
+              }
+            }
+          }
+        }
+
       }
     }
     return result;
@@ -267,7 +307,15 @@ public class FormulaRelation
 
     }
     FormulaState result = new FormulaState(newformula1, this);
+
     result.whilebefore = state.whilebefore;
+    // Workaround for for-loops
+    for (int i = 0; i < pCfaEdge.getPredecessor().getNumEnteringEdges(); i++) {
+      if (pCfaEdge.getPredecessor().getEnteringEdge(i).getEdgeType().equals(CFAEdgeType.BlankEdge)
+          && pCfaEdge.getPredecessor().getEnteringEdge(i).getDescription().contains("for")) {
+        result.formulabefore1 = state.formulabefore1;
+      }
+    }
     return result;
   }
 
@@ -321,7 +369,68 @@ public class FormulaRelation
           SSAMapBuilder mb1 = map1.builder();
 
           SSAMap whileafter1 = mb1.build();
-          SSAMap whileafter2 = mb1.build();
+          // TODO MAKE EQUALITIES
+          List<MapsDifference.Entry<String, Integer>> symbolDifferences1 = new ArrayList<>();
+          SSAMap.merge(
+              state.whilebefore,
+              whileafter1,
+              MapsDifference.collectMapsDifferenceTo(symbolDifferences1));
+
+          BooleanFormula p1add = result.getPathFormula().getFormula();
+
+          int length1 = result.getPathFormula().getLength();
+
+          for (MapsDifference.Entry<String, Integer> symbolDifference : symbolDifferences1) {
+            String v = symbolDifference.getKey();
+            int index1 = symbolDifference.getLeftValue().orElse(1);
+            int index2 = symbolDifference.getRightValue().orElse(1);
+            if (index1 + 1 == index2 && state.whilebefore.containsVariable(v)) {
+              // Consider History of Not rewritten variables
+              p1add = formulaManager.makeAnd(p1add, makeEqual(v, v, index2, index1, 1, 1));
+
+              length1++;
+            }
+          }
+
+          result.path1 =
+              new PathFormula(
+                  p1add,
+                  whileafter1,
+                  PointerTargetSet.emptyPointerTargetSet(),
+                  length1);
+
+          result.whilebefore = null;
+          return result;
+        }
+      }
+
+    }
+
+    // COde for for-loops:
+    // TODO: remove redundant code
+    if (pCfaEdge.getEdgeType().equals(CFAEdgeType.BlankEdge)
+        && pCfaEdge.getDescription().contains("for")) {
+      FormulaState result = state.clone();
+      SSAMap map1 = state.path1.getSsa();
+      SSAMapBuilder mb1 = map1.builder();
+      SSAMap newmap1 = mb1.build();
+      result.whilebefore = newmap1;
+      result.formulabefore1 = state.path1;
+      return result;
+    }
+
+    if (pCfaEdge.getSuccessor() != null) {
+      CFANode post = pCfaEdge.getSuccessor();
+      int length = post.getNumEnteringEdges();
+      for (int i = 0; i < length; i++) {
+        CFAEdge preEdge = post.getEnteringEdge(i);
+        if (preEdge.getEdgeType().equals(CFAEdgeType.BlankEdge)
+            && preEdge.getDescription().contains("for")) {
+          FormulaState result = state.clone();
+          SSAMap map1 = state.path1.getSsa();
+          SSAMapBuilder mb1 = map1.builder();
+
+          SSAMap whileafter1 = mb1.build();
           // TODO MAKE EQUALITIES
           List<MapsDifference.Entry<String, Integer>> symbolDifferences1 = new ArrayList<>();
           SSAMap.merge(
