@@ -244,6 +244,10 @@ public class FormulaRelation
                   }
                   SSAMap newmap1 = mb1.build();
 
+                  if (state.formulabefore1 == null) {
+                    throw new CPATransferException(
+                        "The formulaBefore needs to be set, hence the transformation is aborted");
+                  }
                   newformula1 =
                       new PathFormula(
                           state.formulabefore1.getFormula(),
@@ -333,6 +337,13 @@ public class FormulaRelation
     }
     FormulaState result = new FormulaState(newformula1, this);
     result.whilebefore = state.whilebefore;
+    // Workaround for for-loops
+    for (int i = 0; i < pCfaEdge.getPredecessor().getNumEnteringEdges(); i++) {
+      if (pCfaEdge.getPredecessor().getEnteringEdge(i).getEdgeType().equals(CFAEdgeType.BlankEdge)
+          && pCfaEdge.getPredecessor().getEnteringEdge(i).getDescription().contains("for")) {
+        result.formulabefore1 = state.formulabefore1;
+      }
+    }
     return result;
   }
 

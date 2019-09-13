@@ -167,11 +167,11 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
           int max = Integer.max(posSegmentContainsVar, posSegmentContainsOp2);
           Predicate<T> pred = state.gettEmptyElement().getIsDefaultValueAndCanBeRemoved();
           for (int i = min; i < max; i++) {
-            if (pred.test(state.getSegments().get(i).getAnalysisInformation())) {
+            if (!pred.test(state.getSegments().get(i).getAnalysisInformation())) {
               logger.log(
                   Level.FINE,
-                  "The analysis result would be under-approximated when removing a segment bound containing array elements marked as used for "
-                      + state.toDOTLabel()
+                  "The analysis result would be under-approximated when removing a segment bound containing array elements that cannot be removed "
+                      + state.toDOTLabel() + "in the interval ["+min+","+max+"] "
                       + " for the expression "
                       + pVar.toASTString()
                       + pOperator.toString()

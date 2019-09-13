@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.Language;
@@ -225,6 +226,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       res.add(0, current);
 
     }
+
     ArraySegmentationState<T> mergedSeg =
         new ArraySegmentationState<>(
             res,
@@ -237,6 +239,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
             this.cpaName,
             this.propertyPredicate,
             this.logger);
+    logger.log(Level.FINE, "Merged the elements " + first + " and " + second + "to " + mergedSeg);
     if (mergedSeg.equals(pOther)) {
       return pOther;
     } else {
