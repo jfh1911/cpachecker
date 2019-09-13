@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
@@ -49,6 +50,7 @@ import org.sosy_lab.cpachecker.cfa.model.c.CFunctionCallEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CFunctionReturnEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CStatementEdge;
 import org.sosy_lab.cpachecker.cfa.types.c.CArrayType;
+import org.sosy_lab.cpachecker.cpa.callstack.CallstackState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ExtendedCompletLatticeAbstractState;
@@ -77,6 +79,7 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
    * @param pPredicate the predicate for checking error states
    * @param pEmptyElement the empty element
    * @param pName of the analysis
+   * @param pNode
    * @return an initial element
    * @throws InterruptedException if an error occured
    */
@@ -85,7 +88,8 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
           T pInnerInitaleState,
           Predicate<ArraySegmentationState<T>> pPredicate,
           T pEmptyElement,
-          String pName)
+          String pName,
+          @NonNull CFANode pNode)
           throws InterruptedException {
 
     Triple<AExpression, CVariableDeclaration, List<AExpression>> initalValuesForArraySegmentationDomain =
@@ -109,7 +113,8 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
         false,
         pName,
         pPredicate,
-        logger);
+        logger,
+        new CallstackState(null, pNode.getFunctionName(), pNode));
 
   }
 

@@ -51,6 +51,7 @@ import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
+import org.sosy_lab.cpachecker.cpa.callstack.CallstackState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ErrorSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ExtendedCompletLatticeAbstractState;
@@ -285,6 +286,21 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       Precision pPrecision)
       throws CPATransferException, InterruptedException {
     if (pState instanceof ArraySegmentationState) {
+
+      // Firstly, check if the edge was a functioncallEdge and we need to put the current state to
+      // the callstack
+      if (pCfaEdge instanceof CFunctionCallEdge || pCfaEdge instanceof CFunctionReturnEdge) {
+        CallstackState callStack = null;
+        for (AbstractState a : pOtherStates) {
+          if (a instanceof CallstackState) {
+            callStack = (CallstackState) a;
+          }
+        }
+        if (callStack != null) {
+          state.setCallStack(callStack);
+        }
+      }
+
       @SuppressWarnings("unchecked")
       ArraySegmentationState<T> s = (ArraySegmentationState<T>) pState;
       if (isCornerCase(s)) {

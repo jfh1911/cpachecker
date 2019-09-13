@@ -44,6 +44,7 @@ import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractQueryableState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
+import org.sosy_lab.cpachecker.cpa.callstack.CallstackState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.transfer.CSegmentationModifier;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.ArrayModificationException;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
@@ -71,6 +72,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   private boolean canBeEmpty;
   private final String cpaName;
   private final Predicate<ArraySegmentationState<T>> propertyPredicate;
+  private CallstackState callStack;
+
 
   /**
    *
@@ -92,7 +95,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       boolean pCanBeEmpty,
       String pCpaName,
       Predicate<ArraySegmentationState<T>> pPropertyPredicate,
-      LogManager pLogger) {
+      LogManager pLogger,
+      CallstackState pCallState) {
     super();
     segments = pSegments;
     // Check if the segment chain is correctly ordered
@@ -117,6 +121,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     cpaName = pCpaName;
     propertyPredicate = pPropertyPredicate;
     logger = pLogger;
+    callStack = pCallState;
 
   }
 
@@ -126,8 +131,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
    *
    * @param pPreviousState the previous state, used to get all information needed
    */
-  protected ArraySegmentationState(
-      ArraySegmentationState<T> pPreviousState) {
+  protected ArraySegmentationState(ArraySegmentationState<T> pPreviousState) {
     super();
     segments = new ArrayList<>();
 
@@ -141,6 +145,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     cpaName = pPreviousState.getCPAName();
     propertyPredicate = pPreviousState.getPropertyPredicate();
     logger = pPreviousState.getLogger();
+    callStack = pPreviousState.callStack;
   }
 
   /**
@@ -238,7 +243,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
             unifiedSegs.getFirst().isCanBeEmpty() || unifiedSegs.getSecond().isCanBeEmpty(),
             this.cpaName,
             this.propertyPredicate,
-            this.logger);
+            this.logger,
+            pOther.getCallStack());
     logger.log(Level.FINE, "Merged the elements " + first + " and " + second + "to " + mergedSeg);
     if (mergedSeg.equals(pOther)) {
       return pOther;
@@ -573,6 +579,14 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     return propertyPredicate;
   }
 
+  public CallstackState getCallStack() {
+    return callStack;
+  }
+
+  public void setCallStack(CallstackState pCallStack) {
+    callStack = pCallStack;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(segments, tEmptyElement);
@@ -618,8 +632,10 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
         this.canBeEmpty,
         this.cpaName,
         this.propertyPredicate,
-        logger);
+        logger,
+        callStack);
   }
+
 
   @Override
   public String toString() {
