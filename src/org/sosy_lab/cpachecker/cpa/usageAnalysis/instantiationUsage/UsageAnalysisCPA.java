@@ -163,7 +163,8 @@ public class UsageAnalysisCPA extends AbstractCPA {
         new VariableUsageState(VariableUsageType.NOT_USED),
         predicate,
         VariableUsageState.getEmptyElement(),
-        "UsageAnalysisCPA");
+        "UsageAnalysisCPA",
+        pNode);
   }
 
 }
