@@ -95,10 +95,8 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
     else if (pStatement instanceof CFunctionCallAssignmentStatement) {
       CFunctionCallAssignmentStatement call = (CFunctionCallAssignmentStatement) pStatement;
       // If a variable is assigned the return value of a function call, we loose all information
-      // about
-      // the variable.
-      // Only in case if the variable is SIZE, we can reuse the assumption that all variables in the
-      // segment are smaller to SIZE
+      // about the variable. Only in case if the variable is SIZE, we can reuse the assumption that
+      // all variables in the segment are smaller to SIZE
       if (call.getLeftHandSide() instanceof CIdExpression
           && ((CIdExpression) call.getLeftHandSide()).equals(state.getSizeVar())) {
         // First, remove the expression and than add it to the end

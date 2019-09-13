@@ -87,7 +87,8 @@ public class VariableUsageState
 
       @Override
       public boolean test(VariableUsageState pT) {
-        return pT.getType().equals(getEmptyElementType());
+        return (pT.getType().equals(getEmptyElementType())
+            || pT.getType().equals(getBottomValue()));
       }
     };
   }

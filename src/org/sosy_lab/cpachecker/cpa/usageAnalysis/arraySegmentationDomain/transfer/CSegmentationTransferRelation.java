@@ -303,12 +303,12 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
         CSegmentationStrengthener<T> strengthener =
             new CSegmentationStrengthener<>(machineModel, logger, updateTransformer);
         s = strengthener.strengthen(s, formulaState, formulaState.getPathFormula(), pCfaEdge);
-        return Collections.singleton(s);
-      }
 
+      }
+      return Collections.singleton(s);
     }
 
-    // TODO Auto-generated method stub
+    logger.log(Level.FINE, "The strengthening faied, hence abort the analysis");
     return Collections.emptyList();
   }
 

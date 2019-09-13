@@ -21,7 +21,9 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
@@ -68,6 +70,16 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
   private LogManager logger;
   private String varnameArray;
 
+  /**
+   * Create a initial state
+   *
+   * @param pInnerInitaleState the initial inner state
+   * @param pPredicate the predicate for checking error states
+   * @param pEmptyElement the empty element
+   * @param pName of the analysis
+   * @return an initial element
+   * @throws InterruptedException if an error occured
+   */
   public ArraySegmentationState<T>
       computeInitaleState(
           T pInnerInitaleState,
@@ -87,7 +99,7 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
 
     return new ArraySegmentationState<>(
         segments,
-        pInnerInitaleState,
+        pEmptyElement,
         initalValuesForArraySegmentationDomain.getThird(),
         new CIdExpression(
             initalValuesForArraySegmentationDomain.getSecond().getFileLocation(),
@@ -101,6 +113,13 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
 
   }
 
+  /**
+   *
+   * @param initalValuesForArraySegmentationDomain
+   * @param pEmptyElement
+   * @param pInitaleAnalysisInformaiton
+   * @return
+   */
   private List<ArraySegment<T>> buildInitaleSegmentation(
       Triple<AExpression, CVariableDeclaration, List<AExpression>> initalValuesForArraySegmentationDomain,
       T pEmptyElement,
@@ -139,7 +158,7 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
 
     @Nullable
     CExpression sizeVar = null;
-    List<AExpression> arrayAccessVars = new ArrayList<>();
+    Set<AExpression> arrayAccessVars = new HashSet<>();
     CVariableDeclaration arrayVar = null;
 
     for (CFANode node : cfa.getAllNodes()) {
@@ -197,7 +216,7 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
               + "' is not defined!");
     }
 
-    return Triple.of(sizeVar, arrayVar, arrayAccessVars);
+    return Triple.of(sizeVar, arrayVar, new ArrayList<>(arrayAccessVars));
   }
 
   protected Collection<CExpression> computeVars(CRightHandSide pExpr) {
