@@ -10,12 +10,16 @@ int main()
     if (0 <= SIZE)
     {        
         int a[SIZE];
-   
-        for (     int j=0;j < 10;    j = j+1)        {
-            a[j]=__VERIFIER_nondet_int();
-            res = res + a[j];
-        
-        }
+       while( i <= SIZE){
+            if(i != 0){			
+				a[i]=__VERIFIER_nondet_int();
+				res = res + a[i];
+			}else{
+				;
+			}
+			i = i+1;
+		}
+		
     }
     else{
         ;
