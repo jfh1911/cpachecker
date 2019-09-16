@@ -22,7 +22,10 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.transf
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
@@ -30,6 +33,7 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CDeclaration;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCall;
+import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCallExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CInitializerExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CParameterDeclaration;
@@ -58,15 +62,18 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.Extende
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.formula.FormulaState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.VariableCollector;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
 public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstractState<T>> extends
     ForwardingTransferRelation<ArraySegmentationState<T>, ArraySegmentationState<T>, Precision> {
 
+  private static final String NAME_OF_MAIN = "main";
   private final LogManagerWithoutDuplicates logger;
   private final MachineModel machineModel;
   public final String PREFIX;
   private ExpressionSimplificationVisitor visitor;
+  private VariableCollector collector;
 
   TransferRelation transferRelationForInnerDomain;
   CStatementTrasformer<T> statementTransformer;
@@ -93,6 +100,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     this.transferRelationForInnerDomain = transferRelationForInnerDomain;
     statementTransformer = new CStatementTrasformer<>(logger, visitor);
     updateTransformer = new CUpdateTransformer<>();
+    collector = new VariableCollector(machineModel, logger);
   }
 
   @SuppressWarnings("unchecked")
@@ -108,8 +116,13 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     else if (isCornerCase(super.getState())) {
       return logTransformation(inputArgumentsAsString, state);
     }
+
     // Apply the inner transfer function
-    ArraySegmentationState<T> resState = applyInnerTransferRelation(pCfaEdge, state.clone());
+    Optional<ArraySegmentationState<T>> resState =
+        applyInnerTransferRelation(pCfaEdge, state.clone());
+    if (!resState.isPresent()) {
+      return null;
+    }
 
     // Check if a variable is assigned
     if (pDecl instanceof CVariableDeclaration
@@ -118,12 +131,12 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       // Now ensure that the variable needs to be checked (is a array variable
       CIdExpression var = new CIdExpression(pDecl.getFileLocation(), pDecl);
       if (state.gettListOfArrayVariables().contains(var) || var.equals(state.getSizeVar())) {
-      return logTransformation(
-          inputArgumentsAsString,
-          statementTransformer.reassign(
+        return logTransformation(
+            inputArgumentsAsString,
+            statementTransformer.reassign(
                 var,
-              ((CInitializerExpression) varDecl.getInitializer()).getExpression(),
-              resState));
+                ((CInitializerExpression) varDecl.getInitializer()).getExpression(),
+                resState.get()));
       }
     }
     return logTransformation(inputArgumentsAsString, state != null ? state.clone() : state);
@@ -141,17 +154,60 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     else if (isCornerCase(getState())) {
       return logTransformation(inputArgumentsAsString, state);
     }
-    // Apply the inner transfer function
-    ArraySegmentationState<T> resState = applyInnerTransferRelation(pCfaEdge, state.clone());
 
+    // Check, if the state is not the main function (hence called) and replace the function
+    // parameter by the actual called parameters and if the callstate analysis is executed (the
+    // initial state has no predecessor. If we apply the callstack analysis, than the current
+    // callstack has at least two elements (size >1)
+    CAssumeEdge updatedEdge = pCfaEdge;
+    CExpression replacedExpr = pExpression;
+    if (!pCfaEdge.getPredecessor().getFunctionName().equalsIgnoreCase(NAME_OF_MAIN)
+        && state.getCallStack().getDepth() > 1) {
+      CFunctionCallExpression summaryOfCall =
+          (CFunctionCallExpression) state.getCallStack()
+              .getCallNode()
+              .getLeavingSummaryEdge()
+              .getExpression()
+              .getFunctionCallExpression();
+      // Check, if the assumption expression contains any parameters. If so, replace them
+      Collection<CIdExpression> varsInExpr = collector.collectVariables(pExpression);
+      List<CParameterDeclaration> params = summaryOfCall.getDeclaration().getParameters();
+      Map<CIdExpression, CExpression> replacements = new HashMap<>();
+      for (int i = 0; i < params.size(); i++) {
+        for (CIdExpression v : varsInExpr) {
+          if (params.get(i).getName().equals(v.getName())) {
+            // Replace the parameter by the called value
+            replacements.put(v, summaryOfCall.getParameterExpressions().get(i));
+          }
+        }
+      }
+
+      // Next, replace the variables by the expressions in pExpression
+      replacedExpr = collector.replaceVarsInExpr(pExpression, replacements);
+      updatedEdge =
+          new CAssumeEdge(
+              replacedExpr.toASTString(),
+              pCfaEdge.getFileLocation(),
+              pCfaEdge.getPredecessor(),
+              pCfaEdge.getSuccessor(),
+              replacedExpr,
+              pTruthAssumption);
+    }
+
+    // Apply the inner transfer function
+    Optional<ArraySegmentationState<T>> resState =
+        applyInnerTransferRelation(updatedEdge, state.clone());
+    if (!resState.isPresent()) {
+  return null;
+}
     // Case 3: Update(e,d)
     if (pExpression instanceof CBinaryExpression) {
       return logTransformation(
           inputArgumentsAsString,
           updateTransformer.update(
-              (CBinaryExpression) pExpression,
+              (CBinaryExpression) replacedExpr,
               pTruthAssumption,
-              resState,
+              resState.get(),
               logger,
               visitor));
     } else {
@@ -172,8 +228,13 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     }
     // Apply the inner transfer function
     try {
-      ArraySegmentationState<T> resState = applyInnerTransferRelation(pCfaEdge, state.clone());
-      return logTransformation(inputArgumentsAsString, resState);
+      Optional<ArraySegmentationState<T>> resState =
+          applyInnerTransferRelation(pCfaEdge, state.clone());
+      if (!resState.isPresent()) {
+        return null;
+      }
+
+      return logTransformation(inputArgumentsAsString, resState.get());
     } catch (CPATransferException e) {
       // TODO: enhance error handling
       throw new IllegalArgumentException(e);
@@ -197,8 +258,12 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       return logTransformation(inputArgumentsAsString, state);
     }
     // Apply the inner transfer function
-    ArraySegmentationState<T> resState = applyInnerTransferRelation(pCfaEdge, state.clone());
-    return logTransformation(inputArgumentsAsString, resState);
+    Optional<ArraySegmentationState<T>> resState =
+        applyInnerTransferRelation(pCfaEdge, state.clone());
+    if (!resState.isPresent()) {
+      return null;
+    }
+    return logTransformation(inputArgumentsAsString, resState.get());
   }
 
   @Override
@@ -218,8 +283,12 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       return logTransformation(inputArgumentsAsString, state);
     }
     // Apply the inner transfer function
-    ArraySegmentationState<T> resState = applyInnerTransferRelation(pCfaEdge, state.clone());
-    return logTransformation(inputArgumentsAsString, resState);
+    Optional<ArraySegmentationState<T>> resState =
+        applyInnerTransferRelation(pCfaEdge, state.clone());
+    if (!resState.isPresent()) {
+      return null;
+    }
+    return logTransformation(inputArgumentsAsString, resState.get());
   }
 
   @Override
@@ -235,8 +304,12 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       return logTransformation(inputArgumentsAsString, state);
     }
     // Apply the inner transfer function
-    ArraySegmentationState<T> resState = applyInnerTransferRelation(pCfaEdge, state.clone());
-    return logTransformation(inputArgumentsAsString, resState);
+    Optional<ArraySegmentationState<T>> resState =
+        applyInnerTransferRelation(pCfaEdge, state.clone());
+    if (!resState.isPresent()) {
+      return null;
+    }
+    return logTransformation(inputArgumentsAsString, resState.get());
   }
 
   @Override
@@ -252,8 +325,12 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       return logTransformation(inputArgumentsAsString, state);
     }
     // Apply the inner transfer function
-    ArraySegmentationState<T> resState = applyInnerTransferRelation(pCfaEdge, state.clone());
-    return logTransformation(inputArgumentsAsString, resState);
+    Optional<ArraySegmentationState<T>> resState =
+        applyInnerTransferRelation(pCfaEdge, state.clone());
+    if (!resState.isPresent()) {
+      return null;
+    }
+    return logTransformation(inputArgumentsAsString, resState.get());
   }
 
   @Override
@@ -269,8 +346,12 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       return logTransformation(inputArgumentsAsString, state);
     }
     // Apply the inner transfer function
-    ArraySegmentationState<T> resState = applyInnerTransferRelation(pCfaEdge, state.clone());
-    state = statementTransformer.transform(resState, pStatement);
+    Optional<ArraySegmentationState<T>> resState =
+        applyInnerTransferRelation(pCfaEdge, state.clone());
+    if (!resState.isPresent()) {
+      return null;
+    }
+    state = statementTransformer.transform(resState.get(), pStatement);
     return logTransformation(inputArgumentsAsString, state);
 
   }
@@ -286,25 +367,21 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       Precision pPrecision)
       throws CPATransferException, InterruptedException {
     if (pState instanceof ArraySegmentationState) {
-
-      // Firstly, check if the edge was a functioncallEdge and we need to put the current state to
-      // the callstack
-      if (pCfaEdge instanceof CFunctionCallEdge || pCfaEdge instanceof CFunctionReturnEdge) {
-        CallstackState callStack = null;
-        for (AbstractState a : pOtherStates) {
-          if (a instanceof CallstackState) {
-            callStack = (CallstackState) a;
-          }
-        }
-        if (callStack != null) {
-          state.setCallStack(callStack);
-        }
-      }
-
       @SuppressWarnings("unchecked")
       ArraySegmentationState<T> s = (ArraySegmentationState<T>) pState;
       if (isCornerCase(s)) {
         return Collections.singleton(s);
+      }
+
+      // Update callstack, if there is one
+      CallstackState callStack = null;
+      for (AbstractState a : pOtherStates) {
+        if (a instanceof CallstackState) {
+          callStack = (CallstackState) a;
+        }
+      }
+      if (callStack != null) {
+        s.setCallStack(callStack);
       }
 
       // Try to extract information for the array segmentations:
@@ -332,7 +409,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     return s instanceof ErrorSegmentation || s instanceof UnreachableSegmentation;
   }
 
-  private ArraySegmentationState<T> applyInnerTransferRelation(
+  private Optional<ArraySegmentationState<T>> applyInnerTransferRelation(
       CFAEdge pCfaEdge,
       ArraySegmentationState<T> pArraySegmentationState)
       throws CPATransferException {
@@ -345,6 +422,17 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
                   .getAbstractSuccessorsForEdge(pArraySegmentationState, precision, pCfaEdge));
     } catch (InterruptedException e) {
       throw new CPATransferException("Could not apply inner transfer function", e);
+    }
+    if (res.isEmpty()) {
+      // TODO: infer a more generic way
+      logger.log(
+          Level.FINE,
+          "The inner transfer function returned NULL for "
+              + state
+              + " and the edge "
+              + pCfaEdge.toString());
+
+      return Optional.empty();
     }
     if (res.size() != 1) {
       throw new CPATransferException(
@@ -367,7 +455,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     }
     @SuppressWarnings("unchecked")
     ArraySegmentationState<T> resState = (ArraySegmentationState<T>) res.get(0);
-    return resState;
+    return Optional.of(resState);
   }
 
   private ArraySegmentationState<T>
