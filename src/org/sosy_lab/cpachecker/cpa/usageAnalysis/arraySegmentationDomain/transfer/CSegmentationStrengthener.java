@@ -150,6 +150,8 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
                       pPathFormula.getPointerTargetSet(),
                       pPathFormula.getLength() + 1),
                   pFormulaState.getPr());
+          updatedFormulaState.whilebefore = pFormulaState.whilebefore;
+          updatedFormulaState.formulabefore1 = pFormulaState.formulabefore1;
 
           pSegmentation =
               strengthenWithSmallerAndSmallerEqual(

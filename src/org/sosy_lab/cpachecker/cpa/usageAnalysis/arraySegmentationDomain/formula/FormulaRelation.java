@@ -177,16 +177,13 @@ public class FormulaRelation
       handleAssumption(CAssumeEdge pCfaEdge, CExpression pExpression, boolean pTruthAssumption)
           throws CPATransferException {
     PathFormula newformula1 = null;
-
     try {
-
       newformula1 = pathFormulaManager.makeAnd(state.getPathFormula(), pCfaEdge);
-
     } catch (InterruptedException e) {
-
     }
     FormulaState result = new FormulaState(newformula1, this);
     result.whilebefore = state.whilebefore;
+    result.formulabefore1 = state.formulabefore1;
     if (pCfaEdge.getPredecessor() != null) {
       CFANode pre = pCfaEdge.getPredecessor();
       int length = pre.getNumEnteringEdges();
@@ -199,6 +196,11 @@ public class FormulaRelation
 
           if (pCfaEdge.getTruthAssumption()) {
             try {
+              if (state.whilebefore == null) {
+                // TODO: Enhance logging
+                throw new CPATransferException(
+                    "Abort the computation, since an interal error occured");
+              }
               SSAMap map1 = state.whilebefore;
               SSAMapBuilder mb1 = map1.builder();
               for (String v : map1.allVariables()) {
@@ -221,6 +223,7 @@ public class FormulaRelation
 
             result = new FormulaState(newformula1, this);
             result.whilebefore = state.whilebefore;
+            result.formulabefore1 = state.formulabefore1;
           } else {
             // The non-loop part is not considered here
           }
@@ -313,6 +316,7 @@ public class FormulaRelation
     FormulaState result = new FormulaState(newformula1, this);
 
     result.whilebefore = state.whilebefore;
+    result.formulabefore1 = state.formulabefore1;
     // Workaround for for-loops
     for (int i = 0; i < pCfaEdge.getPredecessor().getNumEnteringEdges(); i++) {
       if (pCfaEdge.getPredecessor().getEnteringEdge(i).getEdgeType().equals(CFAEdgeType.BlankEdge)
@@ -337,6 +341,7 @@ public class FormulaRelation
     }
     FormulaState result = new FormulaState(newformula1, this);
     result.whilebefore = state.whilebefore;
+    result.formulabefore1 = state.formulabefore1;
     // Workaround for for-loops
     for (int i = 0; i < pCfaEdge.getPredecessor().getNumEnteringEdges(); i++) {
       if (pCfaEdge.getPredecessor().getEnteringEdge(i).getEdgeType().equals(CFAEdgeType.BlankEdge)
@@ -410,7 +415,7 @@ public class FormulaRelation
                   PointerTargetSet.emptyPointerTargetSet(),
                   length1);
 
-          result.whilebefore = null;
+          // result.whilebefore = null;
           return result;
         }
       }
@@ -472,7 +477,7 @@ public class FormulaRelation
                   PointerTargetSet.emptyPointerTargetSet(),
                   length1);
 
-          result.whilebefore = null;
+          // result.whilebefore = null;
           return result;
         }
       }

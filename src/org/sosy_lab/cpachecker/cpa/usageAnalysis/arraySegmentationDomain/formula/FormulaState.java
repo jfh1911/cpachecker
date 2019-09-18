@@ -62,8 +62,8 @@ public class FormulaState implements AbstractState, Cloneable, Serializable,
     return pr;
   }
 
-  protected SSAMap whilebefore = null;
-  protected PathFormula formulabefore1 = null;
+  public SSAMap whilebefore = null;
+  public PathFormula formulabefore1 = null;
 
   // protected SSAMap whileafter=null;
 
@@ -283,7 +283,9 @@ public class FormulaState implements AbstractState, Cloneable, Serializable,
     FormulaState other = (FormulaState) obj;
     return Objects.equals(formulabefore1, other.formulabefore1)
         && Objects.equals(path1, other.path1)
-        && Objects.equals(whilebefore, other.whilebefore);
+    // FIXME: Just for test (maybe guarantees termination
+    // && Objects.equals(whilebefore, other.whilebefore)
+    ;
   }
 
 
