@@ -21,7 +21,9 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.clu;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
 import org.sosy_lab.cpachecker.cfa.ast.c.CDeclaration;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
@@ -30,6 +32,7 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CParameterDeclaration;
 import org.sosy_lab.cpachecker.cfa.ast.c.CStatement;
 import org.sosy_lab.cpachecker.cfa.model.AbstractCFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.BlankEdge;
+import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CAssumeEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CFunctionCallEdge;
@@ -39,6 +42,7 @@ import org.sosy_lab.cpachecker.cfa.model.c.CReturnStatementEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CStatementEdge;
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
+import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegmentationState;
@@ -135,6 +139,35 @@ public class CLUAnanylsisTransferRelation extends
           throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
 
+  }
+
+  @Override
+  public Collection<? extends AbstractState> strengthen(
+      AbstractState pState,
+      Iterable<AbstractState> pOtherStates,
+      @Nullable CFAEdge pCfaEdge,
+      Precision pPrecision)
+      throws CPATransferException, InterruptedException {
+    if (pState instanceof CLUAnalysisState) {
+      CLUAnalysisState<VariableUsageState> cluAnalysisState =
+          (CLUAnalysisState<VariableUsageState>) pState;
+      List<ArraySegmentationState<VariableUsageState>> strengthened =
+          new ArrayList<>(
+              usageTransfer.strengthen(
+                  cluAnalysisState.getArraySegmentation(),
+                  pOtherStates,
+                  pCfaEdge,
+                  pPrecision));
+      if (!strengthened.get(0).equals(((CLUAnalysisState) pState).getArraySegmentation())) {
+        return Collections.singleton(
+            new CLUAnalysisState<VariableUsageState>(
+                cluAnalysisState.getLocation(),
+                strengthened.get(0),
+                logger));
+      }
+      return Collections.singleton(pState);
+    }
+    return super.strengthen(pState, pOtherStates, pCfaEdge, pPrecision);
   }
 
   /**

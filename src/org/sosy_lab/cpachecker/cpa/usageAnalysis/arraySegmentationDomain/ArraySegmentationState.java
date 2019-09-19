@@ -74,7 +74,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   private final Predicate<ArraySegmentationState<T>> propertyPredicate;
   private CallstackState callStack;
 
-
   /**
    *
    * @param pSegments list of segments present
@@ -155,6 +154,25 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   public ArraySegmentationState<T> join(final ArraySegmentationState<T> pOther)
       throws CPAException, InterruptedException {
 
+    return join(pOther, true);
+
+  }
+
+  /**
+   *
+   * <b> TO guarantee termination, it must be ensured that the flag isLoopHead is used correctly. If
+   * no information present always use true!<\b>
+   *
+   * @param pOther the other segmentation for joining
+   * @param isLoopHead flag to disable the extension of the unification algorithm that retains some
+   *        segment bounds present only in one segmentation
+   * @return he merged elements
+   * @throws CPAException if the computation does not work
+   * @throws InterruptedException else
+   */
+  public ArraySegmentationState<T> join(final ArraySegmentationState<T> pOther, boolean isLoopHead)
+      throws CPAException, InterruptedException {
+
     // Some corner cases for error and unreachable segmentations
     if (this instanceof UnreachableSegmentation) {
       return pOther;
@@ -176,7 +194,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
             first,
             second,
             tEmptyElement.getBottomElement(),
-            tEmptyElement.getBottomElement());
+            tEmptyElement.getBottomElement(),
+            isLoopHead);
 
     // TO get a more precise result, we check, if exectly one segment is empty. Then, returning the
     // unified version of the other leads to a more precise result. To denote that, the flag
@@ -635,7 +654,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
         logger,
         callStack);
   }
-
 
   @Override
   public String toString() {
