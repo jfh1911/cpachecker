@@ -19,8 +19,6 @@
  */
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.clu;
 
-import java.util.Arrays;
-import java.util.List;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
@@ -64,11 +62,13 @@ public class CLUAnalysisCPA extends AbstractCPA {
     description = "which stop operator to use for UsageOfArrayElemensCPA")
   private String stopType = "SEP";
 
+  @Option(
+    name = "arrayName",
+    toUppercase = false,
+    description = "The array that needs to be analyzed")
+  private String varnameArray = "";
+
   private final LogManager logger;
-  public static final String VARMANE_FOR_ARRAY_LENGTH = "SIZE";
-  private static final String VARNAME_ARRAY = "a";
-  private static final String[] temp = {"i"};
-  private static final List<String> ARRAY_ACCESS_VARS = Arrays.asList(temp);
   private final CFA cfa;
   private final Configuration config;
 
@@ -101,7 +101,7 @@ public class CLUAnalysisCPA extends AbstractCPA {
     this.cfa = cfa;
     this.config = config;
     this.shutdownNotifier = shutdownNotifier;
-    usageCPA = new UsageAnalysisCPA(config, logger, cfa);
+    usageCPA = new UsageAnalysisCPA(config, logger, cfa, varnameArray);
     locationCPA = LocationCPA.create(this.cfa, this.config);
     this.factory = new LocationStateFactory(cfa, AnalysisDirection.FORWARD, config);
   }

@@ -23,15 +23,18 @@ import java.io.Serializable;
 import java.util.logging.Level;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
+import org.sosy_lab.cpachecker.core.interfaces.AbstractQueryableState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
 import org.sosy_lab.cpachecker.cpa.location.LocationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
+import org.sosy_lab.cpachecker.exceptions.InvalidQueryException;
 
 public class CLUAnalysisState<T extends LatticeAbstractState<T>>
-    implements Serializable, LatticeAbstractState<CLUAnalysisState<T>>, AbstractState, Graphable {
+    implements Serializable, LatticeAbstractState<CLUAnalysisState<T>>, AbstractState, Graphable,
+    AbstractQueryableState {
 
   private static final long serialVersionUID = 7499975316022760688L;
   private final LocationState location;
@@ -63,7 +66,9 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
           "Computing merge(" + this.toDOTLabel() + " , " + pOther.toDOTLabel() + ") --> ";
 
       ArraySegmentationState<VariableUsageState> joinSegmentation =
-          this.arraySegmentation.join(pOther.getArraySegmentation().clone());
+          this.arraySegmentation.join(
+              pOther.getArraySegmentation().clone(),
+              this.getLocation().getLocationNode().isLoopStart());
       if (joinSegmentation.equals(pOther.getArraySegmentation())) {
         returnElement = pOther;
       } else {
@@ -159,6 +164,16 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
   @Override
   public boolean shouldBeHighlighted() {
     return false;
+  }
+
+  @Override
+  public String getCPAName() {
+    return this.arraySegmentation.getCPAName();
+  }
+
+  @Override
+  public boolean checkProperty(String pProperty) throws InvalidQueryException {
+    return this.arraySegmentation.checkProperty(pProperty);
   }
 
 }

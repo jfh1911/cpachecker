@@ -79,7 +79,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
   private ArraySegmentationCPAHelper<VariableUsageState> helper;
 
   /**
-   * This method acts as the constructor of the interval analysis CPA.
+   * This method acts as the constructor of the analysis CPA.
    *
    * @param config the configuration of the CPAinterval analysis CPA.
    */
@@ -94,6 +94,25 @@ public class UsageAnalysisCPA extends AbstractCPA {
     this.logger = pLogger;
     this.cfa = cfa;
     helper = new ArraySegmentationCPAHelper<>(cfa, logger, varnameArray);
+  }
+
+  /**
+   * This method acts as the constructor of the interval analysis CPA.
+   *
+   * @param config the configuration of the CPAinterval analysis CPA.
+   * @param pVarnameArray
+   */
+  public UsageAnalysisCPA(Configuration config, LogManager pLogger, CFA cfa, String pVarnameArray)
+      throws InvalidConfigurationException {
+    super(
+        "join",
+        "sep",
+        DelegateAbstractDomain.<ArraySegmentationState<VariableUsageState>>getInstance(),
+        null);
+    config.inject(this, UsageAnalysisCPA.class);
+    this.logger = pLogger;
+    this.cfa = cfa;
+    helper = new ArraySegmentationCPAHelper<>(cfa, logger, pVarnameArray);
   }
 
   @Override
@@ -120,6 +139,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
         cfa.getMachineModel(),
         "SimpleUsage");
   }
+
 
   @Override
   public ArraySegmentationState<VariableUsageState>

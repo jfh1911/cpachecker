@@ -65,9 +65,16 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
   };
 
   public Pair<ArraySegmentationState<T>, ArraySegmentationState<T>>
-      unifyMerge(ArraySegmentationState<T> d1, ArraySegmentationState<T> d2, T il, T ir)
+      unifyMerge(
+          ArraySegmentationState<T> d1,
+          ArraySegmentationState<T> d2,
+          T il,
+          T ir,
+          boolean pIsLoopHead)
           throws CPAException {
-    return this.unifyGeneric(d1, d2, il, ir, sqcup, sqcup, curleyVee, curleyVee);
+    Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> res =
+        this.unifyGeneric(d1, d2, il, ir, sqcup, sqcup, curleyVee, curleyVee, !pIsLoopHead);
+    return res;
   }
 
   public Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifyCompare(
@@ -79,7 +86,7 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
       throws CPAException {
 
     // _|_, _|_, sqcup, sqcap, v , ^
-    return this.unifyGeneric(d1, d2, il, ir, sqcup, sqcap, curleyVee, curleyWedge);
+    return this.unifyGeneric(d1, d2, il, ir, sqcup, sqcap, curleyVee, curleyWedge, false);
   }
 
   public Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifyGeneric(
@@ -90,7 +97,8 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
       BinaryOperator<T> ol,
       BinaryOperator<T> or,
       BiPredicate<Boolean, Boolean> hatl,
-      BiPredicate<Boolean, Boolean> hatr)
+      BiPredicate<Boolean, Boolean> hatr,
+      boolean isMergeAndNoLoopHead)
       throws CPAException {
 
     Language language = pD1.getLanguage();
@@ -275,6 +283,38 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
       // Case 6: Ensure that there is no intersection of B1 and B2
       if (!(b1.getSegmentBound().parallelStream().anyMatch(b -> b2SegBounds.contains(b))
           || b2.getSegmentBound().parallelStream().anyMatch(b -> b1SegBounds.contains(b)))) {
+
+        if (isMergeAndNoLoopHead) {
+        if (!b1Bar.isEmpty() && b2Bar.isEmpty() && b2.getSegmentBound().size() == 1) {
+          // Case 6.0.1
+          // add B2 to d1 and continue with the newly added segments
+          ArraySegment<T> copyOfB2 =
+              new ArraySegment<>(
+                  new ArrayList<>(b2.getSegmentBound()),
+                  il,
+                  true,
+                  b1,
+                  b1.getLanguage());
+          d1.addSegment(copyOfB2, b0);
+            b1 = b0;
+            b2 = b0Prime;
+          continue;
+        } else if (b1Bar.isEmpty() && !b2Bar.isEmpty() && b2.getSegmentBound().size() == 1) {
+          // Case 6.0.2
+          // add B1 to d2 and continue with the newly added segments
+          ArraySegment<T> copyOfB1 =
+              new ArraySegment<>(
+                  new ArrayList<>(b1.getSegmentBound()),
+                  ir,
+                  true,
+                  b2,
+                  b2.getLanguage());
+          d2.addSegment(copyOfB1, b0Prime);
+            b1 = b0;
+            b2 = b0Prime;
+          continue;
+          }
+        }
 
         if ((!b1Bar.isEmpty()) && b2Bar.isEmpty()) {
           // Case 6.1
