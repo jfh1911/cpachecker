@@ -198,8 +198,8 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     Optional<ArraySegmentationState<T>> resState =
         applyInnerTransferRelation(updatedEdge, state.clone());
     if (!resState.isPresent()) {
-  return null;
-}
+      return null;
+    }
     // Case 3: Update(e,d)
     if (pExpression instanceof CBinaryExpression) {
       return logTransformation(
@@ -396,11 +396,11 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
         CSegmentationStrengthener<T> strengthener =
             new CSegmentationStrengthener<>(machineModel, logger, updateTransformer);
         s = strengthener.strengthen(s, formulaState, formulaState.getPathFormula(), pCfaEdge);
-
+        // Add the updated path formula to the array segmentation domain
+        s.setPathFormula(formulaState);
+        return Collections.singleton(s);
       }
-      return Collections.singleton(s);
     }
-
     logger.log(Level.FINE, "The strengthening faied, hence abort the analysis");
     return Collections.emptyList();
   }
