@@ -218,7 +218,8 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
               state.getCPAName(),
               state.getPropertyPredicate(),
               logger,
-              state.getCallStack());
+              state.getCallStack(),
+              state.getPathFormula());
         }
       }
     }

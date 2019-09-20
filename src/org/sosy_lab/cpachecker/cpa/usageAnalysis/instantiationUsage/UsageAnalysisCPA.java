@@ -21,6 +21,7 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
 
 import java.util.List;
 import java.util.function.Predicate;
+import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.configuration.Option;
@@ -83,7 +84,11 @@ public class UsageAnalysisCPA extends AbstractCPA {
    *
    * @param config the configuration of the CPAinterval analysis CPA.
    */
-  public UsageAnalysisCPA(Configuration config, LogManager pLogger, CFA cfa)
+  public UsageAnalysisCPA(
+      Configuration config,
+      LogManager pLogger,
+      ShutdownNotifier shutdownNotifier,
+      CFA cfa)
       throws InvalidConfigurationException {
     super(
         "join",
@@ -93,7 +98,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
     config.inject(this, UsageAnalysisCPA.class);
     this.logger = pLogger;
     this.cfa = cfa;
-    helper = new ArraySegmentationCPAHelper<>(cfa, logger, varnameArray);
+    helper = new ArraySegmentationCPAHelper<>(cfa, logger, varnameArray, shutdownNotifier, config);
   }
 
   /**
@@ -102,7 +107,12 @@ public class UsageAnalysisCPA extends AbstractCPA {
    * @param config the configuration of the CPAinterval analysis CPA.
    * @param pVarnameArray
    */
-  public UsageAnalysisCPA(Configuration config, LogManager pLogger, CFA cfa, String pVarnameArray)
+  public UsageAnalysisCPA(
+      Configuration config,
+      LogManager pLogger,
+      CFA cfa,
+      String pVarnameArray,
+      ShutdownNotifier shutdownNotifier)
       throws InvalidConfigurationException {
     super(
         "join",
@@ -112,7 +122,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
     config.inject(this, UsageAnalysisCPA.class);
     this.logger = pLogger;
     this.cfa = cfa;
-    helper = new ArraySegmentationCPAHelper<>(cfa, logger, pVarnameArray);
+    helper = new ArraySegmentationCPAHelper<>(cfa, logger, pVarnameArray, shutdownNotifier, config);
   }
 
   @Override

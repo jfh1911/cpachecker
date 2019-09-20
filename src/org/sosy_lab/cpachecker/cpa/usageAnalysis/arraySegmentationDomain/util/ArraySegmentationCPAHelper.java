@@ -23,10 +23,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.sosy_lab.common.ShutdownNotifier;
+import org.sosy_lab.common.configuration.Configuration;
+import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
@@ -51,27 +57,62 @@ import org.sosy_lab.cpachecker.cfa.model.c.CFunctionReturnEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CStatementEdge;
 import org.sosy_lab.cpachecker.cfa.types.c.CArrayType;
 import org.sosy_lab.cpachecker.cpa.callstack.CallstackState;
+import org.sosy_lab.cpachecker.cpa.ifcsecurity.ControlDependenceComputer;
+import org.sosy_lab.cpachecker.cpa.ifcsecurity.DominanceFrontier;
+import org.sosy_lab.cpachecker.cpa.ifcsecurity.Dominators;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.FinalSegment;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.formula.FormulaRelation;
 import org.sosy_lab.cpachecker.util.Triple;
 
 public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstractState<T>> {
 
 
 
-  public ArraySegmentationCPAHelper(CFA pCfa, LogManager pLogger, String pVarname_array) {
+  private CFA cfa;
+  private LogManager logger;
+  private String varnameArray;
+  private FormulaRelation transfer;
+
+  public ArraySegmentationCPAHelper(
+      CFA pCfa,
+      LogManager pLogger,
+      String pVarname_array,
+      ShutdownNotifier pShutdownNotifier,
+      Configuration pConfig)
+      throws InvalidConfigurationException {
     super();
     cfa = pCfa;
     logger = pLogger;
     varnameArray = pVarname_array;
+
+    Dominators postdom = new Dominators(pCfa, 1);
+    postdom.execute();
+    Map<CFANode, CFANode> postdominators = postdom.getDom();
+    pLogger.log(Level.FINE, "Postdominators");
+    pLogger.log(Level.FINE, postdominators);
+
+    DominanceFrontier domfron = new DominanceFrontier(pCfa, postdominators);
+    domfron.execute();
+    Map<CFANode, NavigableSet<CFANode>> df = domfron.getDominanceFrontier();
+    pLogger.log(Level.FINE, "Dominance Frontier");
+    pLogger.log(Level.FINE, df);
+
+    ControlDependenceComputer cdcom = new ControlDependenceComputer(pCfa, df);
+    cdcom.execute();
+    Map<CFANode, NavigableSet<CFANode>> cd = cdcom.getControlDependency();
+    pLogger.log(Level.FINE, "Control Dependency");
+    pLogger.log(Level.FINE, cd);
+
+    Map<CFANode, NavigableSet<CFANode>> recd = cdcom.getReversedControlDependency();
+    pLogger.log(Level.FINE, "Reversed Control Dependency");
+    pLogger.log(Level.FINE, recd);
+    Map<CFANode, NavigableSet<CFANode>> rcd = recd;
+
+    transfer = new FormulaRelation(pConfig, pLogger, pShutdownNotifier, pCfa, rcd);
   }
-
-  private CFA cfa;
-  private LogManager logger;
-  private String varnameArray;
-
   /**
    * Create a initial state
    *
@@ -114,7 +155,8 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
         pName,
         pPredicate,
         logger,
-        new CallstackState(null, pNode.getFunctionName(), pNode));
+        new CallstackState(null, pNode.getFunctionName(), pNode),
+        transfer.makeInitial());
 
   }
 

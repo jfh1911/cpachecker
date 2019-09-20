@@ -45,6 +45,7 @@ import org.sosy_lab.cpachecker.core.interfaces.AbstractQueryableState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
 import org.sosy_lab.cpachecker.cpa.callstack.CallstackState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.formula.FormulaState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.transfer.CSegmentationModifier;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.ArrayModificationException;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
@@ -73,6 +74,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   private final String cpaName;
   private final Predicate<ArraySegmentationState<T>> propertyPredicate;
   private CallstackState callStack;
+  private FormulaState pathFormula;
 
   /**
    *
@@ -95,7 +97,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       String pCpaName,
       Predicate<ArraySegmentationState<T>> pPropertyPredicate,
       LogManager pLogger,
-      CallstackState pCallState) {
+      CallstackState pCallState,
+      FormulaState pPathFormula) {
     super();
     segments = pSegments;
     // Check if the segment chain is correctly ordered
@@ -121,6 +124,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     propertyPredicate = pPropertyPredicate;
     logger = pLogger;
     callStack = pCallState;
+    pathFormula = pPathFormula;
 
   }
 
@@ -145,6 +149,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     propertyPredicate = pPreviousState.getPropertyPredicate();
     logger = pPreviousState.getLogger();
     callStack = pPreviousState.callStack;
+    pathFormula = pPreviousState.pathFormula;
   }
 
   /**
@@ -263,7 +268,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
             this.cpaName,
             this.propertyPredicate,
             this.logger,
-            pOther.getCallStack());
+            pOther.getCallStack(),
+            this.pathFormula.join(pOther.pathFormula));
     logger.log(Level.FINE, "Merged the elements " + first + " and " + second + "to " + mergedSeg);
     if (mergedSeg.equals(pOther)) {
       return pOther;
@@ -606,6 +612,14 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     callStack = pCallStack;
   }
 
+  public FormulaState getPathFormula() {
+    return pathFormula;
+  }
+
+  public void setPathFormula(FormulaState pPathFormula) {
+    pathFormula = pPathFormula;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(segments, tEmptyElement);
@@ -652,7 +666,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
         this.cpaName,
         this.propertyPredicate,
         logger,
-        callStack);
+        callStack,
+        pathFormula.clone());
   }
 
   @Override

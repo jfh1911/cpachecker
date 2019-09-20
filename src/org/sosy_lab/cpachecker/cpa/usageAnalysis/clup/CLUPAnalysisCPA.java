@@ -19,8 +19,6 @@
  */
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.clup;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.logging.Level;
@@ -74,13 +72,9 @@ public class CLUPAnalysisCPA extends AbstractCPA {
 
   private final LogManager logger;
   public static final String VARMANE_FOR_ARRAY_LENGTH = "SIZE";
-  private static final String VARNAME_ARRAY = "a";
-  private static final String[] temp = {"i"};
-  private static final List<String> ARRAY_ACCESS_VARS = Arrays.asList(temp);
   private final CFA cfa;
   private final Configuration config;
 
-  private ShutdownNotifier shutdownNotifier;
   private UsageAnalysisCPA usageCPA;
   LocationCPA locationCPA;
 
@@ -112,8 +106,7 @@ public class CLUPAnalysisCPA extends AbstractCPA {
     this.logger = pLogger;
     this.cfa = pCfa;
     this.config = config;
-    this.shutdownNotifier = shutdownNotifier;
-    usageCPA = new UsageAnalysisCPA(config, logger, pCfa);
+    usageCPA = new UsageAnalysisCPA(config, logger, shutdownNotifier, pCfa);
     locationCPA = LocationCPA.create(this.cfa, this.config);
     this.factory = new LocationStateFactory(pCfa, AnalysisDirection.FORWARD, config);
 
