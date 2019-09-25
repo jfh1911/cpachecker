@@ -25,7 +25,9 @@ import java.util.function.BiPredicate;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import org.sosy_lab.cpachecker.cfa.Language;
+import org.sosy_lab.cpachecker.cfa.ast.ABinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
+import org.sosy_lab.cpachecker.cfa.ast.AIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegment;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ErrorSegmentation;
@@ -64,14 +66,13 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
     }
   };
 
-  public Pair<ArraySegmentationState<T>, ArraySegmentationState<T>>
-      unifyMerge(
-          ArraySegmentationState<T> d1,
-          ArraySegmentationState<T> d2,
-          T il,
-          T ir,
-          boolean pIsLoopHead)
-          throws CPAException {
+  public Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifyMerge(
+      ArraySegmentationState<T> d1,
+      ArraySegmentationState<T> d2,
+      T il,
+      T ir,
+      boolean pIsLoopHead)
+      throws CPAException {
     Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> res =
         this.unifyGeneric(d1, d2, il, ir, sqcup, sqcup, curleyVee, curleyVee, !pIsLoopHead);
     return res;
@@ -104,7 +105,6 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
     Language language = pD1.getLanguage();
     ArraySegmentationState<T> d1 = pD1.clone();
     ArraySegmentationState<T> d2 = pD2.clone();
-
 
     // Case 1:
     if (d1 instanceof ErrorSegmentation
@@ -283,91 +283,248 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
       // Case 6: Ensure that there is no intersection of B1 and B2
       if (!(b1.getSegmentBound().parallelStream().anyMatch(b -> b2SegBounds.contains(b))
           || b2.getSegmentBound().parallelStream().anyMatch(b -> b1SegBounds.contains(b)))) {
-
+        List<AExpression> b1Hat = computeHat(b1, pD1);
+        List<AExpression> b2Hat = computeHat(b2, pD2);
         if (isMergeAndNoLoopHead) {
-        if (!b1Bar.isEmpty() && b2Bar.isEmpty() && b2.getSegmentBound().size() == 1) {
-          // Case 6.0.1
-          // add B2 to d1 and continue with the newly added segments
-          ArraySegment<T> copyOfB2 =
-              new ArraySegment<>(
-                  new ArrayList<>(b2.getSegmentBound()),
-                  il,
-                  true,
-                  b1,
-                  b1.getLanguage());
-          d1.addSegment(copyOfB2, b0);
+          if (!b1Bar.isEmpty() && b2Bar.isEmpty() && b2.getSegmentBound().size() == 1) {
+            // Case 6.2.1
+            // add B2 to d1 and continue with the newly added segments
+            ArraySegment<T> copyOfB2 =
+                new ArraySegment<>(
+                    new ArrayList<>(b2.getSegmentBound()),
+                    il,
+                    true,
+                    b1,
+                    b1.getLanguage());
+            d1.addSegment(copyOfB2, b0);
             b1 = b0;
             b2 = b0Prime;
-          continue;
-        } else if (b1Bar.isEmpty() && !b2Bar.isEmpty() && b2.getSegmentBound().size() == 1) {
-          // Case 6.0.2
-          // add B1 to d2 and continue with the newly added segments
-          ArraySegment<T> copyOfB1 =
-              new ArraySegment<>(
-                  new ArrayList<>(b1.getSegmentBound()),
-                  ir,
-                  true,
-                  b2,
-                  b2.getLanguage());
-          d2.addSegment(copyOfB1, b0Prime);
+            continue;
+          } else if (b1Bar.isEmpty() && !b2Bar.isEmpty() && b2.getSegmentBound().size() == 1) {
+            // Case 6.2.2
+            // add B1 to d2 and continue with the newly added segments
+            ArraySegment<T> copyOfB1 =
+                new ArraySegment<>(
+                    new ArrayList<>(b1.getSegmentBound()),
+                    ir,
+                    true,
+                    b2,
+                    b2.getLanguage());
+            d2.addSegment(copyOfB1, b0Prime);
             b1 = b0;
             b2 = b0Prime;
-          continue;
+            continue;
           }
         }
 
         if ((!b1Bar.isEmpty()) && b2Bar.isEmpty()) {
-          // Case 6.1
-          b0.setNextSegment(
-              new ArraySegment<>(
-                  b1Bar,
-                  b1.getAnalysisInformation(),
-                  b1.isPotentiallyEmpty(),
-                  b1.getNextSegment(),
-                  language));
-          b1 = b0;
-          // Merge the analysis information from B2 into B0' and remove the segment B2
-          b0Prime.setAnalysisInformation(
-              or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation()));
-          b0Prime.setPotentiallyEmpty(
-              hatr.test(b0Prime.isPotentiallyEmpty(), b2.isPotentiallyEmpty()));
-          b0Prime.setNextSegment(b2.getNextSegment());
-          b2 = b0Prime;
-          continue;
-        } else if (b1Bar.isEmpty() && (!b2Bar.isEmpty())) {
-          // Case 6.2
-          // Merge the analysis information from B1 into B0 and remove the segment B1
-          b0.setAnalysisInformation(
-              ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation()));
-          b0.setPotentiallyEmpty(hatl.test(b0.isPotentiallyEmpty(), b1.isPotentiallyEmpty()));
-          b0.setNextSegment(b1.getNextSegment());
-          b1 = b0;
-          b0Prime.setNextSegment(
-              new ArraySegment<>(
-                  b2Bar,
-                  b2.getAnalysisInformation(),
-                  b2.isPotentiallyEmpty(),
-                  b2.getNextSegment(),
-                  language));
-          b2 = b0Prime;
+          if (!b2Hat.isEmpty()) {
 
-          continue;
+            // Case 6.1.1
+            // Continue with B0 P0 ?0 b2Hat P0?0 B1Bar p1 ?1 B1'
+            ArraySegment<T> secondNextSegment =
+                new ArraySegment<>(
+                    b1Bar,
+                    b1.getAnalysisInformation(),
+                    b1.isPotentiallyEmpty(),
+                    b1.getNextSegment(),
+                    language);
+            b0.setNextSegment(
+                new ArraySegment<>(
+                    b2Hat,
+                    b0.getAnalysisInformation(),
+                    b0.isPotentiallyEmpty(),
+                    secondNextSegment,
+                    language));
+            b1 = b0;
+
+            // Continue with B0' P0' ?_0' b2Hat P0' ?_0' B_2'
+            b0Prime.setNextSegment(
+                new ArraySegment<>(
+                    b2Hat,
+                    b2.getAnalysisInformation(),
+                    b2.isPotentiallyEmpty(),
+                    b2.getNextSegment(),
+                    language));
+            b2 = b0Prime;
+            continue;
+          } else {
+
+            // Case 6.1.2
+            b0.setNextSegment(
+                new ArraySegment<>(
+                    b1Bar,
+                    b1.getAnalysisInformation(),
+                    b1.isPotentiallyEmpty(),
+                    b1.getNextSegment(),
+                    language));
+            b1 = b0;
+            // Merge the analysis information from B2 into B0' and remove the segment B2
+            b0Prime.setAnalysisInformation(
+                or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation()));
+            b0Prime.setPotentiallyEmpty(
+                hatr.test(b0Prime.isPotentiallyEmpty(), b2.isPotentiallyEmpty()));
+            b0Prime.setNextSegment(b2.getNextSegment());
+            b2 = b0Prime;
+            continue;
+          }
+        } else if (b1Bar.isEmpty() && (!b2Bar.isEmpty())) {
+
+          if (!b1Hat.isEmpty()) {
+            // Case 6.1.3
+            // Continue with B0 P0 ?0 B1Bar p1 ?1 B1'
+            b0.setNextSegment(
+                new ArraySegment<>(
+                    b1Hat,
+                    b1.getAnalysisInformation(),
+                    b1.isPotentiallyEmpty(),
+                    b1.getNextSegment(),
+                    language));
+            b1 = b0;
+            ArraySegment<T> secondNextSegment =
+                new ArraySegment<>(
+                    b2Bar,
+                    b2.getAnalysisInformation(),
+                    b2.isPotentiallyEmpty(),
+                    b2.getNextSegment(),
+                    language);
+            // Continue with B0' P0' ?0' B1Hat P0' ?0 B2Bar p2 ?2 B2'
+            b0Prime.setNextSegment(
+                new ArraySegment<>(
+                    b1Hat,
+                    b0Prime.getAnalysisInformation(),
+                    b0Prime.isPotentiallyEmpty(),
+                    secondNextSegment,
+                    language));
+            b2 = b0Prime;
+            continue;
+
+          } else {
+            // Case 6.1.4
+            // Merge the analysis information from B1 into B0 and remove the segment B1
+            b0.setAnalysisInformation(
+                ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation()));
+            b0.setPotentiallyEmpty(hatl.test(b0.isPotentiallyEmpty(), b1.isPotentiallyEmpty()));
+            b0.setNextSegment(b1.getNextSegment());
+            b1 = b0;
+            b0Prime.setNextSegment(
+                new ArraySegment<>(
+                    b2Bar,
+                    b2.getAnalysisInformation(),
+                    b2.isPotentiallyEmpty(),
+                    b2.getNextSegment(),
+                    language));
+            b2 = b0Prime;
+            continue;
+
+          }
         } else {
-          // Case 6.3
-          // Merge the analysis information from B1 into B0 and remove the segment B1
-          b0.setAnalysisInformation(
-              ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation()));
-          b0.setPotentiallyEmpty(hatl.test(b0.isPotentiallyEmpty(), b1.isPotentiallyEmpty()));
-          b0.setNextSegment(b1.getNextSegment());
-          b1 = b0;
-          // Merge the analysis information from B2 into B0' and remove the segment B2
-          b0Prime.setAnalysisInformation(
-              or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation()));
-          b0Prime.setPotentiallyEmpty(
-              hatr.test(b0Prime.isPotentiallyEmpty(), b2.isPotentiallyEmpty()));
-          b0Prime.setNextSegment(b2.getNextSegment());
-          b2 = b0Prime;
-          continue;
+
+          if (!b1Bar.isEmpty() && !b2Bar.isEmpty()) {
+            // Case 6.3:
+            if (!b1Hat.isEmpty() && b2Hat.isEmpty()) {
+              b0.setNextSegment(
+                  new ArraySegment<>(
+                      b1Bar,
+                      b1.getAnalysisInformation(),
+                      b1.isPotentiallyEmpty(),
+                      b1.getNextSegment(),
+                      language));
+              b1 = b0;
+              // Merge the analysis information from B2 into B0' and remove the segment B2
+              b0Prime.setAnalysisInformation(
+                  or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation()));
+              b0Prime.setPotentiallyEmpty(
+                  hatr.test(b0Prime.isPotentiallyEmpty(), b2.isPotentiallyEmpty()));
+              b0Prime.setNextSegment(b2.getNextSegment());
+              b2 = b0Prime;
+              continue;
+            } else if (b1Hat.isEmpty() && !b2Hat.isEmpty()) {
+              // Case 6.4
+              // Merge the analysis information from B1 into B0 and remove the segment B1
+              b0.setAnalysisInformation(
+                  ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation()));
+              b0.setPotentiallyEmpty(hatl.test(b0.isPotentiallyEmpty(), b1.isPotentiallyEmpty()));
+              b0.setNextSegment(b1.getNextSegment());
+              b1 = b0;
+              b0Prime.setNextSegment(
+                  new ArraySegment<>(
+                      b2Bar,
+                      b2.getAnalysisInformation(),
+                      b2.isPotentiallyEmpty(),
+                      b2.getNextSegment(),
+                      language));
+              b2 = b0Prime;
+              continue;
+            }
+          } else if (b1Bar.isEmpty() && b2Bar.isEmpty()) {
+
+            // Case 6.6
+            if (!b1Hat.isEmpty() && b2Hat.isEmpty()) {
+              b0.setNextSegment(
+                  new ArraySegment<>(
+                      b1Hat,
+                      b1.getAnalysisInformation(),
+                      b1.isPotentiallyEmpty(),
+                      b1.getNextSegment(),
+                      language));
+              b1 = b0;
+              // Merge the analysis information from B2 into B0'
+              T p0p2 = or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation());
+              boolean qm0qm2 = hatr.test(b0Prime.isPotentiallyEmpty(), b2.isPotentiallyEmpty());
+              // Set the analysis information for B0' and B2
+              b0Prime.setAnalysisInformation(p0p2);
+              b0Prime.setPotentiallyEmpty(qm0qm2);
+
+              b2.setAnalysisInformation(p0p2);
+              b2.setPotentiallyEmpty(qm0qm2);
+              // Replace the segment bounds from B2 by B1Hat
+              b2.setSegmentBound(b1Hat);
+              b2 = b0Prime;
+              continue;
+
+            } else if (b1Hat.isEmpty() && !b2Hat.isEmpty()) {
+              // Case 6.7
+              b0Prime.setNextSegment(
+                  new ArraySegment<>(
+                      b2Hat,
+                      b2.getAnalysisInformation(),
+                      b2.isPotentiallyEmpty(),
+                      b2.getNextSegment(),
+                      language));
+              b2 = b0Prime;
+
+              // Merge the analysis information from B1 into B0
+              T p0p1 = ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation());
+              boolean qm0qm1 = hatl.test(b0.isPotentiallyEmpty(), b1.isPotentiallyEmpty());
+              // Set the analysis information for B0 and B1
+              b0.setAnalysisInformation(p0p1);
+              b0.setPotentiallyEmpty(qm0qm1);
+
+              b1.setAnalysisInformation(p0p1);
+              b1.setPotentiallyEmpty(qm0qm1);
+              // Replace the segment bounds from B1 by B2Hat
+              b1.setSegmentBound(b2Hat);
+              b1 = b0;
+              continue;
+            }
+          } else {
+            // Case 6.5 and 6.8
+            // Merge the analysis information from B1 into B0 and remove the segment B1
+            b0.setAnalysisInformation(
+                ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation()));
+            b0.setPotentiallyEmpty(hatl.test(b0.isPotentiallyEmpty(), b1.isPotentiallyEmpty()));
+            b0.setNextSegment(b1.getNextSegment());
+            b1 = b0;
+            // Merge the analysis information from B2 into B0' and remove the segment B2
+            b0Prime.setAnalysisInformation(
+                or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation()));
+            b0Prime.setPotentiallyEmpty(
+                hatr.test(b0Prime.isPotentiallyEmpty(), b2.isPotentiallyEmpty()));
+            b0Prime.setNextSegment(b2.getNextSegment());
+            b2 = b0Prime;
+            continue;
+          }
         }
       }
 
@@ -426,6 +583,29 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
     // d1.gettArray(),
     // d2.getLogger()));
 
+  }
+
+  private List<AExpression> computeHat(ArraySegment<T> pB, ArraySegmentationState<T> pD) {
+    List<AExpression> res = new ArrayList<>();
+    for (AExpression e : pB.getSegmentBound()) {
+      if (e instanceof AIntegerLiteralExpression) {
+        res.add(e);
+      }
+      if (contains(e, pD.getSizeVar())) {
+        res.add(e);
+      }
+    }
+
+    return res;
+  }
+
+  private boolean contains(AExpression pE, AExpression pSizeVar) {
+    if (pE instanceof ABinaryExpression) {
+      // FIXME: INclude check if the rest is a intergerConstant
+      return contains(((ABinaryExpression) pE).getOperand1(), pSizeVar)
+          || contains(((ABinaryExpression) pE).getOperand2(), pSizeVar);
+    }
+    return pE.equals(pSizeVar);
   }
 
   public List<ArraySegment<T>> conc(List<ArraySegment<T>> pCopiedElements, T pEmptyElement) {
