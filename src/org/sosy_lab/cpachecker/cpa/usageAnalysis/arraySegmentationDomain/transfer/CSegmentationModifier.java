@@ -72,7 +72,8 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
       ArraySegmentationState<T> state,
       CExpression pIndex,
       T pAnalysisInfo,
-      boolean pNewSegmentIsPotentiallyEmpty)
+      boolean pNewSegmentIsPotentiallyEmpty,
+      CFAEdge pCfaEdge)
       throws ArrayModificationException {
 
     // Check, if the expression used to access the array element is present in the current state
@@ -82,8 +83,8 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
       // that 0 <= i and i <= SIZE and check, if the analysis information that hold be stored in the
       // interval is already present in the over-approximated interval computed for i
       boolean error = false;
-      int lowerBound = computeLowerBound(state, pIndex);
-      int upperBound = computeUpperBound(state, pIndex);
+      int lowerBound = computeLowerBound(state, pIndex, pCfaEdge);
+      int upperBound = computeUpperBound(state, pIndex, pCfaEdge);
       for (int i = lowerBound; i < upperBound; i++) {
         if (!state.getSegments().get(i).getAnalysisInformation().equals(pAnalysisInfo)) {
           error = true;
@@ -150,14 +151,15 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
     }
   }
 
-  private int computeUpperBound(ArraySegmentationState<T> pState, CExpression pIndex) {
+  private int
+      computeUpperBound(ArraySegmentationState<T> pState, CExpression pIndex, CFAEdge pCfaEdge) {
     int index = pState.getSegments().size() - 1;
     BooleanFormula formula = pState.getPathFormula().getPathFormula().getFormula();
     FormulaRelation pr = pState.getPathFormula().getPr();
     Solver solver = pr.getSolver();
 
     // Compute for each segment present in the segmentation, if for any expression e it holds that:
-    // pINdex >=e is SAT, (>= since e is the upper bound of the interval not included, hence
+    // pINdex < e is SAT, (< since e is the upper bound of the interval not included, hence
     // everything up to e need to fulfill the condition
     for (int i = pState.getSegments().size() - 1; i >= 0; i--) {
       ArraySegment<T> sb = pState.getSegments().get(i);
@@ -166,10 +168,10 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
             getBooleanFormula(
                 pIndex,
                 (CExpression) e,
-                BinaryOperator.GREATER_EQUAL,
+                BinaryOperator.LESS_THAN,
                 pr.getConverter(),
                 pState.getPathFormula().getPathFormula(),
-                null,
+                pCfaEdge,
                 pr.getFormulaManager());
         if (smaller.isPresent()) {
           try {
@@ -187,14 +189,15 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
     return index;
   }
 
-  private int computeLowerBound(ArraySegmentationState<T> pState, CExpression pIndex) {
+  private int
+      computeLowerBound(ArraySegmentationState<T> pState, CExpression pIndex, CFAEdge pCfaEdge) {
     int index = 0;
     BooleanFormula formula = pState.getPathFormula().getPathFormula().getFormula();
     FormulaRelation pr = pState.getPathFormula().getPr();
     Solver solver = pr.getSolver();
 
     // Compute for each segment present in the segmentation, if for any expression e it holds that:
-    // pINdex <= e is SAT (same arguemtn as above)
+    // pINdex > e is SAT (same argument as above)
     for (int i = 1; i < pState.getSegments().size(); i++) {
       ArraySegment<T> sb = pState.getSegments().get(i);
       for (AExpression e : sb.getSegmentBound()) {
@@ -202,10 +205,10 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
             getBooleanFormula(
                 pIndex,
                 (CExpression) e,
-                BinaryOperator.LESS_EQUAL,
+                BinaryOperator.GREATER_THAN,
                 pr.getConverter(),
                 pState.getPathFormula().getPathFormula(),
-                null,
+                pCfaEdge,
                 pr.getFormulaManager());
         if (smaller.isPresent()) {
           try {

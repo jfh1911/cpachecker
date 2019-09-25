@@ -10,7 +10,7 @@ int main()
 	{		
 		int a[SIZE];
 		while (i < SIZE){
-			if( i < SIZE-1){
+			if( i < 5){
 				a[i]=a[i]-1;
 			}else{
 				;

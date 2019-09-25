@@ -156,7 +156,8 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
         pPredicate,
         logger,
         new CallstackState(null, pNode.getFunctionName(), pNode),
-        transfer.makeInitial());
+        transfer.makeInitial(),
+        CIntegerLiteralExpression.ONE);
 
   }
 

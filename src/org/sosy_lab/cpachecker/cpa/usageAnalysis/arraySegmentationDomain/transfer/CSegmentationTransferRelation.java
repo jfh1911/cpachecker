@@ -30,6 +30,7 @@ import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
 import org.sosy_lab.cpachecker.cfa.ast.c.CDeclaration;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCall;
@@ -62,6 +63,7 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.Extende
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.formula.FormulaState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.SegmentationReachabilityChecker;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.VariableCollector;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
@@ -99,7 +101,12 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
 
     this.transferRelationForInnerDomain = transferRelationForInnerDomain;
     statementTransformer = new CStatementTrasformer<>(logger, visitor);
-    updateTransformer = new CUpdateTransformer<>();
+    updateTransformer =
+        new CUpdateTransformer<>(
+            logger,
+            visitor,
+            new CBinaryExpressionBuilder(machineModel, logger),
+            new SegmentationReachabilityChecker<T>(logger));
     collector = new VariableCollector(machineModel, logger);
   }
 
@@ -207,9 +214,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
           updateTransformer.update(
               (CBinaryExpression) replacedExpr,
               pTruthAssumption,
-              resState.get(),
-              logger,
-              visitor));
+              resState.get()));
     } else {
       return logTransformation(inputArgumentsAsString, state.clone());
     }
@@ -409,7 +414,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     return s instanceof ErrorSegmentation || s instanceof UnreachableSegmentation;
   }
 
-  private Optional<ArraySegmentationState<T>> applyInnerTransferRelation(
+  public Optional<ArraySegmentationState<T>> applyInnerTransferRelation(
       CFAEdge pCfaEdge,
       ArraySegmentationState<T> pArraySegmentationState)
       throws CPATransferException {
@@ -428,7 +433,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       logger.log(
           Level.FINE,
           "The inner transfer function returned NULL for "
-              + state
+              + pArraySegmentationState
               + " and the edge "
               + pCfaEdge.toString());
 
@@ -444,14 +449,14 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
               + res.get(0).toString()
               + " that is a "
               + res.get(0).getClass());
-    } else if (!this.state.gettEmptyElement()
+    } else if (!pArraySegmentationState.gettEmptyElement()
         .getClass()
-        .equals(((ArraySegmentationState) res.get(0)).gettEmptyElement().getClass())) {
+        .equals(((ArraySegmentationState<T>) res.get(0)).gettEmptyElement().getClass())) {
       throw new CPATransferException(
           "The inner transfer function does not return an ArraySegmentationState paramterized with T. Requiered class:"
               + this.getState().gettEmptyElement().getClass().toString()
               + " Returned:"
-              + ((ArraySegmentationState) res.get(0)).gettEmptyElement().getClass());
+              + ((ArraySegmentationState<T>) res.get(0)).gettEmptyElement().getClass());
     }
     @SuppressWarnings("unchecked")
     ArraySegmentationState<T> resState = (ArraySegmentationState<T>) res.get(0);

@@ -39,6 +39,7 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.Extende
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.formula.FormulaState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
+import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.Triple;
@@ -251,12 +252,18 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
               .getSolver()
               .implies(pFormulaState.getPathFormula().getFormula(), eq.getFirst())) {
             pSegmentation =
-                this.updateTransformer.update(eq.getSecond(), true, pSegmentation, logger, visitor);
+                this.updateTransformer.update(eq.getSecond(), true, pSegmentation);
           }
         } catch (SolverException e) {
           logger.log(
               Level.FINE,
               "An solver error occured while strengthening the current segmentation: "
+                  + pSegmentation.toString()
+                  + e.toString());
+        } catch (CPATransferException e) {
+          logger.log(
+              Level.FINE,
+              "An transformation error occured while strengthening the current segmentation: "
                   + pSegmentation.toString()
                   + e.toString());
         }
