@@ -81,7 +81,7 @@ public class UsageAnalysisTransferRelation extends
           (CInitializerExpression) ((CVariableDeclaration) pDecl).getInitializer();
       Collection<CArraySubscriptExpression> uses = usageTransformer.getUses(expr.getExpression());
       if (!uses.isEmpty()) {
-        return usageTransformer.explUse(uses, state.clone());
+        return usageTransformer.explUse(uses, state.clone(), pCfaEdge);
       }
     }
     return state != null ? state.clone() : state;
@@ -95,7 +95,7 @@ public class UsageAnalysisTransferRelation extends
     // Check, if any variable is used
     Collection<CArraySubscriptExpression> uses = usageTransformer.getUses(pExpression);
     if (!uses.isEmpty()) {
-      return usageTransformer.explUse(new ArrayList<>(uses), state.clone());
+      return usageTransformer.explUse(new ArrayList<>(uses), state.clone(), pCfaEdge);
     }
     return state != null ? state.clone() : state;
   }
@@ -117,7 +117,7 @@ public class UsageAnalysisTransferRelation extends
     Collection<CArraySubscriptExpression> uses = new ArrayList<>();
     pArguments.parallelStream().forEach(a -> uses.addAll(usageTransformer.getUses(a)));
     if (!uses.isEmpty()) {
-      return usageTransformer.explUse(new ArrayList<>(uses), state.clone());
+      return usageTransformer.explUse(new ArrayList<>(uses), state.clone(), pCfaEdge);
     }
     return state != null ? state.clone() : state;
   }
@@ -147,7 +147,7 @@ public class UsageAnalysisTransferRelation extends
       Collection<CArraySubscriptExpression> uses =
           usageTransformer.getUses(pCfaEdge.getExpression().get());
       if (!uses.isEmpty()) {
-        return usageTransformer.explUse(new ArrayList<>(uses), state.clone());
+        return usageTransformer.explUse(new ArrayList<>(uses), state.clone(), pCfaEdge);
       }
     }
     return state != null ? state.clone() : state;
@@ -158,7 +158,7 @@ public class UsageAnalysisTransferRelation extends
       handleStatementEdge(CStatementEdge pCfaEdge, CStatement pStatement)
           throws CPATransferException {
 
-    return usageTransformer.use(pStatement, state.clone());
+    return usageTransformer.use(pStatement, state.clone(), pCfaEdge);
 
   }
 

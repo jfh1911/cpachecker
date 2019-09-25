@@ -19,6 +19,8 @@
  */
 package org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain;
 
+import org.sosy_lab.cpachecker.cfa.Language;
+import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 public class ErrorSegmentation<T extends ExtendedCompletLatticeAbstractState<T>>
@@ -48,12 +50,17 @@ public class ErrorSegmentation<T extends ExtendedCompletLatticeAbstractState<T>>
 
   @Override
   public String toString() {
-    return Character.toString((char) 9632);
+    StringBuilder builder = new StringBuilder();
+    if (language.equals(Language.C) && !splitCondition.equals(CIntegerLiteralExpression.ONE)) {
+      builder.append(this.splitCondition.toASTString() + ": ");
+    }
+    builder.append(Character.toString((char) 9632));
+    return builder.toString();
   }
 
   @Override
   public ArraySegmentationState<T> clone() {
-    return this;
+    return super.clone();
   }
 
 }

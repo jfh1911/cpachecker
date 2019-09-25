@@ -26,9 +26,9 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
-import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression.BinaryOperator;
+import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
@@ -38,28 +38,37 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ErrorSe
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.SegmentationReachabilityChecker;
+import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
 public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>> {
 
-  private ArraySegmentationState<T> state;
-  private LogManager logger;
-  private static final String PREFIX = "USAGE_ANALYSIS update";
-  ExpressionSimplificationVisitor visitor;
-  private SegmentationReachabilityChecker<T> checker;
 
-  public CUpdateTransformer() {
-    checker = new SegmentationReachabilityChecker<>(logger);
+  protected LogManager logger;
+  protected static final String PREFIX = "USAGE_ANALYSIS update";
+  protected ExpressionSimplificationVisitor visitor;
+  protected SegmentationReachabilityChecker<T> checker;
+  protected CBinaryExpressionBuilder builder;
+
+  public CUpdateTransformer(
+      LogManager pLogger,
+      ExpressionSimplificationVisitor pVisitor,
+      CBinaryExpressionBuilder pBuilder,
+      SegmentationReachabilityChecker<T> pChecker) {
+    super();
+    logger = pLogger;
+    visitor = pVisitor;
+    builder = pBuilder;
+    checker = pChecker;
   }
 
+  /**
+   * @throws CPATransferException in case that the transformation of the code fails
+   */
   public @Nullable ArraySegmentationState<T> update(
       CBinaryExpression expr,
       boolean pTruthAssumption,
-      @Nullable ArraySegmentationState<T> pState,
-      LogManagerWithoutDuplicates pLogger,
-      ExpressionSimplificationVisitor pVisitor) {
-    this.state = pState;
-    this.logger = pLogger;
-    this.visitor = pVisitor;
+      @Nullable ArraySegmentationState<T> pState)
+      throws CPATransferException {
     // Apply the truth assumption. In case of false, invert the operator
     if (!pTruthAssumption) {
       expr =
@@ -74,44 +83,50 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
     }
 
     if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.EQUALS)) {// Case 3.1
-      // AS explained by Jan Haltermann in hismaster thesis, we need to ensure that the LHS of the
+      // AS explained by Jan Haltermann in his master thesis, we need to ensure that the LHS of the
       // equality expression is a variable. IN all other cases, this is not important. Hence, we
       // will check this only, iff the operand is a '='
       // To avoid redundant code, the transformation will firstly ensure that the first parameter is
       // a variable!
       if (isVarType(expr.getOperand1())) {
-        return this.updateEquals(expr.getOperand1(), expr.getOperand2(), expr.getOperator());
+        return this
+            .updateEquals(expr.getOperand1(), expr.getOperand2(), expr.getOperator(), pState);
       } else if (isVarType(expr.getOperand2())) {
-        return this.updateEquals(expr.getOperand2(), expr.getOperand1(), expr.getOperator());
+        return this
+            .updateEquals(expr.getOperand2(), expr.getOperand1(), expr.getOperator(), pState);
       } else {
-        return state;
+        return pState;
       }
     } else if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.NOT_EQUALS)) {// Case 3.2
-      return updateNotEquals(expr.getOperand1(), expr.getOperand2());
+      return updateNotEquals(expr.getOperand1(), expr.getOperand2(), pState);
     } else if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.GREATER_THAN)) {// Case
                                                                                           // 3.3
-      return updateGreater(expr.getOperand1(), expr.getOperand2());
+      return updateGreater(expr.getOperand1(), expr.getOperand2(), pState);
     } else if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.LESS_THAN)) {// Case 3.4
-      return updateGreater(expr.getOperand2(), expr.getOperand1());
+      return updateGreater(expr.getOperand2(), expr.getOperand1(), pState);
     } else if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.GREATER_EQUAL)) { // Case
                                                                                             // 3.5
-      return updateGreaterEq(expr.getOperand1(), expr.getOperand2());
+      return updateGreaterEq(expr.getOperand1(), expr.getOperand2(), pState);
     } else if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.LESS_EQUAL)) {// Case 3.6
-      return updateGreaterEq(expr.getOperand2(), expr.getOperand1());
+      return updateGreaterEq(expr.getOperand2(), expr.getOperand1(), pState);
     } else {
       // TODO: log missing case
-      return state;
+      return pState;
     }
   }
 
-  private @Nullable ArraySegmentationState<T>
-      updateEquals(CExpression pVar, CExpression pOp2, BinaryOperator pOperator) {
+  protected @Nullable ArraySegmentationState<T>
+      updateEquals(
+          CExpression pVar,
+          CExpression pOp2,
+          BinaryOperator pOperator,
+          @Nullable ArraySegmentationState<T> state) {
     if (!(pVar instanceof CIdExpression)) {
       // CUrrently, there is no behaviour defined in this case
       return state;
     }
     CIdExpression var = (CIdExpression) pVar;
-    List<ArraySegment<T>> segmentsContainingOp2 = getSegmentsContainingExpr(pOp2);
+    List<ArraySegment<T>> segmentsContainingOp2 = getSegmentsContainingExpr(pOp2, state);
     if (segmentsContainingOp2.isEmpty()) {
       // Case 3.1.1 and 3.1.2
       return this.validate(state, var, pOp2, pOperator);
@@ -124,7 +139,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
           PREFIX
               + "The segmentation is invalid, since the expression that should be reassigned is present twice."
               + "Hence, the error symbol is returned. Current State is: "
-              + this.state.toDOTLabel()
+              + state.toDOTLabel()
               + " for the expression :"
               + pVar.toASTString()
               + " := "
@@ -133,7 +148,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
 
     } else {
       // Check, if the variable is present in any state:
-      List<ArraySegment<T>> segmentsContainingVar = getSegmentsContainingExpr(var);
+      List<ArraySegment<T>> segmentsContainingVar = getSegmentsContainingExpr(var, state);
       if (segmentsContainingVar.isEmpty()) {
         // Case 3.1.3
         segmentsContainingOp2.get(0).addSegmentBound(var);
@@ -147,7 +162,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
             PREFIX
                 + "THe segmentation is invalid, since the expression that should be reassigned is present twice."
                 + "Hence, the error symbol is returned. Current State is: "
-                + this.state.toDOTLabel()
+                + state.toDOTLabel()
                 + " for the expression :"
                 + pVar.toASTString()
                 + " := "
@@ -207,25 +222,29 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
               newSegments.add(prevSegs.get(i));
             }
           }
-          return new ArraySegmentationState<>(
+          return new ArraySegmentationState<T>(
               newSegments,
               state.gettEmptyElement(),
               state.gettListOfArrayVariables(),
               state.gettArray(),
               state.getSizeVar(),
-              this.state.getLanguage(),
+              state.getLanguage(),
               state.isCanBeEmpty(),
               state.getCPAName(),
               state.getPropertyPredicate(),
               logger,
               state.getCallStack(),
-              state.getPathFormula());
+              state.getPathFormula(),
+              state.getSplitCondition());
         }
       }
     }
   }
 
-  private @Nullable ArraySegmentationState<T> updateNotEquals(CExpression op1, CExpression pOp2) {
+  protected @Nullable ArraySegmentationState<T> updateNotEquals(
+      CExpression op1,
+      CExpression pOp2,
+      @Nullable ArraySegmentationState<T> state) {
 
     if (state.getSegments()
         .parallelStream()
@@ -234,7 +253,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
     } else {
       // Check if they var and op2 are present in consecutive segments and remove a ? in that case
 
-      List<ArraySegment<T>> segmentsContainingOp2 = getSegmentsContainingExpr(pOp2);
+      List<ArraySegment<T>> segmentsContainingOp2 = getSegmentsContainingExpr(pOp2, state);
       if (segmentsContainingOp2.isEmpty()) {
         return state;
       } else if (segmentsContainingOp2.size() > 1) {
@@ -244,7 +263,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
         return new ErrorSegmentation<>(state);
       } else {
         // Check, if the variable is present in any state:
-        List<ArraySegment<T>> segmentsContainingOp1 = getSegmentsContainingExpr(op1);
+        List<ArraySegment<T>> segmentsContainingOp1 = getSegmentsContainingExpr(op1, state);
         if (segmentsContainingOp1.size() > 1) {
           // The analysis seems to be not working, since there is more than one segment bound
           // containing an expression. This is an illegal state of the analysis, hence the analysis
@@ -255,7 +274,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
               PREFIX
                   + "THe segmentation is invalid, since the expression that should be reassigned is present twice."
                   + "Hence, the error symbol is returned. Current State is: "
-                  + this.state.toDOTLabel()
+                  + state.toDOTLabel()
                   + " for the expression :"
                   + op1.toASTString()
                   + " != "
@@ -276,10 +295,13 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
     }
   }
 
-  private @Nullable ArraySegmentationState<T>
-      updateGreater(CExpression greater, CExpression smaller) {
-    List<ArraySegment<T>> segmentsContainingGreater = getSegmentsContainingExpr(greater);
-    List<ArraySegment<T>> segmentsContainingSmaller = getSegmentsContainingExpr(smaller);
+  protected @Nullable ArraySegmentationState<T>
+      updateGreater(
+          CExpression greater,
+          CExpression smaller,
+          @Nullable ArraySegmentationState<T> state) {
+    List<ArraySegment<T>> segmentsContainingGreater = getSegmentsContainingExpr(greater, state);
+    List<ArraySegment<T>> segmentsContainingSmaller = getSegmentsContainingExpr(smaller, state);
     // CHeck, if both expressions are present in exactly one segment bound
     if (segmentsContainingGreater.isEmpty() || segmentsContainingSmaller.isEmpty()) {
       // Nothing to change
@@ -290,7 +312,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
           PREFIX
               + "THe segmentation is invalid, since the expression that should be reassigned is present twice."
               + "Hence, the error symbol is returned. Current State is: "
-              + this.state.toDOTLabel()
+              + state.toDOTLabel()
               + " for the expression :"
               + greater.toASTString()
               + " > "
@@ -309,10 +331,13 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
     return state;
   }
 
-  private @Nullable ArraySegmentationState<T>
-      updateGreaterEq(CExpression greater, CExpression smaller) {
-    List<ArraySegment<T>> segmentsContainingGreater = getSegmentsContainingExpr(greater);
-    List<ArraySegment<T>> segmentsContainingSmaller = getSegmentsContainingExpr(smaller);
+  protected @Nullable ArraySegmentationState<T>
+      updateGreaterEq(
+          CExpression greater,
+          CExpression smaller,
+          @Nullable ArraySegmentationState<T> state) {
+    List<ArraySegment<T>> segmentsContainingGreater = getSegmentsContainingExpr(greater, state);
+    List<ArraySegment<T>> segmentsContainingSmaller = getSegmentsContainingExpr(smaller, state);
 
     // CHeck, if both expressions are present in exactly one segment bound
     if (segmentsContainingGreater.isEmpty() || segmentsContainingSmaller.isEmpty()) {
@@ -323,7 +348,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
           PREFIX
               + "THe segmentation is invalid, since the expression that should be reassigned is present twice."
               + "Hence, the error symbol is returned. Current State is: "
-              + this.state.toDOTLabel()
+              + state.toDOTLabel()
               + " for the expression :"
               + greater.toASTString()
               + " >= "
@@ -335,10 +360,12 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
       int posGreater = state.getSegments().indexOf(segmentsContainingGreater.get(0));
       if (posSmaller > posGreater) {
         if (isVarType(smaller)) {
-          return this.updateEquals(smaller, greater, CBinaryExpression.BinaryOperator.EQUALS);
+          return this
+              .updateEquals(smaller, greater, CBinaryExpression.BinaryOperator.EQUALS, state);
 
         } else if (isVarType(greater)) {
-          return this.updateEquals(greater, smaller, CBinaryExpression.BinaryOperator.EQUALS);
+          return this
+              .updateEquals(greater, smaller, CBinaryExpression.BinaryOperator.EQUALS, state);
 
       }
       }
@@ -366,18 +393,19 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
     return state;
   }
 
-  private boolean isVarType(CExpression expr) {
+  protected boolean isVarType(CExpression expr) {
     return expr instanceof CIdExpression;
   }
 
-  private List<ArraySegment<T>> getSegmentsContainingExpr(CExpression pOp2) {
-    return state.getSegments()
+  protected List<ArraySegment<T>>
+      getSegmentsContainingExpr(CExpression pOp2, @Nullable ArraySegmentationState<T> pState) {
+    return pState.getSegments()
         .parallelStream()
         .filter(s -> s.getSegmentBound().contains(pOp2))
         .collect(Collectors.toList());
   }
 
-  private @Nullable ArraySegmentationState<T> validate(
+  protected @Nullable ArraySegmentationState<T> validate(
       ArraySegmentationState<T> pState,
       CIdExpression pVar,
       CExpression pOp2,

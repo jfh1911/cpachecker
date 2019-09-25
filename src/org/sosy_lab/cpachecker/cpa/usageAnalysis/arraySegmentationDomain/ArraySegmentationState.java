@@ -37,7 +37,9 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.ast.java.JBinaryExpression;
+import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
@@ -58,23 +60,24 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     implements Serializable, LatticeAbstractState<ArraySegmentationState<T>>, AbstractState,
     Graphable, AbstractQueryableState {
 
-  private static final long serialVersionUID = 85908607562101422L;
-  private List<ArraySegment<T>> segments;
-  private SegmentationUnifier<T> unifier;
+  protected static final long serialVersionUID = 85908607562101422L;
+  protected List<ArraySegment<T>> segments;
+  protected SegmentationUnifier<T> unifier;
 
   protected List<AExpression> tLisOfArrayVariables;
   protected AIdExpression tArray;
-  private AExpression sizeVar;
-  private T tEmptyElement;
-  private Language language;
+  protected AExpression sizeVar;
+  protected T tEmptyElement;
+  protected Language language;
 
-  private LogManager logger;
-  private boolean shouldBeHighlighted;
-  private boolean canBeEmpty;
-  private final String cpaName;
-  private final Predicate<ArraySegmentationState<T>> propertyPredicate;
-  private CallstackState callStack;
-  private FormulaState pathFormula;
+  protected LogManager logger;
+  protected boolean shouldBeHighlighted;
+  protected boolean canBeEmpty;
+  protected final String cpaName;
+  protected final Predicate<ArraySegmentationState<T>> propertyPredicate;
+  protected CallstackState callStack;
+  protected FormulaState pathFormula;
+  protected AExpression splitCondition;
 
   /**
    *
@@ -98,7 +101,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       Predicate<ArraySegmentationState<T>> pPropertyPredicate,
       LogManager pLogger,
       CallstackState pCallState,
-      FormulaState pPathFormula) {
+      FormulaState pPathFormula,
+      AExpression pSplitCondition) {
     super();
     segments = pSegments;
     // Check if the segment chain is correctly ordered
@@ -125,7 +129,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     logger = pLogger;
     callStack = pCallState;
     pathFormula = pPathFormula;
-
+    splitCondition = pSplitCondition;
   }
 
   /**
@@ -136,7 +140,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
    */
   protected ArraySegmentationState(ArraySegmentationState<T> pPreviousState) {
     super();
-    segments = new ArrayList<>();
+    segments = pPreviousState.segments;
 
     unifier = new SegmentationUnifier<>();
     tEmptyElement = pPreviousState.gettEmptyElement();
@@ -150,6 +154,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     logger = pPreviousState.getLogger();
     callStack = pPreviousState.callStack;
     pathFormula = pPreviousState.pathFormula;
+    splitCondition = pPreviousState.getSplitCondition();
   }
 
   /**
@@ -194,87 +199,95 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     ArraySegmentationState<T> first = this.clone();
     ArraySegmentationState<T> second = pOther.clone();
 
-    Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
-        unifier.unifyMerge(
-            first,
-            second,
-            tEmptyElement.getBottomElement(),
-            tEmptyElement.getBottomElement(),
-            isLoopHead);
+    if (this.splitCondition.equals(pOther.splitCondition)) {
 
-    // TO get a more precise result, we check, if exectly one segment is empty. Then, returning the
-    // unified version of the other leads to a more precise result. To denote that, the flag
-    // "canBeEmpty" is set for the non-empty segment
-    if (first.isEmptyArray() && !second.isEmptyArray()) {
-      @Nullable
-      ArraySegmentationState<T> resSeg = unifiedSegs.getSecond();
-      resSeg.setCanBeEmpty(true);
-      return resSeg;
-    } else if (!first.isEmptyArray() && second.isEmptyArray()) {
-      @Nullable
-      ArraySegmentationState<T> resSeg = unifiedSegs.getFirst();
-      resSeg.setCanBeEmpty(true);
-      return resSeg;
-    }
+      Pair<ArraySegmentationState<T>, ArraySegmentationState<T>> unifiedSegs =
+          unifier.unifyMerge(
+              first,
+              second,
+              tEmptyElement.getBottomElement(),
+              tEmptyElement.getBottomElement(),
+              isLoopHead);
 
-    List<ArraySegment<T>> res = new ArrayList<>();
-    List<ArraySegment<T>> firstSegs = unifiedSegs.getFirst().getSegments();
-    List<ArraySegment<T>> secondSegs = unifiedSegs.getSecond().getSegments();
+      // TO get a more precise result, we check, if exectly one segment is empty. Then, returning
+      // the
+      // unified version of the other leads to a more precise result. To denote that, the flag
+      // "canBeEmpty" is set for the non-empty segment
+      if (first.isEmptyArray() && !second.isEmptyArray()) {
+        @Nullable
+        ArraySegmentationState<T> resSeg = unifiedSegs.getSecond();
+        resSeg.setCanBeEmpty(true);
+        return resSeg;
+      } else if (!first.isEmptyArray() && second.isEmptyArray()) {
+        @Nullable
+        ArraySegmentationState<T> resSeg = unifiedSegs.getFirst();
+        resSeg.setCanBeEmpty(true);
+        return resSeg;
+      }
 
-    if (firstSegs.isEmpty()) {
-      throw new CPAException("The unification has fail!");
-    }
+      List<ArraySegment<T>> res = new ArrayList<>();
+      List<ArraySegment<T>> firstSegs = unifiedSegs.getFirst().getSegments();
+      List<ArraySegment<T>> secondSegs = unifiedSegs.getSecond().getSegments();
 
-    ArraySegment<T> firstSeg = firstSegs.get(firstSegs.size() - 1);
-    ArraySegment<T> secondSeg = secondSegs.get(secondSegs.size() - 1);
+      if (firstSegs.isEmpty()) {
+        throw new CPAException("The unification has fail!");
+      }
 
-    // Since the list needs to be concatenated, we will start backwards (last element has a specific
-    // next element). The last array segment only contains a segment bound, hence the analysis
-    // information are set to null (they are null anyway), same for isPotentiallyEmpty (which is
-    // false)
+      ArraySegment<T> firstSeg = firstSegs.get(firstSegs.size() - 1);
+      ArraySegment<T> secondSeg = secondSegs.get(secondSegs.size() - 1);
 
-    ArraySegment<T> current = secondSeg;
-    current.setAnalysisInformation(
-        firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()));
-    current.setPotentiallyEmpty(false);
-    current.setNextSegment(new FinalSegment<>(this.tEmptyElement));
-    res.add(0, current);
+      // Since the list needs to be concatenated, we will start backwards (last element has a
+      // specific
+      // next element). The last array segment only contains a segment bound, hence the analysis
+      // information are set to null (they are null anyway), same for isPotentiallyEmpty (which is
+      // false)
 
-    for (int i = firstSegs.size() - 2; i >= 0; i--) {
-      firstSeg = firstSegs.get(i);
-      secondSeg = secondSegs.get(i);
-
-      ArraySegment<T> last = current;
-      current =
-          new ArraySegment<>(
-              firstSeg.getSegmentBound(),
-              firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()),
-              firstSeg.isPotentiallyEmpty() | secondSeg.isPotentiallyEmpty(),
-              last,
-              this.language);
+      ArraySegment<T> current = secondSeg;
+      current.setAnalysisInformation(
+          firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()));
+      current.setPotentiallyEmpty(false);
+      current.setNextSegment(new FinalSegment<>(this.tEmptyElement));
       res.add(0, current);
 
-    }
+      for (int i = firstSegs.size() - 2; i >= 0; i--) {
+        firstSeg = firstSegs.get(i);
+        secondSeg = secondSegs.get(i);
 
-    ArraySegmentationState<T> mergedSeg =
-        new ArraySegmentationState<>(
-            res,
-            this.tEmptyElement,
-            this.tLisOfArrayVariables,
-            this.tArray,
-            sizeVar,
-            language,
-            unifiedSegs.getFirst().isCanBeEmpty() || unifiedSegs.getSecond().isCanBeEmpty(),
-            this.cpaName,
-            this.propertyPredicate,
-            this.logger,
-            pOther.getCallStack(),
-            this.pathFormula.join(pOther.pathFormula));
-    logger.log(Level.FINE, "Merged the elements " + first + " and " + second + "to " + mergedSeg);
-    if (mergedSeg.equals(pOther)) {
-      return pOther;
+        ArraySegment<T> last = current;
+        current =
+            new ArraySegment<>(
+                firstSeg.getSegmentBound(),
+                firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()),
+                firstSeg.isPotentiallyEmpty() | secondSeg.isPotentiallyEmpty(),
+                last,
+                this.language);
+        res.add(0, current);
+
+      }
+
+      ArraySegmentationState<T> mergedSeg =
+          new ArraySegmentationState<>(
+              res,
+              this.tEmptyElement,
+              this.tLisOfArrayVariables,
+              this.tArray,
+              sizeVar,
+              language,
+              unifiedSegs.getFirst().isCanBeEmpty() || unifiedSegs.getSecond().isCanBeEmpty(),
+              this.cpaName,
+              this.propertyPredicate,
+              this.logger,
+              pOther.getCallStack(),
+              this.pathFormula.join(pOther.pathFormula),
+              pOther.splitCondition);
+      logger.log(Level.FINE, "Merged the elements " + first + " and " + second + "to " + mergedSeg);
+      if (mergedSeg.equals(pOther)) {
+        return pOther;
+      } else {
+        return mergedSeg;
+      }
     } else {
-      return mergedSeg;
+      throw new CPAException("Cannot merge segmentations belonging to a differnet split!");
     }
   }
 
@@ -416,6 +429,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
    *        (default is false)
    * @param machineModel of the computation
    * @param pVisitor to create expressions
+   * @param pCfaEdge edge for logging
    * @return true, if the operation was successful
    */
   public boolean storeAnalysisInformationAtIndex(
@@ -423,7 +437,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       T analysisInfo,
       boolean newSegmentIsPotentiallyEmpty,
       MachineModel machineModel,
-      ExpressionSimplificationVisitor pVisitor) {
+      ExpressionSimplificationVisitor pVisitor,
+      CFAEdge pCfaEdge) {
     if (language.equals(Language.C) && index instanceof CExpression) {
       CSegmentationModifier<T> modifier =
           new CSegmentationModifier<>(logger, machineModel, pVisitor);
@@ -433,7 +448,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
                 this.clone(),
                 (CExpression) index,
                 analysisInfo,
-                newSegmentIsPotentiallyEmpty);
+                newSegmentIsPotentiallyEmpty,
+                pCfaEdge);
         this.segments = res.getSegments();
       } catch (ArrayModificationException e) {
         return false;
@@ -625,6 +641,14 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     return Objects.hash(segments, tEmptyElement);
   }
 
+  public AExpression getSplitCondition() {
+    return splitCondition;
+  }
+
+  public void setSplitCondition(AExpression pSplitCondition) {
+    splitCondition = pSplitCondition;
+  }
+
   /**
    * This implementation checks syntactical equality. For a formal definition see Analyzing Data
    * Usage in Array Programs, page 30 By Jan Haltermann
@@ -667,15 +691,20 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
         this.propertyPredicate,
         logger,
         callStack,
-        pathFormula.clone());
+        pathFormula.clone(),
+        this.splitCondition);
   }
 
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
+    // FIXME: Transform this to java
+    if (this.language.equals(Language.C) && !splitCondition.equals(CIntegerLiteralExpression.ONE)) {
+      builder.append(this.splitCondition.toASTString() + ": ");
+    }
     this.segments.stream().forEachOrdered(s -> builder.append(s.toString()));
     if (canBeEmpty) {
-      builder.append(" " + (char) 709 + " ARRAY_IS_EMPTY");
+      builder.append(" " + (char) 709 + " ARRAY_IS_EMPTY ");
     }
     return builder.toString();
 
