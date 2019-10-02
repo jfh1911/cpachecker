@@ -56,6 +56,10 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
 
   EnhancedCExpressionSimplificationVisitor visitor;
   CBinaryExpressionBuilder builder;
+  final static BinaryOperator OPERATOR_FIRST_SEGMENTATION = BinaryOperator.LESS_THAN;
+  final static BinaryOperator OPERATOR_SECOND_SEGMENTATION = BinaryOperator.EQUALS;
+  final static BinaryOperator OPERATOR_THIRD_SEGMENTATION = BinaryOperator.GREATER_THAN;
+
   private LogManager logger;
 
   public CSplitTransformer(
@@ -66,6 +70,139 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
     visitor = pVisitor;
     builder = pBuilder;
     logger = pLogger;
+  }
+
+  public @Nullable ExtendedArraySegmentationState<T> splitLessThan(
+      CIdExpression pVar,
+      CExpression pExpr,
+      @Nullable ArraySegmentationState<T> pState,
+      CFAEdge pCfaEdge)
+      throws SolverException, InterruptedException, UnrecognizedCodeException {
+    Solver solver = pState.getPathFormula().getPr().getSolver();
+    CExpression pEx = visitor.visit(pExpr);
+    pEx = convertSignedIntToInt(pEx);
+    // TODO: Maybe use solver aswell
+
+    // Firstly, check if the transformation can be applied. Therefore, check if the second operator
+    // only contains constants and the array size var
+    if (isApplicable(pEx, pState.getSizeVar())) {
+      int posOfVar = pState.getSegBoundContainingExpr(pVar);
+      if (posOfVar != -1) {
+        ArraySegment<T> segmentContainingI = pState.getSegments().get(posOfVar);
+
+        // Next, check if the segment bound containing the variable pVar does contain only other
+        // expressions e_x, such that e_x != pEx may hold (checked if their equality is
+        // unsatisfiable
+
+        // FIXME: Add this check
+        // if(segmentContainingI.getSegmentBound().stream().anyMatch(e -> (! pVar.equals(e) ) &&
+        // solver.isUnsat()))
+
+        // Split the segmentation is there are more than one expression present in the segmentation
+        // containing the variable
+        ArraySegmentationState<T> state;
+        if (segmentContainingI.getSegmentBound().size() > 1) {
+          Optional<ArraySegmentationState<T>> stateOpt =
+              splitSegmentBound(posOfVar, pVar, pEx, pState, pCfaEdge);
+          if (stateOpt.isPresent()) {
+            state = stateOpt.get();
+          } else {
+            return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
+          }
+        } else {
+          state = pState;
+        }
+
+        // Determine segmentation containing var:
+        int indexOfpVarNew = state.getSegBoundContainingExpr(pVar);
+        ArraySegment<T> containingVar = state.getSegments().get(indexOfpVarNew);
+
+        // Determine, if the ordering is fixed:
+        if (orderingIsFixed(pVar, pExpr, state, pCfaEdge)) {
+          // Add the segmentation containing pEx between i and eg:
+          ArraySegment<T> newSeg = getNewSegment(pEx, segmentContainingI, containingVar);
+          state.addSegment(newSeg, state.getSegments().get(indexOfpVarNew - 1));
+          return new ExtendedArraySegmentationState<>(Lists.newArrayList(state), logger);
+        }
+
+        // Since the ordering is not fixed, we need to split the segmentation:
+        ArraySegmentationState<T> first = state.clone();
+        ArraySegmentationState<T> third = state.clone();
+
+        // Create first:
+
+        first.setSplitCondition(
+            builder.buildBinaryExpression(
+                pEx,
+                (CExpression) state.getSizeVar(),
+                OPERATOR_FIRST_SEGMENTATION));
+        ArraySegment<T> newSeg = getNewSegment(pEx, segmentContainingI, containingVar);
+        // Add first, such that: {es} p_k ?_k -> {es}p_k ?_k {i} p_k {EX}
+        first.addSegment(newSeg, containingVar);
+
+        // Check if path-formula and Ex < arrLen is sat:
+        Optional<Boolean> resOfCheck =
+            isUnsat(
+                state,
+                pEx,
+                pCfaEdge,
+                solver,
+                OPERATOR_FIRST_SEGMENTATION,
+                (CExpression) state.getSizeVar());
+        if (!resOfCheck.isPresent()) {
+          return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
+        }
+        if (resOfCheck.get()) {
+          first = new UnreachableSegmentation<>(first);
+        }
+
+        // Create second, (that is d where E is added to the last segment or unreachableSeg)
+        Optional<ArraySegmentationState<T>> second =
+            getSecond(pCfaEdge, solver, pEx, state, state.clone());
+        if (!second.isPresent()) {
+          return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
+        }
+
+        // Create third (that is either d or unreachableSeg)
+        third.setSplitCondition(
+            builder.buildBinaryExpression(
+                pEx,
+                (CExpression) state.getSizeVar(),
+                OPERATOR_THIRD_SEGMENTATION));
+
+        // Check if path-formula and Ex > arrLen is sat:
+        resOfCheck =
+            isUnsat(
+                state,
+                pEx,
+                pCfaEdge,
+                solver,
+                OPERATOR_THIRD_SEGMENTATION,
+                (CExpression) state.getSizeVar());
+        if (!resOfCheck.isPresent()) {
+          return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
+        }
+        if (resOfCheck.get()) {
+          third = new UnreachableSegmentation<>(third);
+        }
+        return new ExtendedArraySegmentationState<>(
+            Lists.newArrayList(first, second.get(), third),
+            logger);
+      }
+    }
+    return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
+  }
+
+  private ArraySegment<T> getNewSegment(
+      CExpression pEx,
+      ArraySegment<T> segmentContainingI,
+      ArraySegment<T> containingVar) {
+    return new ArraySegment<>(
+        Lists.newArrayList(pEx),
+        containingVar.getAnalysisInformation(),
+        true,
+        null,
+        segmentContainingI.getLanguage());
   }
 
   public @Nullable ExtendedArraySegmentationState<T> splitGreaterThan(
@@ -95,7 +232,6 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         // expressions e_x, such that e_x != pEx may hold (checked if their equality is
         // unsatisfiable
         // FIXME: Add this check
-
         // if(segmentContainingI.getSegmentBound().stream().anyMatch(e -> (! pVar.equals(e) ) &&
         // solver.isUnsat()))
 
@@ -103,27 +239,43 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         // containing the variable
         ArraySegmentationState<T> state;
         if (segmentContainingI.getSegmentBound().size() > 1) {
-          state = splitSegmentBound(posOfVar, pVar, pEx, pState);
+          Optional<ArraySegmentationState<T>> stateOpt =
+              splitSegmentBound(posOfVar, pVar, pEx, pState, pCfaEdge);
+          if (stateOpt.isPresent()) {
+            state = stateOpt.get();
+          } else {
+            return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
+          }
+          segmentContainingI = pState.getSegments().get(posOfVar);
         } else {
           state = pState;
         }
-        // TODO: Determine, if the ordering is fixed:
-        // for (int i = posOfVar; i < state.getSegments().size(); i++) {
-        // ArraySegment<T> current = state.getSegments().get(i);
-        // for(AExpression e : current.getSegmentBound()) {
-        // }
-        // }
+
+        // Determine, if the ordering is fixed:
+        if (orderingIsFixed(pVar, pExpr, state, pCfaEdge)) {
+          // Add the segmentation containing pEx between es and i:
+
+          ArraySegment<T> newSeg =
+              new ArraySegment<>(
+                  Lists.newArrayList(pEx),
+                  segmentContainingI.getAnalysisInformation(),
+                  true,
+                  null,
+                  segmentContainingI.getLanguage());
+          state.addSegment(newSeg, state.getSegments().get(state.getSegBoundContainingExpr(pVar)));
+          return new ExtendedArraySegmentationState<>(Lists.newArrayList(state), logger);
+        }
 
         // Since the ordering is not fixed, we need to split the segmentation:
         ArraySegmentationState<T> first = state.clone();
-        ArraySegmentationState<T> second = new UnreachableSegmentation<>(state.clone());
+        ArraySegmentationState<T> third = new UnreachableSegmentation<>(state.clone());
 
         // Create first:
         first.setSplitCondition(
             builder.buildBinaryExpression(
                 pEx,
                 (CExpression) state.getSizeVar(),
-                BinaryOperator.LESS_EQUAL));
+                OPERATOR_FIRST_SEGMENTATION));
         // Add first, such that: {es} p_k ?_k {i} -> {es}p_k ?_k {EX}p_k ? {i}
         ArraySegment<T> newSeg =
             new ArraySegment<>(
@@ -137,41 +289,163 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
             .addSegment(newSeg, first.getSegments().get(first.getSegBoundContainingExpr(pVar) - 1));
 
         // Check if path-formula and Ex <= arrLen is sat:
-        FormulaState f = state.getPathFormula();
-        Optional<BooleanFormula> equation =
-            getEquation(
+        // Check if path-formula and Ex < arrLen is sat:
+        Optional<Boolean> resOfCheck =
+            isUnsat(
+                state,
                 pEx,
-                (CExpression) state.getSizeVar(),
-                BinaryOperator.LESS_EQUAL,
-                f.getPathFormula().getSsa(),
-                f.getPr().getFormulaManager(),
-                f.getPr().getConverter(),
-                f.getPathFormula(),
-                pCfaEdge);
-        if (equation.isPresent()) {
-          BooleanFormula ELessEqualSizeVar =
-              f.getPr()
-                  .getFormulaManager()
-                  .makeEqual(f.getPathFormula().getFormula(), equation.get());
-          if (solver.isUnsat(ELessEqualSizeVar)) {
-            first = new UnreachableSegmentation<>(first);
-          }
-
-          // Create second
-          second.setSplitCondition(
-              builder.buildBinaryExpression(
-                  pEx,
-                  (CExpression) state.getSizeVar(),
-                  BinaryOperator.GREATER_THAN));
-
-            return new ExtendedArraySegmentationState<>(Lists.newArrayList(first, second), logger);
-          }
+                pCfaEdge,
+                solver,
+                OPERATOR_FIRST_SEGMENTATION,
+                (CExpression) state.getSizeVar());
+        if (!resOfCheck.isPresent()) {
+          return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
+        }
+        if (resOfCheck.get()) {
+          first = new UnreachableSegmentation<>(first);
         }
 
+        // Create second, (that is d where E is added to the last segment or unreachableSeg)
+        Optional<ArraySegmentationState<T>> second =
+            getSecond(pCfaEdge, solver, pEx, state, state.clone());
+        if (!second.isPresent()) {
+          return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
+        }
+
+        // Create third (with condition Ex > arrLen
+        third.setSplitCondition(
+            builder.buildBinaryExpression(
+                pEx,
+                (CExpression) state.getSizeVar(),
+                OPERATOR_THIRD_SEGMENTATION));
+
+        return new ExtendedArraySegmentationState<>(
+            Lists.newArrayList(first, second.get(), third),
+            logger);
+      }
+    }
+    return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
+  }
+
+  private Optional<ArraySegmentationState<T>> getSecond(
+      CFAEdge pCfaEdge,
+      Solver solver,
+      CExpression pEx,
+      ArraySegmentationState<T> state,
+      ArraySegmentationState<T> second)
+      throws UnrecognizedCodeException {
+    Optional<Boolean> resOfCheck;
+    ArraySegment<T> secondLastSegment = second.getSegments().get(second.getSegments().size() - 1);
+    secondLastSegment.addSegmentBound(pEx);
+    second.setSplitCondition(
+        builder.buildBinaryExpression(
+            pEx,
+            (CExpression) state.getSizeVar(),
+            OPERATOR_SECOND_SEGMENTATION));
+    // Check if path-formula and Ex = arrLen is sat:
+    resOfCheck =
+        isUnsat(
+            state,
+            pEx,
+            pCfaEdge,
+            solver,
+            OPERATOR_SECOND_SEGMENTATION,
+            (CExpression) state.getSizeVar());
+    if (!resOfCheck.isPresent()) {
+      return Optional.empty();
+    }
+    if (resOfCheck.get()) {
+      second = new UnreachableSegmentation<>(second);
+    }
+    return Optional.of(second);
+  }
+
+  private boolean orderingIsFixed(
+      CIdExpression pVar,
+      CExpression pExpr,
+      ArraySegmentationState<T> pState,
+      CFAEdge pCfaEdge) {
+    // Check if segment left of (i) is e_s and right of i is e_g
+    boolean leftIsEs = false, rightIsEg = false;
+
+    int segOfVar = pState.getSegBoundContainingExpr(pVar);
+    if (segOfVar > 0 && segOfVar < pState.getSegments().size() + 1) {
+      ArraySegment<T> leftOfVar = pState.getSegments().get(segOfVar - 1);
+      ArraySegment<T> rightOfVar = pState.getSegments().get(segOfVar + 1);
+      Solver solver = pState.getPathFormula().getPr().getSolver();
+
+      // Check if any expression e in leftOfVar implies that: e <= pExpr;
+      for (AExpression e : leftOfVar.getSegmentBound()) {
+        Optional<Boolean> resOfCheck =
+            isUnsat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.LESS_EQUAL, pExpr);
+        if (!resOfCheck.isPresent()) {
+          return false;
+        }
+        if (resOfCheck.get()) {
+          leftIsEs = true;
+          break;
+        }
       }
 
-    return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
+      // Check if any expression e in leftOfVar implies that: e <= pExpr;
+      for (AExpression e : rightOfVar.getSegmentBound()) {
+        Optional<Boolean> resOfCheck =
+            isUnsat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.GREATER_EQUAL, pExpr);
+        if (!resOfCheck.isPresent()) {
+          return false;
+        }
+        if (resOfCheck.get()) {
+          rightIsEg = true;
+          break;
+        }
+      }
 
+    }
+    return leftIsEs && rightIsEg;
+  }
+
+  private Optional<Boolean> isUnsat(
+      ArraySegmentationState<T> pState,
+      CExpression pEx,
+      CFAEdge pCfaEdge,
+      Solver solver,
+      BinaryOperator pOperator,
+      CExpression pRhs) {
+    FormulaState f = pState.getPathFormula();
+    Optional<BooleanFormula> equation;
+    try {
+      equation = getEquation(pEx, pRhs, pOperator, f, pCfaEdge);
+
+      if (equation.isPresent()) {
+        BooleanFormula ELessEqualSizeVar =
+            f.getPr()
+                .getFormulaManager()
+                .makeEqual(f.getPathFormula().getFormula(), equation.get());
+        return Optional.of(solver.isUnsat(ELessEqualSizeVar));
+      }
+    } catch (UnrecognizedCodeException | SolverException | InterruptedException e) {
+      return Optional.empty();
+    }
+
+    return Optional.empty();
+  }
+
+  private Optional<BooleanFormula> getEquation(
+      CExpression pEx,
+      CExpression pSizeVar,
+      BinaryOperator pOperator,
+      FormulaState pF,
+      CFAEdge pCfaEdge)
+      throws UnrecognizedCodeException {
+    return getEquation(
+        pEx,
+        pSizeVar,
+        pOperator,
+        pF.getPathFormula().getSsa(),
+        pF.getPr().getFormulaManager(),
+        pF.getPr().getConverter(),
+        pF.getPathFormula(),
+        pCfaEdge);
   }
 
   private CExpression convertSignedIntToInt(CExpression pEx) {
@@ -197,134 +471,12 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
     return pEx;
   }
 
-  public @Nullable ExtendedArraySegmentationState<T> splitLessThan(
-      CIdExpression pVar,
-      CExpression pExpr,
-      @Nullable ArraySegmentationState<T> pState,
-      CFAEdge pCfaEdge)
-      throws SolverException, InterruptedException, UnrecognizedCodeException {
-    Solver solver = pState.getPathFormula().getPr().getSolver();
-    CExpression pEx = visitor.visit(pExpr);
-    // TODO: Maybe use solver aswell
-
-    // Firstly, check if the transformation can be applied. Therefore, check if the second operator
-    // only contains constants and the array size var
-    if (isApplicable(pEx, pState.getSizeVar())) {
-      int posOfVar = pState.getSegBoundContainingExpr(pVar);
-      if (posOfVar != -1) {
-        ArraySegment<T> segmentContainingI = pState.getSegments().get(posOfVar);
-
-        // Next, check if the segment bound containing the variable pVar does contain only other
-        // expressions e_x, such that e_x != pEx may hold (checked if their equality is
-        // unsatisfiable
-
-        // FIXME: Add this check
-        // if(segmentContainingI.getSegmentBound().stream().anyMatch(e -> (! pVar.equals(e) ) &&
-        // solver.isUnsat()))
-
-        // Split the segmentation is there are more than one expression present in the segmentation
-        // containing the variable
-        ArraySegmentationState<T> state;
-        if (segmentContainingI.getSegmentBound().size() > 1) {
-          state = splitSegmentBound(posOfVar, pVar, pEx, pState);
-        } else {
-          state = pState;
-        }
-        // TODO: Determine, if the ordering is fixed:
-        // for (int i = posOfVar; i < state.getSegments().size(); i++) {
-        // ArraySegment<T> current = state.getSegments().get(i);
-        // for(AExpression e : current.getSegmentBound()) {
-        // }
-        // }
-
-        // Since the ordering is not fixed, we need to split the segmentation:
-        ArraySegmentationState<T> first = state.clone();
-        ArraySegmentationState<T> second = state.clone();
-
-        // Determine segmentation containing var:
-        ArraySegment<T> containingVar =
-            state.getSegments().get(state.getSegBoundContainingExpr(pVar));
-
-        // Create first:
-        first.setSplitCondition(
-            builder.buildBinaryExpression(
-                pEx,
-                (CExpression) state.getSizeVar(),
-                BinaryOperator.LESS_EQUAL));
-        ArraySegment<T> newSeg =
-            new ArraySegment<>(
-                Lists.newArrayList(pEx),
-                containingVar.getAnalysisInformation(),
-                true,
-                null,
-                segmentContainingI.getLanguage());
-        // Add first, such that: {es} p_k ?_k -> {es}p_k ?_k {i} p_k {EX}
-        first.addSegment(newSeg, containingVar);
-
-        // Check if path-formula and Ex <= arrLen is sat:
-        FormulaState f = state.getPathFormula();
-        Optional<BooleanFormula> equation =
-            getEquation(
-                pEx,
-                (CExpression) state.getSizeVar(),
-                BinaryOperator.LESS_EQUAL,
-                f.getPathFormula().getSsa(),
-                f.getPr().getFormulaManager(),
-                f.getPr().getConverter(),
-                f.getPathFormula(),
-                pCfaEdge);
-        if (equation.isPresent()) {
-          BooleanFormula ELessEqualSizeVar =
-              f.getPr()
-                  .getFormulaManager()
-                  .makeEqual(f.getPathFormula().getFormula(), equation.get());
-          if (solver.isUnsat(ELessEqualSizeVar)) {
-            first = new UnreachableSegmentation<>(first);
-          }
-
-
-          // Create second (that is either d or unreachableSeg)
-          second.setSplitCondition(
-              builder.buildBinaryExpression(
-                  pEx,
-                  (CExpression) state.getSizeVar(),
-                  BinaryOperator.GREATER_THAN));
-
-          // Check if path-formula and Ex > arrLen is sat:
-          f = state.getPathFormula();
-          equation =
-              getEquation(
-                  pEx,
-                  (CExpression) state.getSizeVar(),
-                  BinaryOperator.GREATER_THAN,
-                  f.getPathFormula().getSsa(),
-                  f.getPr().getFormulaManager(),
-                  f.getPr().getConverter(),
-                  f.getPathFormula(),
-                  pCfaEdge);
-          if (equation.isPresent()) {
-            BooleanFormula EGreaterSizeVar =
-                f.getPr()
-                    .getFormulaManager()
-                    .makeEqual(f.getPathFormula().getFormula(), equation.get());
-            if (solver.isUnsat(EGreaterSizeVar)) {
-              second = new UnreachableSegmentation<>(first);
-            }
-
-            return new ExtendedArraySegmentationState<>(Lists.newArrayList(first, second), logger);
-          }
-        }
-      }
-    }
-    return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
-
-  }
-
-  private ArraySegmentationState<T> splitSegmentBound(
+  private Optional<ArraySegmentationState<T>> splitSegmentBound(
       int pPosOfVar,
       CIdExpression pVar,
       CExpression pEx,
-      @Nullable ArraySegmentationState<T> pState) {
+      @Nullable ArraySegmentationState<T> pState,
+      CFAEdge pCfaEdge) {
 
     // Check, if a constant e_j is present
     CIntegerLiteralExpression constValue = null;
@@ -335,50 +487,74 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         break;
       }
     }
+    int comparison = 0;
+
     if (constValue != null && pEx instanceof CIntegerLiteralExpression) {
+      comparison = constValue.getValue().compareTo(((CIntegerLiteralExpression) pEx).getValue());
+    } else {
+
+      // check, if the path formula induces that an expression e is present, that is
+      // greater equal or less equal than pEx
+      Solver solver = pState.getPathFormula().getPr().getSolver();
+      for (AExpression e : segOfVar.getSegmentBound()) {
+        Optional<Boolean> resOfCheck =
+            isUnsat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.LESS_THAN, pEx);
+        if (resOfCheck.isPresent() && resOfCheck.get()) {
+          comparison = -1;
+        }
+        resOfCheck =
+            isUnsat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.GREATER_THAN, pEx);
+        if (resOfCheck.isPresent() && resOfCheck.get()) {
+          comparison = 1;
+        }
+      }
+
+    }
+    if (comparison < 0) {
+      // The constant is smaller than pEx, continue with {e_j,..} p_j ? {i} p_j ?_j ...
+
       List<AExpression> otherExpr = new ArrayList<>(segOfVar.getSegmentBound());
       otherExpr.remove(pVar);
-      if (constValue.getValue().compareTo(((CIntegerLiteralExpression) pEx).getValue()) < 0) {
-        // The constant is smaller than pEx, continue with {e_j,..} p_j ? {i} p_j ?_j ...
 
-        // remove var from seOfVar
-        List<AExpression> newSegBounds = new ArrayList<>(segOfVar.getSegmentBound());
-        newSegBounds.remove(pVar);
-        segOfVar.setSegmentBound(newSegBounds);
+      // remove var from seOfVar
+      List<AExpression> newSegBounds = new ArrayList<>(segOfVar.getSegmentBound());
+      newSegBounds.remove(pVar);
+      segOfVar.setSegmentBound(newSegBounds);
 
-        // Create a new segment {e_j,...} p_j?
-        ArraySegment<T> newSeg =
-            new ArraySegment<>(
-                Lists.newArrayList(pVar),
-                segOfVar.getAnalysisInformation(),
-                true,
-                null,
-                segOfVar.getLanguage());
-        pState.addSegment(newSeg, segOfVar);
-        return pState;
-      } else if (constValue.getValue()
-          .compareTo(((CIntegerLiteralExpression) pEx).getValue()) > 0) {
-        // The constant is smaller than pEx, continue with {i} p_j ? {e_j,..} p_j ?_j ...
-        // remove other from seOfVar
-        List<AExpression> newSegBounds = new ArrayList<>(segOfVar.getSegmentBound());
-        newSegBounds.removeAll(otherExpr);
-        segOfVar.setSegmentBound(newSegBounds);
+      // Create a new segment {e_j,...} p_j?
+      ArraySegment<T> newSeg =
+          new ArraySegment<>(
+              Lists.newArrayList(pVar),
+              segOfVar.getAnalysisInformation(),
+              true,
+              null,
+              segOfVar.getLanguage());
+      pState.addSegment(newSeg, segOfVar);
+      return Optional.of(pState);
+    } else if (comparison > 0) {
+      // The constant is smaller than pEx, continue with {i} p_j ? {e_j,..} p_j ?_j ...
+      // remove other from seOfVar
 
-        // Create a new segment {e_j,...} p_j?
-        ArraySegment<T> newSeg =
-            new ArraySegment<>(
-                otherExpr,
-                segOfVar.getAnalysisInformation(),
-                true,
-                null,
-                segOfVar.getLanguage());
-        pState.addSegment(newSeg, segOfVar);
-        return pState;
-      }
-      // TODO: Extend for size var
+      List<AExpression> otherExpr = new ArrayList<>(segOfVar.getSegmentBound());
+      otherExpr.remove(pVar);
+
+      List<AExpression> newSegBounds = new ArrayList<>(segOfVar.getSegmentBound());
+      newSegBounds.removeAll(otherExpr);
+      segOfVar.setSegmentBound(newSegBounds);
+
+      // Create a new segment {e_j,...} p_j?
+      ArraySegment<T> newSeg =
+          new ArraySegment<>(
+              otherExpr,
+              segOfVar.getAnalysisInformation(),
+              true,
+              null,
+              segOfVar.getLanguage());
+      pState.addSegment(newSeg, segOfVar);
+      return Optional.of(pState);
     }
 
-    return pState;
+    return Optional.empty();
   }
 
   private boolean isApplicable(CExpression pExpr, AExpression pSizeVar) {
