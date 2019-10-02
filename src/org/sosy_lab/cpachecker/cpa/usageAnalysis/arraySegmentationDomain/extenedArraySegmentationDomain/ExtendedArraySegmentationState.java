@@ -420,11 +420,11 @@ public class ExtendedArraySegmentationState<T extends ExtendedCompletLatticeAbst
   @Override
   public boolean checkProperty(String pProperty) throws InvalidQueryException {
     for (ArraySegmentationState<T> seg : this.segmentations) {
-      if (!seg.checkProperty(pProperty)) {
-        return false;
+      if (seg.checkProperty(pProperty)) {
+        return true;
       }
     }
-    return true;
+    return false;
   }
 
 }

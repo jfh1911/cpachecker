@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
 import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
+import org.sosy_lab.cpachecker.cfa.ast.ABinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression.BinaryOperator;
@@ -133,7 +134,17 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
               pPathFormula,
               pCfaEdge,
               manager);
-      if (bfEQ.isPresent() && bfGEQ.isPresent()) {
+      Optional<BooleanFormula> bfGe =
+          getBooleanFormula(
+              (CExpression) pSegmentation.getSizeVar(),
+              CIntegerLiteralExpression.ZERO,
+              BinaryOperator.GREATER_THAN,
+              converter,
+              pPathFormula,
+              pCfaEdge,
+              manager);
+
+      if (bfEQ.isPresent() && bfGEQ.isPresent() && bfGe.isPresent()) {
         if (pFormulaState.getPr()
             .getSolver()
             .implies(pFormulaState.getPathFormula().getFormula(), bfGEQ.get())) {
@@ -164,6 +175,21 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
                   converter);
           if (!copyAfterFirstiteration.equals(pSegmentation)) {
             pSegmentation.setCanBeEmpty(true);
+            //Add the condition, that arrSize > 0 to the path formula:
+            PathFormula oldPF = pSegmentation.getPathFormula().getPathFormula();
+            BooleanFormula newPathFormula =
+                pSegmentation.getPathFormula()
+                    .getPr()
+                    .getFormulaManager()
+                    .makeAnd(oldPF.getFormula(), bfGe.get());
+            pSegmentation.setPathFormula(
+                new FormulaState(
+                    new PathFormula(
+                        newPathFormula,
+                        oldPF.getSsa(),
+                        oldPF.getPointerTargetSet(),
+                        oldPF.getLength() + 1),
+                    pSegmentation.getPathFormula().getPr()));
           }
 
         }
@@ -219,55 +245,63 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
       SSAMap ssa,
       FormulaManagerView manager,
       CtoFormulaConverter converter)
-      throws UnrecognizedCodeException, InterruptedException {
+      throws InterruptedException {
     // Iterate through all segmentations and check , if two consecutive segment bounds can be made
     // more precise by removing ?
-    for (int i = 0; i < pSegmentation.getSegments().size() - 1; i++) {
-      List<Pair<BooleanFormula, CBinaryExpression>> equations =
-          getEquations(
-              pSegmentation.getSegments().get(i).getSegmentBound(),
-              pSegmentation.getSegments().get(i + 1).getSegmentBound(),
-              BinaryOperator.LESS_THAN,
-              ssa,
-              manager,
-              converter,
-              binExprBuilder,
-              pFormulaState.getPathFormula(),
-              pCfaEdge);
-      equations.addAll(
-          getEquations(
-              pSegmentation.getSegments().get(i + 1).getSegmentBound(),
-              pSegmentation.getSegments().get(i).getSegmentBound(),
-              BinaryOperator.LESS_EQUAL,
-              ssa,
-              manager,
-              converter,
-              binExprBuilder,
-              pFormulaState.getPathFormula(),
-              pCfaEdge));
+    try {
+      for (int i = 0; i < pSegmentation.getSegments().size() - 1; i++) {
+        List<Pair<BooleanFormula, CBinaryExpression>> equations =
+            getEquations(
+                pSegmentation.getSegments().get(i).getSegmentBound(),
+                pSegmentation.getSegments().get(i + 1).getSegmentBound(),
+                BinaryOperator.LESS_THAN,
+                ssa,
+                manager,
+                converter,
+                binExprBuilder,
+                pFormulaState.getPathFormula(),
+                pCfaEdge);
+        equations.addAll(
+            getEquations(
+                pSegmentation.getSegments().get(i + 1).getSegmentBound(),
+                pSegmentation.getSegments().get(i).getSegmentBound(),
+                BinaryOperator.LESS_EQUAL,
+                ssa,
+                manager,
+                converter,
+                binExprBuilder,
+                pFormulaState.getPathFormula(),
+                pCfaEdge));
 
-      for (Pair<BooleanFormula, CBinaryExpression> eq : equations) {
-        try {
+        for (Pair<BooleanFormula, CBinaryExpression> eq : equations) {
           if (pFormulaState.getPr()
               .getSolver()
               .implies(pFormulaState.getPathFormula().getFormula(), eq.getFirst())) {
-            pSegmentation =
-                this.updateTransformer.update(eq.getSecond(), true, pSegmentation);
+            pSegmentation = this.updateTransformer.update(eq.getSecond(), true, pSegmentation);
           }
-        } catch (SolverException e) {
-          logger.log(
-              Level.FINE,
-              "An solver error occured while strengthening the current segmentation: "
-                  + pSegmentation.toString()
-                  + e.toString());
-        } catch (CPATransferException e) {
-          logger.log(
-              Level.FINE,
-              "An transformation error occured while strengthening the current segmentation: "
-                  + pSegmentation.toString()
-                  + e.toString());
+
         }
       }
+
+      // Lastly, we can apply the split-condition, to get a even more precise result (if it is a
+      // binaryExpression
+      if (pSegmentation.getSplitCondition() instanceof ABinaryExpression) {
+        pSegmentation =
+            this.updateTransformer
+                .update((CBinaryExpression) pSegmentation.getSplitCondition(), true, pSegmentation);
+      }
+    } catch (SolverException e) {
+      logger.log(
+          Level.FINE,
+          "An solver error occured while strengthening the current segmentation: "
+              + pSegmentation.toString()
+              + e.toString());
+    } catch (CPATransferException e) {
+      logger.log(
+          Level.FINE,
+          "An transformation error occured while strengthening the current segmentation: "
+              + pSegmentation.toString()
+              + e.toString());
     }
     return pSegmentation;
   }
