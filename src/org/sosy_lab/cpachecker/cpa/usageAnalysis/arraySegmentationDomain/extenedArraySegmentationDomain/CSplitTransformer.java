@@ -93,7 +93,6 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         // Next, check if the segment bound containing the variable pVar does contain only other
         // expressions e_x, such that e_x != pEx may hold (checked if their equality is
         // unsatisfiable
-
         // FIXME: Add this check
         // if(segmentContainingI.getSegmentBound().stream().anyMatch(e -> (! pVar.equals(e) ) &&
         // solver.isUnsat()))
@@ -191,18 +190,6 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
       }
     }
     return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
-  }
-
-  private ArraySegment<T> getNewSegment(
-      CExpression pEx,
-      ArraySegment<T> segmentContainingI,
-      ArraySegment<T> containingVar) {
-    return new ArraySegment<>(
-        Lists.newArrayList(pEx),
-        containingVar.getAnalysisInformation(),
-        true,
-        null,
-        segmentContainingI.getLanguage());
   }
 
   public @Nullable ExtendedArraySegmentationState<T> splitGreaterThan(
@@ -360,6 +347,18 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
     return Optional.of(second);
   }
 
+  private ArraySegment<T> getNewSegment(
+      CExpression pEx,
+      ArraySegment<T> segmentContainingI,
+      ArraySegment<T> containingVar) {
+    return new ArraySegment<>(
+        Lists.newArrayList(pEx),
+        containingVar.getAnalysisInformation(),
+        true,
+        null,
+        segmentContainingI.getLanguage());
+  }
+
   private boolean orderingIsFixed(
       CIdExpression pVar,
       CExpression pExpr,
@@ -473,7 +472,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
 
   private Optional<ArraySegmentationState<T>> splitSegmentBound(
       int pPosOfVar,
-      CIdExpression pVar,
+      CExpression pVar,
       CExpression pEx,
       @Nullable ArraySegmentationState<T> pState,
       CFAEdge pCfaEdge) {
@@ -605,4 +604,58 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
 
   }
 
+  public boolean wouldBeSplitt(
+      CExpression pVar,
+      CExpression pExpr,
+      BinaryOperator pBinaryOp,
+      @Nullable ArraySegmentationState<T> pState,
+      CFAEdge pCfaEdge)
+      throws UnrecognizedCodeException {
+    // Find a more efficient implementation for that avoiding computing the split twice
+    Solver solver = pState.getPathFormula().getPr().getSolver();
+    CExpression pEx;
+    if (pBinaryOp.equals(BinaryOperator.LESS_EQUAL)
+        || pBinaryOp.equals(BinaryOperator.GREATER_THAN)) {
+      // Increment the second operator by one
+      pEx =
+          visitor.visit(
+              builder.buildBinaryExpression(
+                  pExpr,
+                  CIntegerLiteralExpression.ONE,
+                  BinaryOperator.PLUS));
+      pEx = convertSignedIntToInt(pEx);
+    } else {
+      pEx = pExpr;
+    }
+
+    // Firstly, check if the transformation can be applied. Therefore, check if the second
+    // operator
+    // only contains constants and the array size var
+    if (isApplicable(pEx, pState.getSizeVar())) {
+      int posOfVar = pState.getSegBoundContainingExpr(pVar);
+      if (posOfVar != -1) {
+        ArraySegment<T> segmentContainingI = pState.getSegments().get(posOfVar);
+
+        // Next, check if the segment bound containing the variable pVar does contain only other
+        // expressions e_x, such that e_x != pEx may hold (checked if their equality is
+        // unsatisfiable
+        // FIXME: Add this check
+        // if(segmentContainingI.getSegmentBound().stream().anyMatch(e -> (! pVar.equals(e) ) &&
+        // solver.isUnsat()))
+
+        // Split the segmentation is there are more than one expression present in the
+        // segmentation
+        // containing the variable
+        ArraySegmentationState<T> state;
+        if (segmentContainingI.getSegmentBound().size() > 1) {
+          Optional<ArraySegmentationState<T>> stateOpt =
+              splitSegmentBound(posOfVar, pVar, pEx, pState, pCfaEdge);
+          return stateOpt.isPresent();
+        } else {
+          state = pState;
+        }
+      }
+    }
+    return false;
+  }
 }

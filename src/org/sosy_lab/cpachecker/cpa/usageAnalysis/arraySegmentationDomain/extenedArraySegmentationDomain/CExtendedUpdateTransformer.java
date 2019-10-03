@@ -38,6 +38,7 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.transfe
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.SegmentationReachabilityChecker;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
+import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 import org.sosy_lab.java_smt.api.SolverException;
 
 public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
@@ -56,7 +57,7 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
 
   /**
    * An extended version of the update transformer, making use of splitting
-   * 
+   *
    * @param pCfaEdge
    *
    * @throws CPATransferException
@@ -102,7 +103,12 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
       return computeExtension(updateNotEquals(expr.getOperand1(), expr.getOperand2(), pState));
     } else if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.GREATER_THAN)) {
       // Check if the split (CAse 4.1 is applicable)
-      if (splitIsApplicable(expr.getOperand1(), expr.getOperand2(), pState)) {
+      if (splitIsApplicable(
+          expr.getOperand1(),
+          expr.getOperand2(),
+          expr.getOperator(),
+          pState,
+          pCfaEdge)) {
         return splitTransformer
             .splitGreaterThan(
                 (CIdExpression) expr.getOperand1(),
@@ -114,7 +120,12 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
       // Apply Case 3.3
       return computeExtension(updateGreater(expr.getOperand1(), expr.getOperand2(), pState));
     } else if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.LESS_THAN)) {
-      if (splitIsApplicable(expr.getOperand1(), expr.getOperand2(), pState)) {
+      if (splitIsApplicable(
+          expr.getOperand1(),
+          expr.getOperand2(),
+          expr.getOperator(),
+          pState,
+          pCfaEdge)) {
         return splitTransformer
             .splitLessThan(
                 (CIdExpression) expr.getOperand1(),
@@ -125,7 +136,12 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
       // Case 3.4
       return computeExtension(updateGreater(expr.getOperand2(), expr.getOperand1(), pState));
     } else if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.GREATER_EQUAL)) {
-      if (splitIsApplicable(expr.getOperand1(), expr.getOperand2(), pState)) {
+      if (splitIsApplicable(
+          expr.getOperand1(),
+          expr.getOperand2(),
+          expr.getOperator(),
+          pState,
+          pCfaEdge)) {
         // Return Split(i < E-1,d)
         return splitTransformer.splitGreaterThan(
             (CIdExpression) expr.getOperand1(),
@@ -139,7 +155,12 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
       // Case 3.5
       return computeExtension(updateGreaterEq(expr.getOperand1(), expr.getOperand2(), pState));
     } else if (expr.getOperator().equals(CBinaryExpression.BinaryOperator.LESS_EQUAL)) {
-      if (splitIsApplicable(expr.getOperand1(), expr.getOperand2(), pState)) {
+      if (splitIsApplicable(
+          expr.getOperand1(),
+          expr.getOperand2(),
+          expr.getOperator(),
+          pState,
+          pCfaEdge)) {
         // Return Split(i < E-1,d)
         return splitTransformer.splitLessThan(
             (CIdExpression) expr.getOperand1(),
@@ -166,15 +187,29 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
 
   private boolean splitIsApplicable(
       CExpression pOperand1,
-      CExpression pOperand2,
-      @Nullable ArraySegmentationState<T> pState) {
+      CExpression pOperand2,BinaryOperator pBinaryOp,
+      @Nullable ArraySegmentationState<T> pState,
+      CFAEdge pCfaEdge)
+      throws UnrecognizedCodeException {
     // Check, if there is a constant present on the LHS:
     if (isVarType(pOperand1)) {
       List<ArraySegment<T>> segmentsContainingFirst = getSegmentsContainingExpr(pOperand1, pState);
       List<ArraySegment<T>> segmentsContainingSecond = getSegmentsContainingExpr(pOperand2, pState);
-      return !segmentsContainingFirst.isEmpty()
+      boolean constantOnLHS = !segmentsContainingFirst.isEmpty()
           && segmentsContainingSecond.isEmpty()
           && pState.getSegBoundContainingExpr(pOperand1) == pState.getSegments().size() - 2;
+      if( constantOnLHS) {
+        return this.splitTransformer
+            .wouldBeSplitt(pOperand1, pOperand2, pBinaryOp, pState, pCfaEdge)
+            &&
+            this.splitTransformer
+                .wouldBeSplitt(
+                    pOperand1,
+                    pOperand2,
+                    pBinaryOp.getOppositLogicalOperator(),
+                    pState,
+                    pCfaEdge);
+      }
     }
     return false;
   }
