@@ -28,7 +28,6 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression.BinaryOperator;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
-import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ArraySegment;
@@ -60,7 +59,6 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
    *
    * @param pCfaEdge
    *
-   * @throws CPATransferException
    * @throws InterruptedException
    * @throws SolverException
    *
@@ -72,7 +70,7 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
       boolean pTruthAssumption,
       @Nullable ArraySegmentationState<T> pState,
       CFAEdge pCfaEdge)
-      throws CPATransferException, SolverException, InterruptedException {
+      throws SolverException, InterruptedException, CPATransferException {
 
     // Apply the truth assumption. In case of false, invert the operator
     if (!pTruthAssumption) {
@@ -109,12 +107,12 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
           expr.getOperator(),
           pState,
           pCfaEdge)) {
-        return splitTransformer
-            .splitGreaterThan(
-                (CIdExpression) expr.getOperand1(),
-                expr.getOperand2(),
-                pState,
-                pCfaEdge);
+        return splitTransformer.splitGreaterThan(
+            (CIdExpression) expr.getOperand1(),
+            expr.getOperand2(),
+            pState,
+            pCfaEdge,
+            true);
       }
 
       // Apply Case 3.3
@@ -126,12 +124,12 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
           expr.getOperator(),
           pState,
           pCfaEdge)) {
-        return splitTransformer
-            .splitLessThan(
-                (CIdExpression) expr.getOperand1(),
-                expr.getOperand2(),
-                pState,
-                pCfaEdge);
+        return splitTransformer.splitLessThan(
+            (CIdExpression) expr.getOperand1(),
+            expr.getOperand2(),
+            pState,
+            pCfaEdge,
+            false);
       }
       // Case 3.4
       return computeExtension(updateGreater(expr.getOperand2(), expr.getOperand1(), pState));
@@ -142,15 +140,13 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
           expr.getOperator(),
           pState,
           pCfaEdge)) {
-        // Return Split(i < E-1,d)
+        // Return Split(i >= E,d)
         return splitTransformer.splitGreaterThan(
             (CIdExpression) expr.getOperand1(),
-            builder.buildBinaryExpression(
-                expr.getOperand2(),
-                CIntegerLiteralExpression.ONE,
-                BinaryOperator.MINUS),
+            expr.getOperand2(),
             pState,
-            pCfaEdge);
+            pCfaEdge,
+            false);
       }
       // Case 3.5
       return computeExtension(updateGreaterEq(expr.getOperand1(), expr.getOperand2(), pState));
@@ -161,15 +157,12 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
           expr.getOperator(),
           pState,
           pCfaEdge)) {
-        // Return Split(i < E-1,d)
+        // Return Split(i <= E+1,d)
         return splitTransformer.splitLessThan(
             (CIdExpression) expr.getOperand1(),
-            builder.buildBinaryExpression(
-                expr.getOperand2(),
-                CIntegerLiteralExpression.ONE,
-                BinaryOperator.PLUS),
+            expr.getOperand2(),
             pState,
-            pCfaEdge);
+            pCfaEdge, true);
       }
 
       // Case 3.6
@@ -187,7 +180,8 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
 
   private boolean splitIsApplicable(
       CExpression pOperand1,
-      CExpression pOperand2,BinaryOperator pBinaryOp,
+      CExpression pOperand2,
+      BinaryOperator pBinaryOp,
       @Nullable ArraySegmentationState<T> pState,
       CFAEdge pCfaEdge)
       throws UnrecognizedCodeException {
@@ -195,20 +189,21 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
     if (isVarType(pOperand1)) {
       List<ArraySegment<T>> segmentsContainingFirst = getSegmentsContainingExpr(pOperand1, pState);
       List<ArraySegment<T>> segmentsContainingSecond = getSegmentsContainingExpr(pOperand2, pState);
-      boolean constantOnLHS = !segmentsContainingFirst.isEmpty()
-          && segmentsContainingSecond.isEmpty()
-          && pState.getSegBoundContainingExpr(pOperand1) == pState.getSegments().size() - 2;
-      if( constantOnLHS) {
-        return this.splitTransformer
-            .wouldBeSplitt(pOperand1, pOperand2, pBinaryOp, pState, pCfaEdge)
-            &&
+      boolean constantOnLHS =
+          !segmentsContainingFirst.isEmpty()
+              && segmentsContainingSecond.isEmpty()
+              && pState.getSegBoundContainingExpr(pOperand1) == pState.getSegments().size() - 2;
+      if (constantOnLHS) {
+        boolean temp =
             this.splitTransformer
-                .wouldBeSplitt(
+                .wouldBeSplitt(pOperand1, pOperand2, pBinaryOp, pState.clone(), pCfaEdge)
+                && this.splitTransformer.wouldBeSplitt(
                     pOperand1,
                     pOperand2,
                     pBinaryOp.getOppositLogicalOperator(),
-                    pState,
+                    pState.clone(),
                     pCfaEdge);
+        return temp;
       }
     }
     return false;

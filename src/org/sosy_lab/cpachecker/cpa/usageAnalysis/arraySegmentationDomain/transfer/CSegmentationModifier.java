@@ -197,7 +197,7 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
     Solver solver = pr.getSolver();
 
     // Compute for each segment present in the segmentation, if for any expression e it holds that:
-    // pINdex > e is SAT (same argument as above)
+    // pINdex >= e is SAT (since the lower bound is included!)
     for (int i = 1; i < pState.getSegments().size(); i++) {
       ArraySegment<T> sb = pState.getSegments().get(i);
       for (AExpression e : sb.getSegmentBound()) {
@@ -205,7 +205,7 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
             getBooleanFormula(
                 pIndex,
                 (CExpression) e,
-                BinaryOperator.GREATER_THAN,
+                BinaryOperator.GREATER_EQUAL,
                 pr.getConverter(),
                 pState.getPathFormula().getPathFormula(),
                 pCfaEdge,

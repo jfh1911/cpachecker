@@ -271,7 +271,7 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
         throw new CPAException(
             "The unififcation failed for the elements "
                 + pD1.toDOTLabel()
-                + " and  "
+                + " and "
                 + pD2.toDOTLabel());
       }
       ArraySegment<T> b0 = res1.get(res1.size() - 1);
@@ -507,23 +507,23 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
               b1.setSegmentBound(b2Hat);
               b1 = b0;
               continue;
+            } else {
+              // Case 6.5 and 6.8
+              // Merge the analysis information from B1 into B0 and remove the segment B1
+              b0.setAnalysisInformation(
+                  ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation()));
+              b0.setPotentiallyEmpty(hatl.test(b0.isPotentiallyEmpty(), b1.isPotentiallyEmpty()));
+              b0.setNextSegment(b1.getNextSegment());
+              b1 = b0;
+              // Merge the analysis information from B2 into B0' and remove the segment B2
+              b0Prime.setAnalysisInformation(
+                  or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation()));
+              b0Prime.setPotentiallyEmpty(
+                  hatr.test(b0Prime.isPotentiallyEmpty(), b2.isPotentiallyEmpty()));
+              b0Prime.setNextSegment(b2.getNextSegment());
+              b2 = b0Prime;
+              continue;
             }
-          } else {
-            // Case 6.5 and 6.8
-            // Merge the analysis information from B1 into B0 and remove the segment B1
-            b0.setAnalysisInformation(
-                ol.apply(b0.getAnalysisInformation(), b1.getAnalysisInformation()));
-            b0.setPotentiallyEmpty(hatl.test(b0.isPotentiallyEmpty(), b1.isPotentiallyEmpty()));
-            b0.setNextSegment(b1.getNextSegment());
-            b1 = b0;
-            // Merge the analysis information from B2 into B0' and remove the segment B2
-            b0Prime.setAnalysisInformation(
-                or.apply(b0Prime.getAnalysisInformation(), b2.getAnalysisInformation()));
-            b0Prime.setPotentiallyEmpty(
-                hatr.test(b0Prime.isPotentiallyEmpty(), b2.isPotentiallyEmpty()));
-            b0Prime.setNextSegment(b2.getNextSegment());
-            b2 = b0Prime;
-            continue;
           }
         }
       }
