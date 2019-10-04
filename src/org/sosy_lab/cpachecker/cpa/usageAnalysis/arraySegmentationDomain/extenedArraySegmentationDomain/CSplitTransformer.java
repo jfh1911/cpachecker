@@ -41,6 +41,7 @@ import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.Extende
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.formula.FormulaState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.util.EnhancedCExpressionSimplificationVisitor;
+import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 import org.sosy_lab.cpachecker.util.Triple;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
@@ -76,11 +77,12 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
       CIdExpression pVar,
       CExpression pExpr,
       @Nullable ArraySegmentationState<T> pState,
-      CFAEdge pCfaEdge)
-      throws SolverException, InterruptedException, UnrecognizedCodeException {
+      CFAEdge pCfaEdge,
+      boolean pNeedToIncrease)
+      throws UnrecognizedCodeException {
     Solver solver = pState.getPathFormula().getPr().getSolver();
-    CExpression pEx = visitor.visit(pExpr);
-    pEx = convertSignedIntToInt(pEx);
+    // Build e+1 needed for the rest of the method, if the flag says so
+    CExpression pEx = IncreaseByOneIfNeeded(pExpr, pNeedToIncrease);
     // TODO: Maybe use solver aswell
 
     // Firstly, check if the transformation can be applied. Therefore, check if the second operator
@@ -196,16 +198,14 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
       CIdExpression pVar,
       CExpression pExpr,
       @Nullable ArraySegmentationState<T> pState,
-      CFAEdge pCfaEdge)
-      throws SolverException, InterruptedException, UnrecognizedCodeException {
+      CFAEdge pCfaEdge,
+      boolean pNeedToIncrease)
+      throws CPATransferException
+  {
 
     Solver solver = pState.getPathFormula().getPr().getSolver();
-    // Build e+1 needed for the rest of the method
-    CExpression pEx =
-        visitor.visit(
-            builder
-                .buildBinaryExpression(pExpr, CIntegerLiteralExpression.ONE, BinaryOperator.PLUS));
-    pEx = convertSignedIntToInt(pEx);
+    // Build e+1 needed for the rest of the method, if the flag says so
+    CExpression pEx = IncreaseByOneIfNeeded(pExpr, pNeedToIncrease);
     // TODO: Maybe use solver aswell
 
     // Firstly, check if the transformation can be applied. Therefore, check if the second operator
@@ -272,6 +272,11 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
                 null,
                 segmentContainingI.getLanguage());
 
+        if (first.getSegBoundContainingExpr(pVar) == 0) {
+          throw new CPATransferException(
+              "Cannot splitt the element, since the assumption, that pVar < 0 is violated!");
+        }
+
         first
             .addSegment(newSeg, first.getSegments().get(first.getSegBoundContainingExpr(pVar) - 1));
 
@@ -312,6 +317,22 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
       }
     }
     return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
+  }
+
+  private CExpression IncreaseByOneIfNeeded(CExpression pExpr, boolean pNeedToIncrease)
+      throws UnrecognizedCodeException {
+    if (pNeedToIncrease) {
+      CExpression pEx =
+          visitor.visit(
+              builder.buildBinaryExpression(
+                  pExpr,
+                  CIntegerLiteralExpression.ONE,
+                  BinaryOperator.PLUS));
+      pEx = convertSignedIntToInt(pEx);
+      return pEx;
+    } else {
+      return pExpr;
+    }
   }
 
   private Optional<ArraySegmentationState<T>> getSecond(
@@ -652,7 +673,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
               splitSegmentBound(posOfVar, pVar, pEx, pState, pCfaEdge);
           return stateOpt.isPresent();
         } else {
-          state = pState;
+          return true;
         }
       }
     }
