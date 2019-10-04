@@ -78,7 +78,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   protected CallstackState callStack;
   protected FormulaState pathFormula;
   protected AExpression splitCondition;
-
   /**
    *
    * @param pSegments list of segments present
@@ -707,7 +706,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       builder.append(" " + (char) 709 + " ARRAY_IS_EMPTY ");
     }
     return builder.toString();
-
   }
 
   @Override

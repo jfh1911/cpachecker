@@ -191,9 +191,32 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
                         oldPF.getLength() + 1),
                     pSegmentation.getPathFormula().getPr()));
           }
-
         }
       }
+
+      // Verify that the path formula contains the term SIZE > 0, if the segment is marked as
+      // potentially empty!
+      if (pSegmentation.isCanBeEmpty()) {
+        // Simply add the term SIZE>= to the path formula
+        // Think of a call to simplify, if path formula get to long
+        PathFormula oldPF = pSegmentation.getPathFormula().getPathFormula();
+        BooleanFormula newPathFormula =
+            pSegmentation.getPathFormula()
+                .getPr()
+                .getFormulaManager()
+                .makeAnd(oldPF.getFormula(), bfGe.get());
+        if (!oldPF.getFormula().equals(newPathFormula)) {
+          pSegmentation.setPathFormula(
+              new FormulaState(
+                  new PathFormula(
+                      newPathFormula,
+                      oldPF.getSsa(),
+                      oldPF.getPointerTargetSet(),
+                      oldPF.getLength() + 1),
+                  pSegmentation.getPathFormula().getPr()));
+        }
+      }
+
     } catch (SolverException e) {
       logger.log(
           Level.FINE,
