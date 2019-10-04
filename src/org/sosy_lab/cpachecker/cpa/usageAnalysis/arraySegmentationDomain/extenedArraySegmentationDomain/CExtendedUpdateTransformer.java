@@ -185,6 +185,9 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
       @Nullable ArraySegmentationState<T> pState,
       CFAEdge pCfaEdge)
       throws UnrecognizedCodeException {
+    // Firstly, clone the state to avoid unwanted modifications:
+    pState = pState.clone();
+
     // Check, if there is a constant present on the LHS:
     if (isVarType(pOperand1)) {
       List<ArraySegment<T>> segmentsContainingFirst = getSegmentsContainingExpr(pOperand1, pState);
@@ -196,12 +199,12 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
       if (constantOnLHS) {
         boolean temp =
             this.splitTransformer
-                .wouldBeSplitt(pOperand1, pOperand2, pBinaryOp, pState.clone(), pCfaEdge)
+                .wouldBeSplitt(pOperand1, pOperand2, pBinaryOp, pState, pCfaEdge)
                 && this.splitTransformer.wouldBeSplitt(
                     pOperand1,
                     pOperand2,
                     pBinaryOp.getOppositLogicalOperator(),
-                    pState.clone(),
+                    pState,
                     pCfaEdge);
         return temp;
       }

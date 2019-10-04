@@ -393,7 +393,6 @@ public class ExtendedArraySegmentationState<T extends ExtendedCompletLatticeAbst
     this.segmentations.forEach(s -> copiedElements.add(s.clone()));
     return new ExtendedArraySegmentationState<>(
         copiedElements,
-
         logger);
   }
 

@@ -122,7 +122,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         if (orderingIsFixed(pVar, pExpr, state, pCfaEdge)) {
           // Add the segmentation containing pEx between i and eg:
           ArraySegment<T> newSeg = getNewSegment(pEx, segmentContainingI, containingVar);
-          state.addSegment(newSeg, state.getSegments().get(indexOfpVarNew - 1));
+          state.addSegment(newSeg, containingVar);
           return new ExtendedArraySegmentationState<>(Lists.newArrayList(state), logger);
         }
 
@@ -200,8 +200,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
       @Nullable ArraySegmentationState<T> pState,
       CFAEdge pCfaEdge,
       boolean pNeedToIncrease)
-      throws CPATransferException
-  {
+      throws CPATransferException {
 
     Solver solver = pState.getPathFormula().getPr().getSolver();
     // Build e+1 needed for the rest of the method, if the flag says so
@@ -249,7 +248,9 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
                   true,
                   null,
                   segmentContainingI.getLanguage());
-          state.addSegment(newSeg, state.getSegments().get(state.getSegBoundContainingExpr(pVar)));
+          state.addSegment(
+              newSeg,
+              state.getSegments().get(state.getSegBoundContainingExpr(pVar) - 1));
           return new ExtendedArraySegmentationState<>(Lists.newArrayList(state), logger);
         }
 
@@ -397,7 +398,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
       // Check if any expression e in leftOfVar implies that: e <= pExpr;
       for (AExpression e : leftOfVar.getSegmentBound()) {
         Optional<Boolean> resOfCheck =
-            isUnsat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.LESS_EQUAL, pExpr);
+            isSat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.LESS_EQUAL, pExpr);
         if (!resOfCheck.isPresent()) {
           return false;
         }
@@ -410,7 +411,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
       // Check if any expression e in leftOfVar implies that: e <= pExpr;
       for (AExpression e : rightOfVar.getSegmentBound()) {
         Optional<Boolean> resOfCheck =
-            isUnsat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.GREATER_EQUAL, pExpr);
+            isSat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.GREATER_EQUAL, pExpr);
         if (!resOfCheck.isPresent()) {
           return false;
         }
@@ -422,6 +423,20 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
 
     }
     return leftIsEs && rightIsEg;
+  }
+
+  private Optional<Boolean> isSat(
+      ArraySegmentationState<T> pState,
+      CExpression pEx,
+      CFAEdge pCfaEdge,
+      Solver pSolver,
+      BinaryOperator pOperator,
+      CExpression pRhs) {
+    Optional<Boolean> res = isUnsat(pState, pEx, pCfaEdge, pSolver, pOperator, pRhs);
+    if (res.isPresent()) {
+      return Optional.of(!res.get());
+    }
+    return res;
   }
 
   private Optional<Boolean> isUnsat(
@@ -440,7 +455,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         BooleanFormula ELessEqualSizeVar =
             f.getPr()
                 .getFormulaManager()
-                .makeEqual(f.getPathFormula().getFormula(), equation.get());
+                .makeAnd(f.getPathFormula().getFormula(), equation.get());
         return Optional.of(solver.isUnsat(ELessEqualSizeVar));
       }
     } catch (UnrecognizedCodeException | SolverException | InterruptedException e) {
@@ -518,12 +533,12 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
       Solver solver = pState.getPathFormula().getPr().getSolver();
       for (AExpression e : segOfVar.getSegmentBound()) {
         Optional<Boolean> resOfCheck =
-            isUnsat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.LESS_THAN, pEx);
+            isSat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.LESS_THAN, pEx);
         if (resOfCheck.isPresent() && resOfCheck.get()) {
           comparison = -1;
         }
         resOfCheck =
-            isUnsat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.GREATER_THAN, pEx);
+            isSat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.GREATER_THAN, pEx);
         if (resOfCheck.isPresent() && resOfCheck.get()) {
           comparison = 1;
         }

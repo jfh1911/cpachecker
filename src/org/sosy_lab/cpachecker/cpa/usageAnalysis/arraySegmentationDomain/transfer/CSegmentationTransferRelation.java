@@ -400,9 +400,10 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       if (formulaState != null) {
         CSegmentationStrengthener<T> strengthener =
             new CSegmentationStrengthener<>(machineModel, logger, updateTransformer);
+        s.setPathFormula(formulaState);
         s = strengthener.strengthen(s, formulaState, formulaState.getPathFormula(), pCfaEdge);
         // Add the updated path formula to the array segmentation domain
-        s.setPathFormula(formulaState);
+
         return Collections.singleton(s);
       }
     }
