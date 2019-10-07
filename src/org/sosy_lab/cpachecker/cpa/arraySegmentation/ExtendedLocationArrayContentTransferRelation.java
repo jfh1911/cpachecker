@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.usage;
+package org.sosy_lab.cpachecker.cpa.arraySegmentation;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,48 +40,41 @@ import org.sosy_lab.cpachecker.cfa.model.c.CFunctionReturnEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CFunctionSummaryEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CReturnStatementEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CStatementEdge;
-import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.CExtendedSegmentationTransferRelation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.ExtendedArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
-public class ExtendedCLUAnanylsisTransferRelation extends
-    ForwardingTransferRelation<ExtendedCLUAnalysisState<VariableUsageState>, ExtendedCLUAnalysisState<VariableUsageState>, Precision> {
+public class ExtendedLocationArrayContentTransferRelation<T extends ExtendedCompletLatticeAbstractState<T>>
+    extends
+    ForwardingTransferRelation<ExtendedLocationArrayContentState<T>, ExtendedLocationArrayContentState<T>, Precision> {
 
   private final LogManagerWithoutDuplicates logger;
-  private final CExtendedSegmentationTransferRelation<VariableUsageState> usageTransfer;
+  private final CExtendedSegmentationTransferRelation<T> transferForExtendedSegmentations;
   private LocationStateFactory locFactory;
 
-  public ExtendedCLUAnanylsisTransferRelation(
+  public ExtendedLocationArrayContentTransferRelation(
       LogManagerWithoutDuplicates pLogger,
-      MachineModel pMachineModel,
-      LocationStateFactory pLocFactory) {
+      LocationStateFactory pLocFactory,
+      CExtendedSegmentationTransferRelation<T> pInnerTransferRelation) {
     super();
     logger = pLogger;
-    usageTransfer =
-        new CExtendedSegmentationTransferRelation<>(
-            new UsageAnalysisTransferRelation(pLogger, pMachineModel),
-            pLogger,
-            pMachineModel,
-            "CLU");
+    transferForExtendedSegmentations = pInnerTransferRelation;
     this.locFactory = pLocFactory;
   }
 
   @Override
-  protected ExtendedCLUAnalysisState<VariableUsageState>
+  protected ExtendedLocationArrayContentState<T>
       handleDeclarationEdge(CDeclarationEdge pCfaEdge, CDeclaration pDecl)
           throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected ExtendedCLUAnalysisState<VariableUsageState> handleBlankEdge(BlankEdge pCfaEdge) {
+  protected ExtendedLocationArrayContentState<T> handleBlankEdge(BlankEdge pCfaEdge) {
     try {
       return delegateEdgeHandling(pCfaEdge);
     } catch (CPATransferException e) {
@@ -91,7 +84,7 @@ public class ExtendedCLUAnanylsisTransferRelation extends
   }
 
   @Override
-  protected ExtendedCLUAnalysisState<VariableUsageState> handleFunctionCallEdge(
+  protected ExtendedLocationArrayContentState<T> handleFunctionCallEdge(
       CFunctionCallEdge pCfaEdge,
       List<CExpression> pArguments,
       List<CParameterDeclaration> pParameters,
@@ -101,7 +94,7 @@ public class ExtendedCLUAnanylsisTransferRelation extends
   }
 
   @Override
-  protected ExtendedCLUAnalysisState<VariableUsageState> handleFunctionReturnEdge(
+  protected ExtendedLocationArrayContentState<T> handleFunctionReturnEdge(
       CFunctionReturnEdge pCfaEdge,
       CFunctionSummaryEdge pFnkCall,
       CFunctionCall pSummaryExpr,
@@ -111,32 +104,33 @@ public class ExtendedCLUAnanylsisTransferRelation extends
   }
 
   @Override
-  protected ExtendedCLUAnalysisState<VariableUsageState>
+  protected ExtendedLocationArrayContentState<T>
       handleFunctionSummaryEdge(CFunctionSummaryEdge pCfaEdge) throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected ExtendedCLUAnalysisState<VariableUsageState>
+  protected ExtendedLocationArrayContentState<T>
       handleReturnStatementEdge(CReturnStatementEdge pCfaEdge) throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected ExtendedCLUAnalysisState<VariableUsageState>
+  protected ExtendedLocationArrayContentState<T>
       handleStatementEdge(CStatementEdge pCfaEdge, CStatement pStatement)
           throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected ExtendedCLUAnalysisState<VariableUsageState>
+  protected ExtendedLocationArrayContentState<T>
       handleAssumption(CAssumeEdge pCfaEdge, CExpression pExpression, boolean pTruthAssumption)
           throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
 
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Override
   public Collection<? extends AbstractState> strengthen(
       AbstractState pState,
@@ -144,21 +138,22 @@ public class ExtendedCLUAnanylsisTransferRelation extends
       @Nullable CFAEdge pCfaEdge,
       Precision pPrecision)
       throws CPATransferException, InterruptedException {
-    if (pState instanceof ExtendedCLUAnalysisState) {
-      ExtendedCLUAnalysisState<VariableUsageState> cluAnalysisState =
-          (ExtendedCLUAnalysisState<VariableUsageState>) pState;
-      List<ExtendedArraySegmentationState<VariableUsageState>> strengthened =
+    if (pState instanceof ExtendedLocationArrayContentState) {
+      ExtendedLocationArrayContentState<T> cluAnalysisState =
+          (ExtendedLocationArrayContentState<T>) pState;
+      List<ExtendedArraySegmentationState<T>> strengthened =
+
           new ArrayList<>(
-              usageTransfer.strengthen(
+              transferForExtendedSegmentations.strengthen(
                   cluAnalysisState.getArraySegmentation(),
                   pOtherStates,
                   pCfaEdge,
                   pPrecision));
       if (strengthened.size() > 0
           && !strengthened.get(0)
-              .equals(((ExtendedCLUAnalysisState) pState).getArraySegmentation())) {
+              .equals(((ExtendedLocationArrayContentState) pState).getArraySegmentation())) {
         return Collections.singleton(
-            new ExtendedCLUAnalysisState<VariableUsageState>(
+            new ExtendedLocationArrayContentState<>(
                 cluAnalysisState.getLocation(),
                 strengthened.get(0),
                 logger));
@@ -176,15 +171,15 @@ public class ExtendedCLUAnanylsisTransferRelation extends
    * @throws CPATransferException if any transfer function throws one or more than one result is
    *         returned
    */
-  private ExtendedCLUAnalysisState<VariableUsageState>
+  private ExtendedLocationArrayContentState<T>
       delegateEdgeHandling(AbstractCFAEdge pCfaEdge)
       throws CPATransferException {
     if (super.state == null) {
       return state;
     }
     // Clone the state
-    Collection<ExtendedArraySegmentationState<VariableUsageState>> arraySegmentation =
-        usageTransfer.getAbstractSuccessorsForEdge(
+    Collection<ExtendedArraySegmentationState<T>> arraySegmentation =
+        transferForExtendedSegmentations.getAbstractSuccessorsForEdge(
             state.getArraySegmentation().clone(),
             getPrecision(),
             pCfaEdge);
@@ -193,11 +188,11 @@ public class ExtendedCLUAnanylsisTransferRelation extends
       throw new CPATransferException(
           "The UsageAnalysis transfer function could not determine a single sucessor, hence computation is abported");
     }
-    List<ExtendedArraySegmentationState<VariableUsageState>> transformedSeg =
+    List<ExtendedArraySegmentationState<T>> transformedSeg =
         new ArrayList<>(arraySegmentation);
     // Determine the correct successor of the the current location
 
-    return new ExtendedCLUAnalysisState<>(
+    return new ExtendedLocationArrayContentState<>(
         locFactory.getState(pCfaEdge.getSuccessor()),
         transformedSeg.get(0),
         this.logger);

@@ -19,6 +19,8 @@
  */
 package org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.usage;
 
+import java.util.List;
+import java.util.function.Predicate;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
@@ -27,39 +29,27 @@ import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
 import org.sosy_lab.cpachecker.cfa.CFA;
+import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
+import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
-import org.sosy_lab.cpachecker.core.AnalysisDirection;
 import org.sosy_lab.cpachecker.core.defaults.AbstractCPA;
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
-import org.sosy_lab.cpachecker.core.defaults.DelegateAbstractDomain;
-import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.CPAFactory;
-import org.sosy_lab.cpachecker.core.interfaces.MergeOperator;
 import org.sosy_lab.cpachecker.core.interfaces.StateSpacePartition;
-import org.sosy_lab.cpachecker.core.interfaces.StopOperator;
-import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
-import org.sosy_lab.cpachecker.cpa.location.LocationCPA;
-import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.CGenericInterval;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.CPropertySpec;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedLocationArrayContentCPA;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.UnreachableSegmentation;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.EnhancedCExpressionSimplificationVisitor;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisCPA;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageType;
+import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-@Options(prefix = "cpa.CLUCPA")
-public class ExtendedCLUAnalysisCPA extends AbstractCPA {
+@Options(prefix = "cpa.arrayContentCPA")
+public class ExtendedCLUAnalysisCPA extends ExtendedLocationArrayContentCPA<VariableUsageState> {
 
-  @Option(
-    secure = true,
-    name = "merge",
-    toUppercase = true,
-    values = {"SEP", "JOIN"},
-    description = "which merge operator to use for UsageOfArrayElemensCPA")
-  private String mergeType = "JOIN";
-
-  @Option(
-    secure = true,
-    name = "stop",
-    toUppercase = true,
-    values = {"SEP", "JOIN"},
-    description = "which stop operator to use for UsageOfArrayElemensCPA")
-  private String stopType = "SEP";
 
   @Option(
     name = "arrayName",
@@ -67,50 +57,18 @@ public class ExtendedCLUAnalysisCPA extends AbstractCPA {
     description = "The array that needs to be analyzed")
   private String varnameArray = "";
 
-  private final LogManager logger;
-  private final CFA cfa;
-  private final Configuration config;
-
-  private ExtendedUsageAnalysisCPA usageCPA;
-  LocationCPA locationCPA;
-
-  private LocationStateFactory factory;
-
   /**
    * This method acts as the constructor of the interval analysis CPA.
    *
    * @param config the configuration of the CPAinterval analysis CPA.
    */
-  private ExtendedCLUAnalysisCPA(
-      Configuration config,
+  protected ExtendedCLUAnalysisCPA(
+      Configuration pConfig,
       LogManager pLogger,
       ShutdownNotifier shutdownNotifier,
       CFA cfa)
       throws InvalidConfigurationException {
-    super(
-        "join",
-        "sep",
-        DelegateAbstractDomain.<ExtendedCLUAnalysisState<VariableUsageState>>getInstance(),
-        null);
-    config.inject(this, ExtendedCLUAnalysisCPA.class);
-    // writer = new StateToFormulaWriter(config, pLogger, shutdownNotifier, cfa);
-
-    this.logger = pLogger;
-    this.cfa = cfa;
-    this.config = config;
-    usageCPA = new ExtendedUsageAnalysisCPA(config, logger, cfa, varnameArray, shutdownNotifier);
-    locationCPA = LocationCPA.create(this.cfa, this.config);
-    this.factory = new LocationStateFactory(cfa, AnalysisDirection.FORWARD, config);
-  }
-
-  @Override
-  public MergeOperator getMergeOperator() {
-    return buildMergeOperator(mergeType);
-  }
-
-  @Override
-  public StopOperator getStopOperator() {
-    return buildStopOperator(stopType);
+    super(pConfig, pLogger, shutdownNotifier, cfa);
   }
 
   public static CPAFactory factory() {
@@ -118,21 +76,68 @@ public class ExtendedCLUAnalysisCPA extends AbstractCPA {
   }
 
   @Override
-  public TransferRelation getTransferRelation() {
-    return new ExtendedCLUAnanylsisTransferRelation(
-        new LogManagerWithoutDuplicates(logger),
-        cfa.getMachineModel(),
-        this.factory);
+  protected AbstractCPA constructInnerCPA(
+      Configuration pConfig,
+      LogManager pLogger,
+      CFA pCfa,
+      String pVarnameArray,
+      ShutdownNotifier pShutdownNotifier)
+      throws InvalidConfigurationException {
+    return new UsageAnalysisCPA(pConfig, pLogger, pCfa, pVarnameArray, pShutdownNotifier);
+  }
+
+
+  @Override
+  protected String getName() {
+    return "UsageAnalysisCPA";
   }
 
   @Override
-  public AbstractState getInitialState(CFANode pNode, StateSpacePartition pPartition)
-      throws InterruptedException {
-
-    return new ExtendedCLUAnalysisState<VariableUsageState>(
-        locationCPA.getInitialState(pNode, pPartition),
-        usageCPA.getInitialState(pNode, pPartition),
-        this.logger);
-
+  protected VariableUsageState getEmptyElement() {
+    return VariableUsageState.getEmptyElement();
   }
+
+  @Override
+  protected VariableUsageState
+      getInitialInnerState(CFANode pNode, StateSpacePartition pPartition) {
+    return new VariableUsageState(VariableUsageType.NOT_USED);
+  }
+
+  @Override
+  protected Predicate<ArraySegmentationState<VariableUsageState>> getPredicate() {
+    EnhancedCExpressionSimplificationVisitor visitor =
+        new EnhancedCExpressionSimplificationVisitor(
+            cfa.getMachineModel(),
+            new LogManagerWithoutDuplicates(logger));
+    CBinaryExpressionBuilder builder = new CBinaryExpressionBuilder(cfa.getMachineModel(), logger);
+    return new Predicate<ArraySegmentationState<VariableUsageState>>() {
+      @Override
+      public boolean test(ArraySegmentationState<VariableUsageState> pT) {
+        if (pT instanceof UnreachableSegmentation) {
+          return false;
+        }
+
+        CPropertySpec<VariableUsageState> properties = null;
+        try {
+          properties =
+              pT.getSegmentsForProperty(
+                  new VariableUsageState(VariableUsageType.USED),
+                  visitor,
+                  builder);
+        } catch (CPAException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+        List<CGenericInterval> overApproxP = properties.getOverApproxIntervals();
+        boolean isCorrect =
+            pT.isEmptyArray()
+                || (overApproxP.size() == 1
+                    && overApproxP.get(0).getLow().equals(CIntegerLiteralExpression.ZERO)
+                    && overApproxP.get(0).getHigh().equals(pT.getSizeVar()));
+        return !isCorrect;
+      }
+    };
+  }
+
+
 }
