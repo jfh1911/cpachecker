@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
+package org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.usage;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,6 +37,8 @@ import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisito
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ErrorSegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageType;
 
 public class UsageTransformer {
 

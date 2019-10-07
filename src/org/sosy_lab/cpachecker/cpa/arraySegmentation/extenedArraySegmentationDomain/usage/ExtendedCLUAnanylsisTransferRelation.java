@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.clup;
+package org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.usage;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,54 +44,48 @@ import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.UnreachableSegmentation;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.formula.FormulaRelation;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.formula.FormulaState;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.transfer.CSegmentationTransferRelation;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.CExtendedSegmentationTransferRelation;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.ExtendedArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
-public class CLUPAnanylsisTransferRelation extends
-    ForwardingTransferRelation<CLUPAnalysisState<VariableUsageState>, CLUPAnalysisState<VariableUsageState>, Precision> {
+public class ExtendedCLUAnanylsisTransferRelation extends
+    ForwardingTransferRelation<ExtendedCLUAnalysisState<VariableUsageState>, ExtendedCLUAnalysisState<VariableUsageState>, Precision> {
 
   private final LogManagerWithoutDuplicates logger;
   private final MachineModel machineModel;
 
   private static final String PREFIX = "CLU_ANALYSIS:";
-  private final CSegmentationTransferRelation<VariableUsageState> usageTransfer;
-  private final FormulaRelation formulaTransfer;
+  private final CExtendedSegmentationTransferRelation<VariableUsageState> usageTransfer;
   private LocationStateFactory locFactory;
 
-  public CLUPAnanylsisTransferRelation(
+  public ExtendedCLUAnanylsisTransferRelation(
       LogManagerWithoutDuplicates pLogger,
       MachineModel pMachineModel,
-      LocationStateFactory pLocFactory,
-      FormulaRelation pFormulaTransfer) {
+      LocationStateFactory pLocFactory) {
     super();
     logger = pLogger;
     machineModel = pMachineModel;
     usageTransfer =
-        new CSegmentationTransferRelation<>(
+        new CExtendedSegmentationTransferRelation<>(
             new UsageAnalysisTransferRelation(pLogger, pMachineModel),
             pLogger,
             pMachineModel,
             "CLU");
-    formulaTransfer = pFormulaTransfer;
     this.locFactory = pLocFactory;
   }
 
   @Override
-  protected CLUPAnalysisState<VariableUsageState>
+  protected ExtendedCLUAnalysisState<VariableUsageState>
       handleDeclarationEdge(CDeclarationEdge pCfaEdge, CDeclaration pDecl)
           throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected CLUPAnalysisState<VariableUsageState> handleBlankEdge(BlankEdge pCfaEdge) {
+  protected ExtendedCLUAnalysisState<VariableUsageState> handleBlankEdge(BlankEdge pCfaEdge) {
     try {
       return delegateEdgeHandling(pCfaEdge);
     } catch (CPATransferException e) {
@@ -101,7 +95,7 @@ public class CLUPAnanylsisTransferRelation extends
   }
 
   @Override
-  protected CLUPAnalysisState<VariableUsageState> handleFunctionCallEdge(
+  protected ExtendedCLUAnalysisState<VariableUsageState> handleFunctionCallEdge(
       CFunctionCallEdge pCfaEdge,
       List<CExpression> pArguments,
       List<CParameterDeclaration> pParameters,
@@ -111,7 +105,7 @@ public class CLUPAnanylsisTransferRelation extends
   }
 
   @Override
-  protected CLUPAnalysisState<VariableUsageState> handleFunctionReturnEdge(
+  protected ExtendedCLUAnalysisState<VariableUsageState> handleFunctionReturnEdge(
       CFunctionReturnEdge pCfaEdge,
       CFunctionSummaryEdge pFnkCall,
       CFunctionCall pSummaryExpr,
@@ -121,46 +115,79 @@ public class CLUPAnanylsisTransferRelation extends
   }
 
   @Override
-  protected CLUPAnalysisState<VariableUsageState>
+  protected ExtendedCLUAnalysisState<VariableUsageState>
       handleFunctionSummaryEdge(CFunctionSummaryEdge pCfaEdge) throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected CLUPAnalysisState<VariableUsageState>
+  protected ExtendedCLUAnalysisState<VariableUsageState>
       handleReturnStatementEdge(CReturnStatementEdge pCfaEdge) throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected CLUPAnalysisState<VariableUsageState>
+  protected ExtendedCLUAnalysisState<VariableUsageState>
       handleStatementEdge(CStatementEdge pCfaEdge, CStatement pStatement)
           throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
   }
 
   @Override
-  protected CLUPAnalysisState<VariableUsageState>
+  protected ExtendedCLUAnalysisState<VariableUsageState>
       handleAssumption(CAssumeEdge pCfaEdge, CExpression pExpression, boolean pTruthAssumption)
           throws CPATransferException {
     return delegateEdgeHandling(pCfaEdge);
 
   }
 
+  @Override
+  public Collection<? extends AbstractState> strengthen(
+      AbstractState pState,
+      Iterable<AbstractState> pOtherStates,
+      @Nullable CFAEdge pCfaEdge,
+      Precision pPrecision)
+      throws CPATransferException, InterruptedException {
+    if (pState instanceof ExtendedCLUAnalysisState) {
+      ExtendedCLUAnalysisState<VariableUsageState> cluAnalysisState =
+          (ExtendedCLUAnalysisState<VariableUsageState>) pState;
+      List<ExtendedArraySegmentationState<VariableUsageState>> strengthened =
+          new ArrayList<>(
+              usageTransfer.strengthen(
+                  cluAnalysisState.getArraySegmentation(),
+                  pOtherStates,
+                  pCfaEdge,
+                  pPrecision));
+      if (strengthened.size() > 0
+          && !strengthened.get(0)
+              .equals(((ExtendedCLUAnalysisState) pState).getArraySegmentation())) {
+        return Collections.singleton(
+            new ExtendedCLUAnalysisState<VariableUsageState>(
+                cluAnalysisState.getLocation(),
+                strengthened.get(0),
+                logger));
+      }
+      return Collections.singleton(pState);
+    }
+    return super.strengthen(pState, pOtherStates, pCfaEdge, pPrecision);
+  }
+
   /**
    * Applies the transfer functions of the included analysis to a copy of the current state
    *
-   * @param pCfaEdge the current edge @return the element obtained by the transfer functions @throws
-   *        CPATransferException if any transfer function throws one or more than one result is
-   *        returned @throws
+   * @param pCfaEdge the current edge
+   * @return the element obtained by the transfer functions
+   * @throws CPATransferException if any transfer function throws one or more than one result is
+   *         returned
    */
-  private CLUPAnalysisState<VariableUsageState> delegateEdgeHandling(AbstractCFAEdge pCfaEdge)
+  private ExtendedCLUAnalysisState<VariableUsageState>
+      delegateEdgeHandling(AbstractCFAEdge pCfaEdge)
       throws CPATransferException {
     if (super.state == null) {
       return state;
     }
     // Clone the state
-    Collection<ArraySegmentationState<VariableUsageState>> arraySegmentation =
+    Collection<ExtendedArraySegmentationState<VariableUsageState>> arraySegmentation =
         usageTransfer.getAbstractSuccessorsForEdge(
             state.getArraySegmentation().clone(),
             getPrecision(),
@@ -171,94 +198,13 @@ public class CLUPAnanylsisTransferRelation extends
           PREFIX
               + "The UsageAnalysis transfer function could not determine a single sucessor, hence computation is abported");
     }
-    List<ArraySegmentationState<VariableUsageState>> transformedSeg =
+    List<ExtendedArraySegmentationState<VariableUsageState>> transformedSeg =
         new ArrayList<>(arraySegmentation);
     // Determine the correct successor of the the current location
 
-    // Apply the transfer function for formulae on the cloned state
-    Collection<? extends AbstractState> transformedFormulas;
-    transformedFormulas =
-        this.formulaTransfer
-            .getAbstractSuccessorsForEdge(state.getPathFormula().clone(), getPrecision(), pCfaEdge);
-    // Check if a single result is returned
-    List<? extends AbstractState> formulaList = new ArrayList<AbstractState>(transformedFormulas);
-    if (transformedFormulas.size() != 1 || !(formulaList.get(0) instanceof FormulaState)) {
-      throw new CPATransferException(
-          PREFIX
-              + "The simplified Predicate Analysis transfer function could not determine a single sucessor, hence computation is abported");
-    }
-
-    return new CLUPAnalysisState<>(
+    return new ExtendedCLUAnalysisState<>(
         locFactory.getState(pCfaEdge.getSuccessor()),
         transformedSeg.get(0),
-        (FormulaState) formulaList.get(0),
         this.logger);
   }
-
-  @SuppressWarnings("unchecked")
-  @Override
-  public Collection<? extends AbstractState> strengthen(
-      AbstractState pState,
-      Iterable<AbstractState> pOtherStates,
-      @Nullable CFAEdge pCfaEdge,
-      Precision pPrecision)
-      throws CPATransferException, InterruptedException {
-
-    if (pState instanceof CLUPAnalysisState) {
-      CLUPAnalysisState<VariableUsageState> s = (CLUPAnalysisState<VariableUsageState>) pState;
-      Collection<? extends AbstractState> strengthenFormula =
-          this.formulaTransfer.strengthen(
-              s.getPathFormula(),
-              pOtherStates,
-              pCfaEdge,
-              pPrecision);
-      if (strengthenFormula.isEmpty()) {
-        // The path formula indicates, that the current path is not reachable, since the path
-        // formula is UNSAT
-        // Hence, we can return the unreachable Array Segmentation [x]
-
-        // TODO: USe something like true (e.g.
-        // formulaTransfer.getFormulaManager().getBooleanFormulaManager().makeFalse()),)
-        return Collections.singleton(
-            new CLUPAnalysisState<VariableUsageState>(
-                s.getLocation(),
-                new UnreachableSegmentation<>(s.getArraySegmentation()),
-                s.getPathFormula(),
-                logger));
-      }
-
-      // The path is reachable. Then, apply the strengthening to the inner ArraySegmentationState
-
-      ArrayList<AbstractState> others = new ArrayList<>();
-      pOtherStates.forEach(st -> others.add(st));
-      others.add(s.getPathFormula());
-
-      @SuppressWarnings("unchecked")
-      Collection<ArraySegmentationState<VariableUsageState>> strengthenSegmentations =
-          this.usageTransfer.strengthen(
-              ((CLUPAnalysisState<VariableUsageState>) pState).getArraySegmentation().clone(),
-              others,
-              pCfaEdge,
-              pPrecision);
-      if (strengthenSegmentations.isEmpty()) {
-        return Collections.singleton(pState);
-
-      } else
-
-      {
-        ArraySegmentationState<VariableUsageState> newSegmentation =
-            Collections.enumeration(strengthenSegmentations).nextElement();
-        return Collections.singleton(
-            new CLUPAnalysisState<VariableUsageState>(
-                s.getLocation(),
-                newSegmentation,
-                s.getPathFormula(),
-                logger));
-      }
-
-    }
-    return super.strengthen(pState, pOtherStates, pCfaEdge, pPrecision);
-  }
-
-
 }

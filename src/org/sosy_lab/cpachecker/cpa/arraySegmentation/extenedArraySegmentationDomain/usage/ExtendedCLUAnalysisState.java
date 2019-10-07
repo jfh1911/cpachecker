@@ -17,47 +17,43 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.clup;
+package org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.usage;
 
 import java.io.Serializable;
-import java.util.Objects;
 import java.util.logging.Level;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractQueryableState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Graphable;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.formula.FormulaState;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.ExtendedArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.location.LocationState;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.exceptions.InvalidQueryException;
 
-public class CLUPAnalysisState<T extends LatticeAbstractState<T>>
-    implements Serializable, LatticeAbstractState<CLUPAnalysisState<T>>, AbstractState, Graphable,
+public class ExtendedCLUAnalysisState<T extends LatticeAbstractState<T>>
+    implements Serializable, LatticeAbstractState<ExtendedCLUAnalysisState<T>>, AbstractState,
+    Graphable,
     AbstractQueryableState {
 
   private static final long serialVersionUID = 7499975316022760688L;
   private final LocationState location;
-  private final ArraySegmentationState<VariableUsageState> arraySegmentation;
-  private final FormulaState pathFormula;
+  private final ExtendedArraySegmentationState<VariableUsageState> arraySegmentation;
   private LogManager logger;
 
-  public CLUPAnalysisState(
+  public ExtendedCLUAnalysisState(
       LocationState pLocation,
-      ArraySegmentationState<VariableUsageState> pArraySegmentation,
-      FormulaState pPathFormula,
+      ExtendedArraySegmentationState<VariableUsageState> pArraySegmentation,
       LogManager pLogger) {
     super();
     location = pLocation;
     arraySegmentation = pArraySegmentation;
-    this.pathFormula = pPathFormula;
     this.logger = pLogger;
   }
 
   @Override
-  public CLUPAnalysisState<T> join(CLUPAnalysisState<T> pOther)
+  public ExtendedCLUAnalysisState<T> join(ExtendedCLUAnalysisState<T> pOther)
       throws CPAException, InterruptedException {
 
     if (!pOther.getClass().equals(this.getClass())) {
@@ -66,20 +62,19 @@ public class CLUPAnalysisState<T extends LatticeAbstractState<T>>
     if (pOther.equals(this)) {
       return pOther;
     } else if (this.location.equals(pOther.getLocation())) {
-      CLUPAnalysisState<T> returnElement;
+      ExtendedCLUAnalysisState<T> returnElement;
       String mergeLogInfo =
           "Computing merge(" + this.toDOTLabel() + " , " + pOther.toDOTLabel() + ") --> ";
 
-      ArraySegmentationState<VariableUsageState> joinSegmentation =
-          this.arraySegmentation.join(pOther.getArraySegmentation().clone());
-      FormulaState joinedFormula = this.pathFormula.join(pOther.getPathFormula());
-
-      if (joinSegmentation.equals(pOther.getArraySegmentation())
-          && joinedFormula.equals(pOther.getPathFormula())) {
+      ExtendedArraySegmentationState<VariableUsageState> joinSegmentation =
+          this.arraySegmentation.join(
+              pOther.getArraySegmentation().clone(),
+              this.getLocation().getLocationNode().isLoopStart());
+      if (joinSegmentation.equals(pOther.getArraySegmentation())) {
         returnElement = pOther;
       } else {
         returnElement =
-            new CLUPAnalysisState<>(this.location, joinSegmentation, joinedFormula, this.logger);
+            new ExtendedCLUAnalysisState<>(this.location, joinSegmentation, this.logger);
       }
 
       logger.log(Level.FINE, mergeLogInfo + returnElement.toDOTLabel());
@@ -92,32 +87,30 @@ public class CLUPAnalysisState<T extends LatticeAbstractState<T>>
   }
 
   @Override
-  public boolean isLessOrEqual(CLUPAnalysisState<T> pOther)
+  public boolean isLessOrEqual(ExtendedCLUAnalysisState<T> pOther)
       throws CPAException, InterruptedException {
     // It only make sense to compare CLUAnalysisStates belonging to the same location, hence return
     // false, if the locations differ;
     if (!this.location.getLocationNode().equals(pOther.getLocation().getLocationNode())) {
       return false;
     } else {
-      return this.arraySegmentation.isLessOrEqual(pOther.getArraySegmentation())
-          && this.pathFormula.isLessOrEqual(pOther.getPathFormula());
+      return this.arraySegmentation.isLessOrEqual(pOther.getArraySegmentation());
     }
   }
 
   @Override
-  public CLUPAnalysisState<T> clone() {
-    return new CLUPAnalysisState<>(
-        this.location,
-        this.arraySegmentation.clone(),
-        pathFormula.clone(),
-        logger);
+  public ExtendedCLUAnalysisState<T> clone() {
+    return new ExtendedCLUAnalysisState<>(this.location, this.arraySegmentation.clone(), logger);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(arraySegmentation, location, logger, pathFormula);
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((arraySegmentation == null) ? 0 : arraySegmentation.hashCode());
+    result = prime * result + ((location == null) ? 0 : location.hashCode());
+    return result;
   }
-
 
   @Override
   public boolean equals(Object obj) {
@@ -130,23 +123,30 @@ public class CLUPAnalysisState<T extends LatticeAbstractState<T>>
     if (getClass() != obj.getClass()) {
       return false;
     }
-    CLUPAnalysisState other = (CLUPAnalysisState) obj;
-    return Objects.equals(arraySegmentation, other.arraySegmentation)
-        && Objects.equals(location.getLocationNode(), other.location.getLocationNode())
-        && Objects.equals(logger, other.logger)
-        && Objects.equals(pathFormula, other.pathFormula);
+    ExtendedCLUAnalysisState other = (ExtendedCLUAnalysisState) obj;
+    if (arraySegmentation == null) {
+      if (other.arraySegmentation != null) {
+        return false;
+      }
+    } else if (!arraySegmentation.equals(other.arraySegmentation)) {
+      return false;
+    }
+    if (location == null) {
+      if (other.location != null) {
+        return false;
+      }
+    } else if (!location.getLocationNode().equals(other.location.getLocationNode())) {
+      return false;
+    }
+    return true;
   }
 
   public LocationState getLocation() {
     return location;
   }
 
-  public ArraySegmentationState<VariableUsageState> getArraySegmentation() {
+  public ExtendedArraySegmentationState<VariableUsageState> getArraySegmentation() {
     return arraySegmentation;
-  }
-
-  public FormulaState getPathFormula() {
-    return pathFormula;
   }
 
   @Override
@@ -154,7 +154,6 @@ public class CLUPAnalysisState<T extends LatticeAbstractState<T>>
     StringBuilder builder = new StringBuilder();
     builder.append(location.getLocationNode().getNodeNumber() + "|-->");
     builder.append(this.arraySegmentation.toDOTLabel());
-    builder.append(this.pathFormula.toDOTLabel());
     return builder.toString();
 
   }
@@ -171,7 +170,7 @@ public class CLUPAnalysisState<T extends LatticeAbstractState<T>>
 
   @Override
   public String getCPAName() {
-    return "UsageAnalysisCPA";
+    return this.arraySegmentation.getCPAName();
   }
 
   @Override
