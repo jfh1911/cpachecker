@@ -17,8 +17,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
+package org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.usage;
 
+import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.function.Predicate;
 import org.sosy_lab.common.ShutdownNotifier;
@@ -44,13 +45,17 @@ import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.CGenericInterval;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.CPropertySpec;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.UnreachableSegmentation;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.CExtendedSegmentationTransferRelation;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.ExtendedArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.ArraySegmentationCPAHelper;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.EnhancedCExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.transfer.CSegmentationTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageType;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-@Options(prefix = UsageAnalysisCPA.NAME_OF_ANALYSIS)
-public class UsageAnalysisCPA extends AbstractCPA {
+@Options(prefix = ExtendedUsageAnalysisCPA.NAME_OF_ANALYSIS)
+public class ExtendedUsageAnalysisCPA extends AbstractCPA {
 
   @Option(
     secure = true,
@@ -75,7 +80,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
   private String varnameArray = "";
 
   private final CFA cfa;
-  public static final String NAME_OF_ANALYSIS = "cpa.usageCPA";
+  public static final String NAME_OF_ANALYSIS = "cpa.usageCpaExtended";
   private final LogManager logger;
   private ArraySegmentationCPAHelper<VariableUsageState> helper;
 
@@ -84,7 +89,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
    *
    * @param config the configuration of the CPAinterval analysis CPA.
    */
-  public UsageAnalysisCPA(
+  public ExtendedUsageAnalysisCPA(
       Configuration config,
       LogManager pLogger,
       ShutdownNotifier shutdownNotifier,
@@ -93,9 +98,9 @@ public class UsageAnalysisCPA extends AbstractCPA {
     super(
         "join",
         "sep",
-        DelegateAbstractDomain.<ArraySegmentationState<VariableUsageState>>getInstance(),
+        DelegateAbstractDomain.<ExtendedArraySegmentationState<VariableUsageState>>getInstance(),
         null);
-    config.inject(this, UsageAnalysisCPA.class);
+    config.inject(this, ExtendedUsageAnalysisCPA.class);
     this.logger = pLogger;
     this.cfa = cfa;
     helper = new ArraySegmentationCPAHelper<>(cfa, logger, varnameArray, shutdownNotifier, config);
@@ -107,7 +112,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
    * @param config the configuration of the CPAinterval analysis CPA.
    * @param pVarnameArray
    */
-  public UsageAnalysisCPA(
+  protected ExtendedUsageAnalysisCPA(
       Configuration config,
       LogManager pLogger,
       CFA cfa,
@@ -119,7 +124,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
         "sep",
         DelegateAbstractDomain.<ArraySegmentationState<VariableUsageState>>getInstance(),
         null);
-    config.inject(this, UsageAnalysisCPA.class);
+    config.inject(this, ExtendedUsageAnalysisCPA.class);
     this.logger = pLogger;
     this.cfa = cfa;
     helper = new ArraySegmentationCPAHelper<>(cfa, logger, pVarnameArray, shutdownNotifier, config);
@@ -136,12 +141,12 @@ public class UsageAnalysisCPA extends AbstractCPA {
   }
 
   public static CPAFactory factory() {
-    return AutomaticCPAFactory.forType(UsageAnalysisCPA.class);
+    return AutomaticCPAFactory.forType(ExtendedUsageAnalysisCPA.class);
   }
 
   @Override
   public TransferRelation getTransferRelation() {
-    return new CSegmentationTransferRelation<VariableUsageState>(
+    return new CExtendedSegmentationTransferRelation<VariableUsageState>(
         new UsageAnalysisTransferRelation(
             new LogManagerWithoutDuplicates(logger),
             this.cfa.getMachineModel()),
@@ -152,7 +157,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
 
 
   @Override
-  public ArraySegmentationState<VariableUsageState>
+  public ExtendedArraySegmentationState<VariableUsageState>
       getInitialState(CFANode pNode, StateSpacePartition pPartition) throws InterruptedException {
 
     EnhancedCExpressionSimplificationVisitor visitor =
@@ -189,12 +194,16 @@ public class UsageAnalysisCPA extends AbstractCPA {
           }
         };
 
-    return helper.computeInitaleState(
+    ArraySegmentationState<VariableUsageState> initalSeg =
+        helper.computeInitaleState(
         new VariableUsageState(VariableUsageType.NOT_USED),
         predicate,
         VariableUsageState.getEmptyElement(),
         "UsageAnalysisCPA",
-        pNode);
+            pNode);
+    return new ExtendedArraySegmentationState<>(
+        Lists.newArrayList(initalSeg),
+        logger);
   }
 
 }

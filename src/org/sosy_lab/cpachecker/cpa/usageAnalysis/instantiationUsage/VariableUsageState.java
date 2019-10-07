@@ -22,7 +22,7 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
 import java.io.Serializable;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.arraySegmentationDomain.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 public class VariableUsageState
