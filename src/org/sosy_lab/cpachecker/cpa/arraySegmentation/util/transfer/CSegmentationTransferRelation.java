@@ -126,7 +126,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
 
     // Apply the inner transfer function
     Optional<ArraySegmentationState<T>> resState =
-        applyInnerTransferRelation(pCfaEdge, state.clone());
+        applyInnerTransferRelation(pCfaEdge, new ArraySegmentationState<>(state));
     if (!resState.isPresent()) {
       return null;
     }
@@ -146,7 +146,9 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
                 resState.get()));
       }
     }
-    return logTransformation(inputArgumentsAsString, state != null ? state.clone() : state);
+    return logTransformation(
+        inputArgumentsAsString,
+        state != null ? new ArraySegmentationState<>(state) : state);
   }
 
   @Override
@@ -203,7 +205,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
 
     // Apply the inner transfer function
     Optional<ArraySegmentationState<T>> resState =
-        applyInnerTransferRelation(updatedEdge, state.clone());
+        applyInnerTransferRelation(updatedEdge, new ArraySegmentationState<>(state));
     if (!resState.isPresent()) {
       return null;
     }
@@ -216,7 +218,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
               pTruthAssumption,
               resState.get()));
     } else {
-      return logTransformation(inputArgumentsAsString, state.clone());
+      return logTransformation(inputArgumentsAsString, new ArraySegmentationState<>(state));
     }
   }
 
@@ -234,7 +236,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     // Apply the inner transfer function
     try {
       Optional<ArraySegmentationState<T>> resState =
-          applyInnerTransferRelation(pCfaEdge, state.clone());
+          applyInnerTransferRelation(pCfaEdge, new ArraySegmentationState<>(state));
       if (!resState.isPresent()) {
         return null;
       }
@@ -264,7 +266,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     }
     // Apply the inner transfer function
     Optional<ArraySegmentationState<T>> resState =
-        applyInnerTransferRelation(pCfaEdge, state.clone());
+        applyInnerTransferRelation(pCfaEdge, new ArraySegmentationState<>(state));
     if (!resState.isPresent()) {
       return null;
     }
@@ -289,7 +291,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     }
     // Apply the inner transfer function
     Optional<ArraySegmentationState<T>> resState =
-        applyInnerTransferRelation(pCfaEdge, state.clone());
+        applyInnerTransferRelation(pCfaEdge, new ArraySegmentationState<>(state));
     if (!resState.isPresent()) {
       return null;
     }
@@ -310,7 +312,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     }
     // Apply the inner transfer function
     Optional<ArraySegmentationState<T>> resState =
-        applyInnerTransferRelation(pCfaEdge, state.clone());
+        applyInnerTransferRelation(pCfaEdge, new ArraySegmentationState<>(state));
     if (!resState.isPresent()) {
       return null;
     }
@@ -331,7 +333,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     }
     // Apply the inner transfer function
     Optional<ArraySegmentationState<T>> resState =
-        applyInnerTransferRelation(pCfaEdge, state.clone());
+        applyInnerTransferRelation(pCfaEdge, new ArraySegmentationState<>(state));
     if (!resState.isPresent()) {
       return null;
     }
@@ -352,7 +354,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     }
     // Apply the inner transfer function
     Optional<ArraySegmentationState<T>> resState =
-        applyInnerTransferRelation(pCfaEdge, state.clone());
+        applyInnerTransferRelation(pCfaEdge, new ArraySegmentationState<>(state));
     if (!resState.isPresent()) {
       return null;
     }

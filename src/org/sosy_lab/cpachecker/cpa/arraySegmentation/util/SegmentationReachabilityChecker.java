@@ -20,6 +20,7 @@
 package org.sosy_lab.cpachecker.cpa.arraySegmentation.util;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
@@ -71,7 +72,7 @@ public class SegmentationReachabilityChecker<T extends ExtendedCompletLatticeAbs
 
     int segOfVar = pSegmentation.getSegBoundContainingExpr(pVar);
     int segOfExpr = pSegmentation.getSegBoundContainingExpr(pOp2);
-    List<ArraySegment<T>> segments = pSegmentation.getSegments();
+    List<ArraySegment<T>> segments = new ArrayList<>(pSegmentation.getSegments());
     // Case 1: If e = (i = c), i and c are present in different segment bounds and there is a
     // segment {e j }d j {e k } between the segment bounds containing i and c that is not marked
     // with ’?’,

@@ -44,19 +44,17 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CUnaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.java.JBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.java.JExpression;
 import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 
-public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializable {
+public class ArraySegment<T extends ClonableLatticeAbstractState<T>> implements Serializable {
 
   private static final long serialVersionUID = -2967663836098685037L;
   private List<AExpression> segmentBound;
   private T analysisInformation;
   private boolean isPotentiallyEmpty;
   private ArraySegment<T> nextSegment;
-  private Language language;
+  private final Language language;
 
   public ArraySegment(
-      // TODO: Think about to replace AbstractExpression by a boolean expression
       List<AExpression> pSegmentBound,
       T pAnalysisInformation,
       boolean pIsPotentiallyEmpty,
@@ -73,6 +71,14 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
     isPotentiallyEmpty = pIsPotentiallyEmpty;
     nextSegment = pNextSegment;
     language = pLanguage;
+  }
+
+  public ArraySegment(ArraySegment<T> pS) {
+    segmentBound = new ArrayList<>(pS.getSegmentBound());
+    analysisInformation = pS.getAnalysisInformation().getDeepCopy();
+    isPotentiallyEmpty = pS.isPotentiallyEmpty;
+    nextSegment = new ArraySegment<>(pS.getNextSegment());
+    language = pS.getLanguage();
   }
 
   public List<AExpression> getSegmentBound() {
@@ -109,10 +115,6 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
 
   public Language getLanguage() {
     return language;
-  }
-
-  public void setLanguage(Language pLanguage) {
-    language = pLanguage;
   }
 
   @SuppressWarnings("unchecked")
@@ -200,7 +202,9 @@ public class ArraySegment<T extends LatticeAbstractState<?>> implements Serializ
       if (other.segmentBound != null) {
         return false;
       }
-    } else if (!Objects
+    }
+    // Since the ordering is irrelevant, use a Hashset
+    else if (!Objects
         .deepEquals(new HashSet<>(segmentBound), new HashSet<>(other.getSegmentBound()))) {
       return false;
     }

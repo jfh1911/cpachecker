@@ -19,6 +19,7 @@
  */
 package org.sosy_lab.cpachecker.cpa.arraySegmentation;
 
+import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,7 +37,6 @@ import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
-import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.ast.java.JBinaryExpression;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
@@ -62,15 +62,15 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
   protected static final long serialVersionUID = 85908607562101422L;
   protected List<ArraySegment<T>> segments;
-  protected SegmentationUnifier<T> unifier;
+  protected final SegmentationUnifier<T> unifier;
 
   protected List<AExpression> tLisOfArrayVariables;
-  protected AIdExpression tArray;
-  protected AExpression sizeVar;
-  protected T tEmptyElement;
-  protected Language language;
+  protected final AIdExpression tArray;
+  protected final AExpression sizeVar;
+  protected final T tEmptyElement;
+  protected final Language language;
 
-  protected LogManager logger;
+  protected final LogManager logger;
   protected boolean shouldBeHighlighted;
   protected boolean canBeEmpty;
   protected final String cpaName;
@@ -137,7 +137,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
    *
    * @param pPreviousState the previous state, used to get all information needed
    */
-  protected ArraySegmentationState(ArraySegmentationState<T> pPreviousState) {
+  public ArraySegmentationState(ArraySegmentationState<T> pPreviousState) {
     super();
     segments = pPreviousState.segments;
 
@@ -195,8 +195,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
     // Don't need to create a copy the elements to avoid side effects, since this is done during
     // unify
-    ArraySegmentationState<T> first = this.clone();
-    ArraySegmentationState<T> second = pOther.clone();
+    ArraySegmentationState<T> first = new ArraySegmentationState<>(this);
+    ArraySegmentationState<T> second = new ArraySegmentationState<>(pOther);
 
     if (this.splitCondition.equals(pOther.splitCondition)) {
 
@@ -225,8 +225,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       }
 
       List<ArraySegment<T>> res = new ArrayList<>();
-      List<ArraySegment<T>> firstSegs = unifiedSegs.getFirst().getSegments();
-      List<ArraySegment<T>> secondSegs = unifiedSegs.getSecond().getSegments();
+      List<ArraySegment<T>> firstSegs = new ArrayList<>(unifiedSegs.getFirst().getSegments());
+      List<ArraySegment<T>> secondSegs = new ArrayList<>(unifiedSegs.getSecond().getSegments());
 
       if (firstSegs.isEmpty()) {
         throw new CPAException("The unification has fail!");
@@ -313,8 +313,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       return false; // since second is not error
     }
 
-    List<ArraySegment<T>> firstSegs = unifiedSegs.getFirst().getSegments();
-    List<ArraySegment<T>> secondSegs = unifiedSegs.getSecond().getSegments();
+    List<ArraySegment<T>> firstSegs = new ArrayList<>(unifiedSegs.getFirst().getSegments());
+    List<ArraySegment<T>> secondSegs = new ArrayList<>(unifiedSegs.getSecond().getSegments());
 
     if (firstSegs.isEmpty()) {
       throw new CPAException("The unification has fail!");
@@ -444,12 +444,12 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       try {
         ArraySegmentationState<T> res =
             modifier.storeAnalysisInformationAtIndex(
-                this.clone(),
+                new ArraySegmentationState<>(this),
                 (CExpression) index,
                 analysisInfo,
                 newSegmentIsPotentiallyEmpty,
                 pCfaEdge);
-        this.segments = res.getSegments();
+        this.segments = new ArrayList<>(res.getSegments());
       } catch (ArrayModificationException e) {
         return false;
       }
@@ -480,11 +480,11 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     try {
       ArraySegmentationState<T> res =
           modifier.storeAnalysisInformationAtIndexWithoutAddingBounds(
-              this.clone(),
+              new ArraySegmentationState<>(this),
               index,
               analysisInfo,
               newSegmentIsPotentiallyEmpty);
-      this.segments = res.getSegments();
+      this.segments = new ArrayList<>(res.getSegments());
     } catch (ArrayModificationException e) {
       return false;
     }
@@ -551,16 +551,16 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     return -1;
   }
 
-  public List<ArraySegment<T>> getSegments() {
-    return segments;
+  public ImmutableList<ArraySegment<T>> getSegments() {
+    return ImmutableList.copyOf(segments);
   }
 
   public void setSegments(List<ArraySegment<T>> pSegments) {
     segments = pSegments;
   }
 
-  public List<AExpression> gettListOfArrayVariables() {
-    return tLisOfArrayVariables;
+  public ImmutableList<AExpression> gettListOfArrayVariables() {
+    return ImmutableList.copyOf(tLisOfArrayVariables);
   }
 
   public void settLisOfArrayVariables(List<AExpression> pTLisOfArrayVariables) {
@@ -571,25 +571,15 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     return tArray;
   }
 
-  public void settArray(AIdExpression pTArray) {
-    tArray = pTArray;
-  }
 
   public AExpression getSizeVar() {
     return sizeVar;
-  }
-
-  public void setSizeVar(CIdExpression pSizeVar) {
-    sizeVar = pSizeVar;
   }
 
   public T gettEmptyElement() {
     return tEmptyElement;
   }
 
-  public void settEmptyElement(T pTEmptyElement) {
-    tEmptyElement = pTEmptyElement;
-  }
 
   public boolean isShouldBeHighlighted() {
     return shouldBeHighlighted;
@@ -611,9 +601,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     return language;
   }
 
-  public void setLanguage(Language pLanguage) {
-    language = pLanguage;
-  }
 
   public Predicate<ArraySegmentationState<T>> getPropertyPredicate() {
     return propertyPredicate;
@@ -670,29 +657,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
         && Objects.equals(tEmptyElement, other.tEmptyElement);
   }
 
-  // Creates a Deep copy of the object. In the lower level (ArraySegment), only the lists but not
-  // the list content is modified. This does not cause problems, since the arithmetic expressions
-  // are
-  // not changed during unify!
-  @Override
-  public ArraySegmentationState<T> clone() {
-    List<ArraySegment<T>> copiedElements = new ArrayList<>(segments.size());
-    this.segments.forEach(s -> copiedElements.add(s.clone()));
-    return new ArraySegmentationState<>(
-        this.unifier.conc(copiedElements, tEmptyElement),
-        this.tEmptyElement,
-        this.tLisOfArrayVariables,
-        this.tArray,
-        this.sizeVar,
-        this.language,
-        this.canBeEmpty,
-        this.cpaName,
-        this.propertyPredicate,
-        logger,
-        callStack,
-        pathFormula.clone(),
-        this.splitCondition);
-  }
 
   @Override
   public String toString() {

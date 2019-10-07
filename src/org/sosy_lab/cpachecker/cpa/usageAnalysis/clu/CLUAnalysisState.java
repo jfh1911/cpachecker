@@ -67,7 +67,7 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
 
       ArraySegmentationState<VariableUsageState> joinSegmentation =
           this.arraySegmentation.join(
-              pOther.getArraySegmentation().clone(),
+              new ArraySegmentationState<>(pOther.getArraySegmentation()),
               this.getLocation().getLocationNode().isLoopStart());
       if (joinSegmentation.equals(pOther.getArraySegmentation())) {
         returnElement = pOther;
@@ -98,7 +98,10 @@ public class CLUAnalysisState<T extends LatticeAbstractState<T>>
 
   @Override
   public CLUAnalysisState<T> clone() {
-    return new CLUAnalysisState<>(this.location, this.arraySegmentation.clone(), logger);
+    return new CLUAnalysisState<>(
+        this.location,
+        new ArraySegmentationState<>(this.arraySegmentation),
+        logger);
   }
 
   @Override

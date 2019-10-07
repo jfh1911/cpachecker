@@ -132,10 +132,6 @@ public class VariableUsageState
     type = pType;
   }
 
-  @Override
-  public VariableUsageState clone() {
-    return new VariableUsageState(this.getType());
-  }
 
   @Override
   public int hashCode() {
@@ -184,5 +180,10 @@ public class VariableUsageState
   @Override
   public VariableUsageState constructEmptyInstance() {
     return new EmptyVariableUsageElement();
+  }
+
+  @Override
+  public VariableUsageState getDeepCopy() {
+    return new VariableUsageState(this.getType());
   }
 }

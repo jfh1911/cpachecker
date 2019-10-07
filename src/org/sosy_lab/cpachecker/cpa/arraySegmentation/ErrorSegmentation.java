@@ -58,9 +58,5 @@ public class ErrorSegmentation<T extends ExtendedCompletLatticeAbstractState<T>>
     return builder.toString();
   }
 
-  @Override
-  public ArraySegmentationState<T> clone() {
-    return super.clone();
-  }
 
 }

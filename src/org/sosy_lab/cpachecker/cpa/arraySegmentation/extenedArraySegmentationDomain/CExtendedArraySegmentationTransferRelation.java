@@ -66,7 +66,7 @@ import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 import org.sosy_lab.java_smt.api.SolverException;
 
-public class CExtendedSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstractState<T>>
+public class CExtendedArraySegmentationTransferRelation<T extends ExtendedCompletLatticeAbstractState<T>>
     extends
     ForwardingTransferRelation<ExtendedArraySegmentationState<T>, ExtendedArraySegmentationState<T>, Precision> {
 
@@ -88,7 +88,7 @@ public class CExtendedSegmentationTransferRelation<T extends ExtendedCompletLatt
    * @param pMachineModel of the machine used
    * @param typeOfAnalysis string for logging
    */
-  public CExtendedSegmentationTransferRelation(
+  public CExtendedArraySegmentationTransferRelation(
       TransferRelation transferRelationForInnerDomain,
       LogManagerWithoutDuplicates pLogger,
       MachineModel pMachineModel,
@@ -152,7 +152,7 @@ public class CExtendedSegmentationTransferRelation<T extends ExtendedCompletLatt
       // Apply the inner transfer function
       Optional<ArraySegmentationState<T>> resState =
           transferRelationForSegmentation
-              .applyInnerTransferRelation(updatedEdge, segmentation.clone());
+              .applyInnerTransferRelation(updatedEdge, new ArraySegmentationState<T>(segmentation));
       if (!resState.isPresent()) {
         return null;
       }

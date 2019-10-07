@@ -19,12 +19,11 @@
  */
 package org.sosy_lab.cpachecker.cpa.arraySegmentation;
 
-import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 /**
  * A Segment that is by default empty, to indicate that the segment pointing to this is the last
  * segment (avoiding null as value)
  */
-public class FinalSegment<T extends LatticeAbstractState<T>> extends ArraySegment<T> {
+public class FinalSegment<T extends ClonableLatticeAbstractState<T>> extends ArraySegment<T> {
 
 
   private static final long serialVersionUID = -5615014169972238864L;

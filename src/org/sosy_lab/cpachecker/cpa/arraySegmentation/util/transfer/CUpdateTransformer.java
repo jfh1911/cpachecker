@@ -197,7 +197,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
           // We can safely merge the segment bounds between posSegmentContainsVar and
           // posSegmentContainsOp2, since all elements are marked as unused.
           List<ArraySegment<T>> newSegments = new ArrayList<>();
-          List<ArraySegment<T>> prevSegs = state.getSegments();
+          List<ArraySegment<T>> prevSegs = new ArrayList<>(state.getSegments());
 
           // Add all segments before min(posSegmentContainsVar,posSegmentContainsOp2)
           for (int i = 0; i < min; i++) {

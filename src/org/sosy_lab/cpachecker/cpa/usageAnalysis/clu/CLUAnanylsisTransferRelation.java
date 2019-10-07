@@ -186,7 +186,7 @@ public class CLUAnanylsisTransferRelation extends
     // Clone the state
     Collection<ArraySegmentationState<VariableUsageState>> arraySegmentation =
         usageTransfer.getAbstractSuccessorsForEdge(
-            state.getArraySegmentation().clone(),
+            new ArraySegmentationState<>(state.getArraySegmentation()),
             getPrecision(),
             pCfaEdge);
     // Check if a single result is returned

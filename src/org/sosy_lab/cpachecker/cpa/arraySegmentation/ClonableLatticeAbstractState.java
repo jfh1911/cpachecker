@@ -28,6 +28,6 @@ public interface ClonableLatticeAbstractState<T extends ClonableLatticeAbstractS
    *
    * @return a deep copy of the object
    */
-  T clone();
+  T getDeepCopy();
 
 }

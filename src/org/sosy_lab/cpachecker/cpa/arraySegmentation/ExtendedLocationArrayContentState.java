@@ -66,7 +66,7 @@ public class ExtendedLocationArrayContentState<T extends ExtendedCompletLatticeA
 
       ExtendedArraySegmentationState<T> joinSegmentation =
           this.arraySegmentation.join(
-              pOther.getArraySegmentation().clone(),
+              new ExtendedArraySegmentationState<>(pOther.getArraySegmentation()),
               this.getLocation().getLocationNode().isLoopStart());
       if (joinSegmentation.equals(pOther.getArraySegmentation())) {
         returnElement = pOther;
@@ -100,7 +100,7 @@ public class ExtendedLocationArrayContentState<T extends ExtendedCompletLatticeA
   public ExtendedLocationArrayContentState<T> clone() {
     return new ExtendedLocationArrayContentState<>(
         this.location,
-        this.arraySegmentation.clone(),
+        new ExtendedArraySegmentationState<>(this.arraySegmentation),
         logger);
   }
 
