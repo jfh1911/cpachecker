@@ -21,10 +21,9 @@ package org.sosy_lab.cpachecker.cpa.arraySegmentation;
 
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
-import org.sosy_lab.cpachecker.core.defaults.LatticeAbstractState;
 
 public interface ExtendedCompletLatticeAbstractState<T extends ExtendedCompletLatticeAbstractState<T>>
-    extends LatticeAbstractState<T>, ClonableLatticeAbstractState<T> {
+    extends ClonableLatticeAbstractState<T> {
 
   /**
    * The specific empty element is not part of the original lattice, hence it will throw an error
