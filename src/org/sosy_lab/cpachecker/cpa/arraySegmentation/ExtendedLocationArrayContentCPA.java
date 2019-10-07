@@ -39,7 +39,7 @@ import org.sosy_lab.cpachecker.core.interfaces.MergeOperator;
 import org.sosy_lab.cpachecker.core.interfaces.StateSpacePartition;
 import org.sosy_lab.cpachecker.core.interfaces.StopOperator;
 import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.CExtendedSegmentationTransferRelation;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.CExtendedArraySegmentationTransferRelation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.ExtendedArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.ArraySegmentationCPAHelper;
 import org.sosy_lab.cpachecker.cpa.location.LocationCPA;
@@ -125,13 +125,13 @@ public class ExtendedLocationArrayContentCPA<T extends ExtendedCompletLatticeAbs
 
   @Override
   public TransferRelation getTransferRelation() {
-    CExtendedSegmentationTransferRelation<T> transfer =
-        new CExtendedSegmentationTransferRelation<>(
+    CExtendedArraySegmentationTransferRelation<T> transfer =
+        new CExtendedArraySegmentationTransferRelation<>(
             innerCPA.getTransferRelation(),
             new LogManagerWithoutDuplicates(logger),
             cfa.getMachineModel(),
             getName());
-    return new ExtendedLocationArrayContentTransferRelation<>(
+    return new ExtendedLocationArrayContentTransferRelation<T>(
         new LogManagerWithoutDuplicates(logger),
         this.factory,
         transfer);

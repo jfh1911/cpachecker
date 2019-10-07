@@ -127,8 +127,8 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         }
 
         // Since the ordering is not fixed, we need to split the segmentation:
-        ArraySegmentationState<T> first = state.clone();
-        ArraySegmentationState<T> third = state.clone();
+        ArraySegmentationState<T> first = new ArraySegmentationState<>(state);
+        ArraySegmentationState<T> third = new ArraySegmentationState<>(state);
 
         // Create first:
 
@@ -159,7 +159,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
 
         // Create second, (that is d where E is added to the last segment or unreachableSeg)
         Optional<ArraySegmentationState<T>> second =
-            getSecond(pCfaEdge, solver, pEx, state, state.clone());
+            getSecond(pCfaEdge, solver, pEx, state, new ArraySegmentationState<>(state));
         if (!second.isPresent()) {
           return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
         }
@@ -255,8 +255,9 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         }
 
         // Since the ordering is not fixed, we need to split the segmentation:
-        ArraySegmentationState<T> first = state.clone();
-        ArraySegmentationState<T> third = new UnreachableSegmentation<>(state.clone());
+        ArraySegmentationState<T> first = new ArraySegmentationState<>(state);
+        ArraySegmentationState<T> third =
+            new UnreachableSegmentation<>(new ArraySegmentationState<>(state));
 
         // Create first:
         first.setSplitCondition(
@@ -300,7 +301,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
 
         // Create second, (that is d where E is added to the last segment or unreachableSeg)
         Optional<ArraySegmentationState<T>> second =
-            getSecond(pCfaEdge, solver, pEx, state, state.clone());
+            getSecond(pCfaEdge, solver, pEx, state, new ArraySegmentationState<>(state));
         if (!second.isPresent()) {
           return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
         }
@@ -679,10 +680,6 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         // if(segmentContainingI.getSegmentBound().stream().anyMatch(e -> (! pVar.equals(e) ) &&
         // solver.isUnsat()))
 
-        // Split the segmentation is there are more than one expression present in the
-        // segmentation
-        // containing the variable
-        ArraySegmentationState<T> state;
         if (segmentContainingI.getSegmentBound().size() > 1) {
           Optional<ArraySegmentationState<T>> stateOpt =
               splitSegmentBound(posOfVar, pVar, pEx, pState, pCfaEdge);

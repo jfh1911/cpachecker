@@ -105,7 +105,7 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
           // Check, if the current last segment contains any analysis information, if not, add _|_?
           // to it. Anyway, mark it as potentially empty
 
-          List<ArraySegment<T>> segments = state.getSegments();
+          List<ArraySegment<T>> segments = new ArrayList<>(state.getSegments());
           int posCurrenLast = segments.size() - 1;
           if (segments.get(posCurrenLast)
               .getAnalysisInformation() instanceof EmptyVariableUsageElement) {
@@ -148,7 +148,8 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
       reassign(CIdExpression pVar, CExpression pRightHandSide, ArraySegmentationState<T> state) {
     CExpression canoncialForm = getCanonicalForm(pRightHandSide);
     List<ArraySegment<T>> exprList = new ArrayList<>();
-    for (ArraySegment<T> s : state.getSegments()) {
+    List<ArraySegment<T>> segments = new ArrayList<>(state.getSegments());
+    for (ArraySegment<T> s : segments) {
       for (AExpression e : s.getSegmentBound()) {
         if (e.equals(canoncialForm)) {
           exprList.add(s);
@@ -214,13 +215,13 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
         // We can start at the second element, since by assumption 0 is always present and hence e >
         // 0
         boolean isAdded = false;
-        for (int i = 1; i < state.getSegments().size(); i++) {
-          ArraySegment<T> s = state.getSegments().get(i);
+        for (int i = 1; i < segments.size(); i++) {
+          ArraySegment<T> s = segments.get(i);
           BigInteger curValue = s.evaluateToInteger(visitor);
           if (curValue.compareTo(valueOfExpr) > 0) {
             // This is the first segment that is greater than the one needs to be added, hence add
             // it between the previous and this segment
-            ArraySegment<T> prevSeg = state.getSegments().get(i - 1);
+            ArraySegment<T> prevSeg = segments.get(i - 1);
             List<AExpression> segBounds = new ArrayList<>();
             segBounds.add(pVar);
             segBounds.add(pRightHandSide);
@@ -240,8 +241,8 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
         // We need to assume that there are at least two segments present. IN case that only a
         // single segment is present, nothing can be done!
 
-        if (!isAdded && state.getSegments().size() > 1) {
-          ArraySegment<T> prevSeg = state.getSegments().get(state.getSegments().size() - 2);
+        if (!isAdded && segments.size() > 1) {
+          ArraySegment<T> prevSeg = segments.get(segments.size() - 2);
           List<AExpression> segBounds = new ArrayList<>();
           segBounds.add(pVar);
           segBounds.add(pRightHandSide);
@@ -250,15 +251,15 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
                   segBounds,
                   prevSeg.getAnalysisInformation(),
                   prevSeg.isPotentiallyEmpty(),
-                  state.getSegments().get(state.getSegments().size() - 1),
+                  segments.get(segments.size() - 1),
                   state.getLanguage());
           state.addSegment(newSeg, prevSeg);
         } else if (state.getSizeVar().equals(pVar)
-            && state.getSegments().size() == 1
+            && segments.size() == 1
             && valueOfExpr.compareTo(BigInteger.ZERO) > 0) {
           // Reassignments of the SIZE, if the segmentation only contains the segmentation
           // containing 0
-          ArraySegment<T> prevSeg = state.getSegments().get(0);
+          ArraySegment<T> prevSeg = segments.get(0);
           // Since there is only one element present, set the bottom analysis information and mark
           // it as not empty, since the value SIZE is assigned to is greater to 0
           prevSeg.setAnalysisInformation(state.gettEmptyElement().getBottomElement());
@@ -270,7 +271,7 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
                   segBounds,
                   state.gettEmptyElement(),
                   prevSeg.isPotentiallyEmpty(),
-                  state.getSegments().get(state.getSegments().size() - 1),
+                  segments.get(segments.size() - 1),
                   state.getLanguage());
           state.addSegment(newSeg, prevSeg);
         } else {

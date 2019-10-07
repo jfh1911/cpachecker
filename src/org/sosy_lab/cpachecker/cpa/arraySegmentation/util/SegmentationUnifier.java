@@ -103,8 +103,8 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
       throws CPAException {
 
     Language language = pD1.getLanguage();
-    ArraySegmentationState<T> d1 = pD1.clone();
-    ArraySegmentationState<T> d2 = pD2.clone();
+    ArraySegmentationState<T> d1 = new ArraySegmentationState<>(pD1);
+    ArraySegmentationState<T> d2 = new ArraySegmentationState<>(pD2);
 
     // Case 1:
     if (d1 instanceof ErrorSegmentation
@@ -119,8 +119,8 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
     }
 
     // Setup some vars and pointer needed:
-    List<ArraySegment<T>> segs1 = d1.getSegments();
-    List<ArraySegment<T>> segs2 = d2.getSegments();
+    List<ArraySegment<T>> segs1 = new ArrayList<>(d1.getSegments());
+    List<ArraySegment<T>> segs2 = new ArrayList<>(d2.getSegments());
     ArraySegment<T> b1 = segs1.get(0);
     ArraySegment<T> b2 = segs2.get(0);
 
@@ -142,8 +142,8 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
         continue;
       }
       // Needed in all other cases:
-      List<AExpression> b1SegBounds = b1.getSegmentBound();
-      List<AExpression> b2SegBounds = b2.getSegmentBound();
+      List<AExpression> b1SegBounds = new ArrayList<>(b1.getSegmentBound());
+      List<AExpression> b2SegBounds = new ArrayList<>(b2.getSegmentBound());
       List<AExpression> b1Bar =
           d2.getSegmentBounds(b2.getNextSegment())
               .parallelStream()

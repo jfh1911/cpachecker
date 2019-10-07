@@ -43,7 +43,7 @@ import org.sosy_lab.cpachecker.cfa.model.c.CStatementEdge;
 import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.CExtendedSegmentationTransferRelation;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.CExtendedArraySegmentationTransferRelation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.ExtendedArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
@@ -53,13 +53,13 @@ public class ExtendedLocationArrayContentTransferRelation<T extends ExtendedComp
     ForwardingTransferRelation<ExtendedLocationArrayContentState<T>, ExtendedLocationArrayContentState<T>, Precision> {
 
   private final LogManagerWithoutDuplicates logger;
-  private final CExtendedSegmentationTransferRelation<T> transferForExtendedSegmentations;
+  private final CExtendedArraySegmentationTransferRelation<T> transferForExtendedSegmentations;
   private LocationStateFactory locFactory;
 
   public ExtendedLocationArrayContentTransferRelation(
       LogManagerWithoutDuplicates pLogger,
       LocationStateFactory pLocFactory,
-      CExtendedSegmentationTransferRelation<T> pInnerTransferRelation) {
+      CExtendedArraySegmentationTransferRelation<T> pInnerTransferRelation) {
     super();
     logger = pLogger;
     transferForExtendedSegmentations = pInnerTransferRelation;
@@ -180,7 +180,7 @@ public class ExtendedLocationArrayContentTransferRelation<T extends ExtendedComp
     // Clone the state
     Collection<ExtendedArraySegmentationState<T>> arraySegmentation =
         transferForExtendedSegmentations.getAbstractSuccessorsForEdge(
-            state.getArraySegmentation().clone(),
+            new ExtendedArraySegmentationState<>(state.getArraySegmentation()),
             getPrecision(),
             pCfaEdge);
     // Check if a single result is returned

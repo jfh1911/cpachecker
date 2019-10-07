@@ -56,9 +56,6 @@ public class UnreachableSegmentation<T extends ExtendedCompletLatticeAbstractSta
   }
 
 
-  @Override
-  public ArraySegmentationState<T> clone() {
-    return super.clone();
-  }
+
 
 }

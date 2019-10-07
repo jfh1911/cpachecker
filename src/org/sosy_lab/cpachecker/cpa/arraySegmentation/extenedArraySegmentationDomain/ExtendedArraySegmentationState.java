@@ -74,6 +74,20 @@ public class ExtendedArraySegmentationState<T extends ExtendedCompletLatticeAbst
   }
 
   /**
+   * Copy constructor
+   *
+   * @param pState the state to clone
+   */
+  public ExtendedArraySegmentationState(ExtendedArraySegmentationState<T> pState) {
+    super();
+    List<ArraySegmentationState<T>> copiedElements =
+        new ArrayList<>(pState.getSegmentations().size());
+    pState.getSegmentations().forEach(s -> copiedElements.add(new ArraySegmentationState<>(s)));
+    segmentations = copiedElements;
+    logger = pState.getLogger();
+  }
+
+  /**
    * Returns a copy of the elements given as arguments
    */
   @Override
@@ -140,7 +154,7 @@ public class ExtendedArraySegmentationState<T extends ExtendedCompletLatticeAbst
           && shorterSeg.getSplitCondition().equals(trueExpr)) {
 
         for (int i = 0; i < longer.getSegmentations().size(); i++) {
-          ArraySegmentationState<T> temp = shorterSeg.clone();
+          ArraySegmentationState<T> temp = new ArraySegmentationState<>(shorterSeg);
           temp.setSplitCondition(longer.getSegmentations().get(i).getSplitCondition());
           extendedShorter.add(temp);
         }
@@ -383,18 +397,6 @@ public class ExtendedArraySegmentationState<T extends ExtendedCompletLatticeAbst
     return Objects.deepEquals(segmentations, other.segmentations);
   }
 
-  // Creates a Deep copy of the object. In the lower level (ArraySegment), only the lists but not
-  // the list content is modified. This does not cause problems, since the arithmetic expressions
-  // are
-  // not changed during unify!
-  @Override
-  public ExtendedArraySegmentationState<T> clone() {
-    List<ArraySegmentationState<T>> copiedElements = new ArrayList<>(segmentations.size());
-    this.segmentations.forEach(s -> copiedElements.add(s.clone()));
-    return new ExtendedArraySegmentationState<>(
-        copiedElements,
-        logger);
-  }
 
   @Override
   public String toString() {

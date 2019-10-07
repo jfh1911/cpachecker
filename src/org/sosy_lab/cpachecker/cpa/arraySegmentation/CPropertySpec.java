@@ -120,7 +120,7 @@ public class CPropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
     lowerMappingOfExpr = new HashMap<>();
     upperMappingOfExpr = new HashMap<>();
 
-    List<ArraySegment<T>> segments = pState.getSegments();
+    List<ArraySegment<T>> segments = new ArrayList<>(pState.getSegments());
 
     // Firstly, store all known concrete values
     for (int i = 0; i < segments.size(); i++) {
