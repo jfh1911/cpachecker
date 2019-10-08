@@ -42,9 +42,9 @@ import org.sosy_lab.cpachecker.cpa.arraySegmentation.CPropertySpec;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedLocationArrayContentCPA;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.EnhancedCExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisCPA;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageType;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisCPA;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageType;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 @Options(prefix = "cpa.arrayContentCPA")
@@ -57,11 +57,7 @@ public class ExtendedCLUAnalysisCPA extends ExtendedLocationArrayContentCPA<Vari
     description = "The array that needs to be analyzed")
   private String varnameArray = "";
 
-  /**
-   * This method acts as the constructor of the interval analysis CPA.
-   *
-   * @param config the configuration of the CPAinterval analysis CPA.
-   */
+
   protected ExtendedCLUAnalysisCPA(
       Configuration pConfig,
       LogManager pLogger,

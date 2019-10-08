@@ -152,7 +152,7 @@ public class CExtendedArraySegmentationTransferRelation<T extends ExtendedComple
       // Apply the inner transfer function
       Optional<ArraySegmentationState<T>> resState =
           transferRelationForSegmentation
-              .applyInnerTransferRelation(updatedEdge, new ArraySegmentationState<T>(segmentation));
+              .applyInnerTransferRelation(updatedEdge, new ArraySegmentationState<>(segmentation));
       if (!resState.isPresent()) {
         return null;
       }
@@ -289,17 +289,12 @@ public class CExtendedArraySegmentationTransferRelation<T extends ExtendedComple
   }
 
 
+  /**
+   * @param inputToTransfer needed, if the input should be logged (e.g. for debugging purposes)
+   */
   private ExtendedArraySegmentationState<T> logTransformation(
       String inputToTransfer,
       List<ArraySegmentationState<T>> pTransformedStates) {
-    // logger.log(Level.FINE, PREFIX + " " + inputToTransfer + ")=" + pTransformedStates);
-    // logger.flush();
-    // try {
-    // Thread.sleep(400);
-    // } catch (InterruptedException e) {
-    // // TODO Auto-generated catch block
-    // e.printStackTrace();
-    // }
     return new ExtendedArraySegmentationState<>(pTransformedStates, logger);
   }
 

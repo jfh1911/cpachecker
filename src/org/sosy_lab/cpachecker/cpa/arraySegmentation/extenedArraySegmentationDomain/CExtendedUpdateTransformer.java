@@ -50,7 +50,7 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
       ExpressionSimplificationVisitor pVisitor,
       CBinaryExpressionBuilder pBuilder,
       CSplitTransformer<T> pSplitTransformer) {
-    super(pLogger, pVisitor, pBuilder, new SegmentationReachabilityChecker(pLogger));
+    super(pLogger, pVisitor, pBuilder, new SegmentationReachabilityChecker<>(pLogger));
     splitTransformer = pSplitTransformer;
   }
 

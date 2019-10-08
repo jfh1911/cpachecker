@@ -39,7 +39,7 @@ import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedCompletLatticeAbstr
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.FinalSegment;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.formula.FormulaRelation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.ArrayModificationException;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 import org.sosy_lab.cpachecker.util.Triple;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
