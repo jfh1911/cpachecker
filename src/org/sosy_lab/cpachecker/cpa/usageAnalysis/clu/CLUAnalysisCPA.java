@@ -40,8 +40,8 @@ import org.sosy_lab.cpachecker.core.interfaces.StopOperator;
 import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
 import org.sosy_lab.cpachecker.cpa.location.LocationCPA;
 import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisCPA;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisCPA;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
 
 @Options(prefix = "cpa.CLUCPA")
 public class CLUAnalysisCPA extends AbstractCPA {

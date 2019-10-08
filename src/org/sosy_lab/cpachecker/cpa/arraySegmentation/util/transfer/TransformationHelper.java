@@ -25,7 +25,7 @@ import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.ast.AIdExpression;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedCompletLatticeAbstractState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 public class TransformationHelper<T extends ExtendedCompletLatticeAbstractState<T>> {

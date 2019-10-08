@@ -131,7 +131,7 @@ public class ExtendedLocationArrayContentCPA<T extends ExtendedCompletLatticeAbs
             new LogManagerWithoutDuplicates(logger),
             cfa.getMachineModel(),
             getName());
-    return new ExtendedLocationArrayContentTransferRelation<T>(
+    return new ExtendedLocationArrayContentTransferRelation<>(
         new LogManagerWithoutDuplicates(logger),
         this.factory,
         transfer);
@@ -149,12 +149,22 @@ public class ExtendedLocationArrayContentCPA<T extends ExtendedCompletLatticeAbs
             getName(),
             pNode);
 
-    return new ExtendedLocationArrayContentState<T>(
+    return new ExtendedLocationArrayContentState<>(
         locationCPA.getInitialState(pNode, pPartition),
-        new ExtendedArraySegmentationState<T>(Lists.newArrayList(initalSeg), this.logger),
+        new ExtendedArraySegmentationState<>(Lists.newArrayList(initalSeg), this.logger),
         logger);
   }
 
+  /**
+   * Constructs the inner CPA analysis
+   *
+   * @param pConfig of the analysis
+   * @param pLogger for logging
+   * @param pCfa of the program
+   * @param pVarnameArray the variable name of the array
+   * @param pShutdownNotifier the shutdown notifier of the analysis
+   * @throws InvalidConfigurationException if the path formula cannot be created
+   */
   protected AbstractCPA constructInnerCPA(
       Configuration pConfig,
       LogManager pLogger,
@@ -166,21 +176,39 @@ public class ExtendedLocationArrayContentCPA<T extends ExtendedCompletLatticeAbs
         "This needs to be overwritten by an extending analysis");
   }
 
+  /**
+   *
+   * @return the name of the analysis (used e.g. for logging)
+   */
   protected String getName() {
     throw new UnsupportedOperationException(
         "This needs to be overwritten by an extending analysis");
   }
 
+  /**
+   *
+   * @return An instance of the empty element, that references top and bottom element of the lattice
+   *         as well as the meet operator
+   */
   protected T getEmptyElement() {
     throw new UnsupportedOperationException(
         "This needs to be overwritten by an extending analysis");
   }
 
+  /**
+   * @param pNode the initial note
+   * @param pPartition the initial partition
+   */
   protected T getInitialInnerState(CFANode pNode, StateSpacePartition pPartition) {
     throw new UnsupportedOperationException(
         "This needs to be overwritten by an extending analysis");
   }
 
+  /**
+   *
+   * @return a predicate that determines, if the state computed at the end of the program is a
+   *         Violation
+   */
   protected Predicate<ArraySegmentationState<T>> getPredicate() {
     throw new UnsupportedOperationException(
         "This needs to be overwritten by an extending analysis");

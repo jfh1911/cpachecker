@@ -47,8 +47,8 @@ import org.sosy_lab.cpachecker.cpa.arraySegmentation.ErrorSegmentation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.FinalSegment;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.UnreachableSegmentation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.EmptyVariableUsageElement;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.EmptyVariableUsageElement;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
 public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<T>> {

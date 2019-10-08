@@ -17,13 +17,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage;
+package org.sosy_lab.cpachecker.cpa.usageAnalysis;
 
-import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
-import org.sosy_lab.cpachecker.core.interfaces.Precision;
-
-public class VariableUsageTransferFunction
-    extends ForwardingTransferRelation<VariableUsageState, VariableUsageState, Precision> {
-
-
+public enum VariableUsageType {
+  USED,
+  NOT_USED,
+  // Empty is only used to avoid null values, it will be ignored during unification and raise an
+  // error, if it is merged or compared to non-empty information
+  EMPTY;
 }

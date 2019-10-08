@@ -47,8 +47,8 @@ import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.transfer.CSegmentationTransferRelation;
 import org.sosy_lab.cpachecker.cpa.location.LocationStateFactory;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.UsageAnalysisTransferRelation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.instantiationUsage.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
 public class CLUAnanylsisTransferRelation extends
