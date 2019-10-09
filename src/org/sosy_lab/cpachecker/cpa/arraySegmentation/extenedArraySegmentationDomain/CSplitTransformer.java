@@ -127,8 +127,8 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         }
 
         // Since the ordering is not fixed, we need to split the segmentation:
-        ArraySegmentationState<T> first = new ArraySegmentationState<>(state);
-        ArraySegmentationState<T> third = new ArraySegmentationState<>(state);
+        ArraySegmentationState<T> first = state.getDeepCopy();
+        ArraySegmentationState<T> third = state.getDeepCopy();
 
         // Create first:
 
@@ -159,7 +159,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
 
         // Create second, (that is d where E is added to the last segment or unreachableSeg)
         Optional<ArraySegmentationState<T>> second =
-            getSecond(pCfaEdge, solver, pEx, state, new ArraySegmentationState<>(state));
+            getSecond(pCfaEdge, solver, pEx, state, state.getDeepCopy());
         if (!second.isPresent()) {
           return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
         }
@@ -255,9 +255,9 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         }
 
         // Since the ordering is not fixed, we need to split the segmentation:
-        ArraySegmentationState<T> first = new ArraySegmentationState<>(state);
+        ArraySegmentationState<T> first = state.getDeepCopy();
         ArraySegmentationState<T> third =
-            new UnreachableSegmentation<>(new ArraySegmentationState<>(state));
+            new UnreachableSegmentation<>(state.getDeepCopy());
 
         // Create first:
         first.setSplitCondition(
@@ -301,7 +301,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
 
         // Create second, (that is d where E is added to the last segment or unreachableSeg)
         Optional<ArraySegmentationState<T>> second =
-            getSecond(pCfaEdge, solver, pEx, state, new ArraySegmentationState<>(state));
+            getSecond(pCfaEdge, solver, pEx, state, state.getDeepCopy());
         if (!second.isPresent()) {
           return new ExtendedArraySegmentationState<>(Lists.newArrayList(pState), logger);
         }
@@ -426,6 +426,29 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
     return leftIsEs && rightIsEg;
   }
 
+  private Optional<Boolean> isImpliedByPathFormula(
+      CExpression pEx,
+      BinaryOperator pOperator,
+      CExpression pRhs,
+      @Nullable ArraySegmentationState<T> pState,
+      CFAEdge pCfaEdge,
+      Solver pSolver) {
+    FormulaState f = pState.getPathFormula();
+    Optional<BooleanFormula> equation;
+    try {
+      equation = getEquation(pEx, pRhs, pOperator, f, pCfaEdge);
+
+      if (equation.isPresent()) {
+
+        return Optional.of(pSolver.implies(f.getPathFormula().getFormula(), equation.get()));
+      }
+    } catch (UnrecognizedCodeException | SolverException | InterruptedException e) {
+      return Optional.empty();
+    }
+
+    return Optional.empty();
+  }
+
   private Optional<Boolean> isSat(
       ArraySegmentationState<T> pState,
       CExpression pEx,
@@ -454,9 +477,7 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
 
       if (equation.isPresent()) {
         BooleanFormula ELessEqualSizeVar =
-            f.getPr()
-                .getFormulaManager()
-                .makeAnd(f.getPathFormula().getFormula(), equation.get());
+            f.getPr().getFormulaManager().makeAnd(f.getPathFormula().getFormula(), equation.get());
         return Optional.of(solver.isUnsat(ELessEqualSizeVar));
       }
     } catch (UnrecognizedCodeException | SolverException | InterruptedException e) {
@@ -534,12 +555,24 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
       Solver solver = pState.getPathFormula().getPr().getSolver();
       for (AExpression e : segOfVar.getSegmentBound()) {
         Optional<Boolean> resOfCheck =
-            isSat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.LESS_THAN, pEx);
+            isImpliedByPathFormula(
+                (CExpression) e,
+                BinaryOperator.LESS_EQUAL,
+                pEx,
+                pState,
+                pCfaEdge,
+                solver);
         if (resOfCheck.isPresent() && resOfCheck.get()) {
           comparison = -1;
         }
         resOfCheck =
-            isSat(pState, (CExpression) e, pCfaEdge, solver, BinaryOperator.GREATER_THAN, pEx);
+            isImpliedByPathFormula(
+                (CExpression) e,
+                BinaryOperator.GREATER_EQUAL,
+                pEx,
+                pState,
+                pCfaEdge,
+                solver);
         if (resOfCheck.isPresent() && resOfCheck.get()) {
           comparison = 1;
         }
@@ -603,20 +636,17 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
   }
 
   /**
-   * Computes the cross-product of all pBinaryOp expressions of all expressions present in the
-   * segment, whereas the first segments' expressions are used on the LHS and the second once on the
-   * RHS bounds in sb1 < sb2
+   * Computes e1 pBinaryOp e2 and returns it, if no error occurs
    *
-   * @param pSB1 used on LHS
-   * @param pSB2 used on RHS
+   * @param e1 used on LHS
+   * @param e2 used on RHS
    * @param pBinaryOp the operator
    * @param pSsa current SSA transformation
    * @param pConverter to convert the expressions
    * @param pManager of the path formula
-   * @param pBinExprBuilder to build expressions
    * @param pFormula the path formula
    * @param pEdge for logging
-   * @return cross product of e1 pBinaryOp e2, where e1 \in pSB1 and e2 in pSB2
+   * @return e1 pBinaryOp e2 or an empty optional, in case of an error
    * @throws UnrecognizedCodeException if converting fails
    */
   private Optional<BooleanFormula> getEquation(
@@ -648,8 +678,6 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
       @Nullable ArraySegmentationState<T> pState,
       CFAEdge pCfaEdge)
       throws UnrecognizedCodeException {
-    // Find a more efficient implementation for that avoiding computing the split twice
-    Solver solver = pState.getPathFormula().getPr().getSolver();
     CExpression pEx;
     if (pBinaryOp.equals(BinaryOperator.LESS_EQUAL)
         || pBinaryOp.equals(BinaryOperator.GREATER_THAN)) {

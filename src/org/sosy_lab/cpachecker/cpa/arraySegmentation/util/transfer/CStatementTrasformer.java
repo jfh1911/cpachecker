@@ -47,7 +47,6 @@ import org.sosy_lab.cpachecker.cpa.arraySegmentation.ErrorSegmentation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.FinalSegment;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.UnreachableSegmentation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.EmptyVariableUsageElement;
 import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
@@ -107,8 +106,8 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
 
           List<ArraySegment<T>> segments = new ArrayList<>(state.getSegments());
           int posCurrenLast = segments.size() - 1;
-          if (segments.get(posCurrenLast)
-              .getAnalysisInformation() instanceof EmptyVariableUsageElement) {
+          T analysisInformation = segments.get(posCurrenLast).getAnalysisInformation();
+          if (analysisInformation.equals(state.gettEmptyElement())) {
             segments.get(posCurrenLast)
                 .setAnalysisInformation(state.gettEmptyElement().getBottomElement());
           }

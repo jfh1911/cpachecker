@@ -152,7 +152,7 @@ public class CExtendedArraySegmentationTransferRelation<T extends ExtendedComple
       // Apply the inner transfer function
       Optional<ArraySegmentationState<T>> resState =
           transferRelationForSegmentation
-              .applyInnerTransferRelation(updatedEdge, new ArraySegmentationState<>(segmentation));
+              .applyInnerTransferRelation(updatedEdge, segmentation.getDeepCopy());
       if (!resState.isPresent()) {
         return null;
       }
