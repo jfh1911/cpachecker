@@ -186,7 +186,7 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
       CFAEdge pCfaEdge)
       throws UnrecognizedCodeException {
     // Firstly, clone the state to avoid unwanted modifications:
-    pState = new ArraySegmentationState<>(pState);
+    pState = pState.getDeepCopy();
 
     // Check, if there is a constant present on the LHS:
     if (isVarType(pOperand1)) {

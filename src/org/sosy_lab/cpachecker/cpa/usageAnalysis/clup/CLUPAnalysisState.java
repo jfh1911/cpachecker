@@ -71,7 +71,7 @@ public class CLUPAnalysisState<T extends LatticeAbstractState<T>>
           "Computing merge(" + this.toDOTLabel() + " , " + pOther.toDOTLabel() + ") --> ";
 
       ArraySegmentationState<VariableUsageState> joinSegmentation =
-          this.arraySegmentation.join(new ArraySegmentationState<>(pOther.getArraySegmentation()));
+          this.arraySegmentation.join(pOther.getArraySegmentation().getDeepCopy());
       FormulaState joinedFormula = this.pathFormula.join(pOther.getPathFormula());
 
       if (joinSegmentation.equals(pOther.getArraySegmentation())
@@ -108,7 +108,7 @@ public class CLUPAnalysisState<T extends LatticeAbstractState<T>>
   public CLUPAnalysisState<T> clone() {
     return new CLUPAnalysisState<>(
         this.location,
-        new ArraySegmentationState<>(this.arraySegmentation),
+        this.arraySegmentation.getDeepCopy(),
         pathFormula.clone(),
         logger);
   }

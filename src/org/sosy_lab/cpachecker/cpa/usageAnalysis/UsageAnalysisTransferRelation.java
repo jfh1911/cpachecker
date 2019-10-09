@@ -81,10 +81,10 @@ public class UsageAnalysisTransferRelation extends
           (CInitializerExpression) ((CVariableDeclaration) pDecl).getInitializer();
       Collection<CArraySubscriptExpression> uses = usageTransformer.getUses(expr.getExpression());
       if (!uses.isEmpty()) {
-        return usageTransformer.explUse(uses, new ArraySegmentationState<>(state), pCfaEdge);
+        return usageTransformer.explUse(uses, state.getDeepCopy(), pCfaEdge);
       }
     }
-    return state != null ? new ArraySegmentationState<>(state) : state;
+    return state != null ? state.getDeepCopy() : state;
   }
 
   @Override
@@ -96,14 +96,14 @@ public class UsageAnalysisTransferRelation extends
     Collection<CArraySubscriptExpression> uses = usageTransformer.getUses(pExpression);
     if (!uses.isEmpty()) {
       return usageTransformer
-          .explUse(new ArrayList<>(uses), new ArraySegmentationState<>(state), pCfaEdge);
+          .explUse(new ArrayList<>(uses), state.getDeepCopy(), pCfaEdge);
     }
-    return state != null ? new ArraySegmentationState<>(state) : state;
+    return state != null ? state.getDeepCopy() : state;
   }
 
   @Override
   protected ArraySegmentationState<VariableUsageState> handleBlankEdge(BlankEdge pCfaEdge) {
-    return state != null ? new ArraySegmentationState<>(state) : state;
+    return state != null ? state.getDeepCopy() : state;
   }
 
   @Override
@@ -119,9 +119,9 @@ public class UsageAnalysisTransferRelation extends
     pArguments.parallelStream().forEach(a -> uses.addAll(usageTransformer.getUses(a)));
     if (!uses.isEmpty()) {
       return usageTransformer
-          .explUse(new ArrayList<>(uses), new ArraySegmentationState<>(state), pCfaEdge);
+          .explUse(new ArrayList<>(uses), state.getDeepCopy(), pCfaEdge);
     }
-    return state != null ? new ArraySegmentationState<>(state) : state;
+    return state != null ? state.getDeepCopy() : state;
   }
 
   @Override
@@ -131,14 +131,14 @@ public class UsageAnalysisTransferRelation extends
       CFunctionCall pSummaryExpr,
       String pCallerFunctionName)
       throws CPATransferException {
-    return state != null ? new ArraySegmentationState<>(state) : state;
+    return state != null ? state.getDeepCopy() : state;
   }
 
   @Override
   protected ArraySegmentationState<VariableUsageState>
       handleFunctionSummaryEdge(CFunctionSummaryEdge pCfaEdge) throws CPATransferException {
     // TODO: Verify that this is the correct behavior
-    return state != null ? new ArraySegmentationState<>(state) : state;
+    return state != null ? state.getDeepCopy() : state;
   }
 
   @Override
@@ -150,10 +150,10 @@ public class UsageAnalysisTransferRelation extends
           usageTransformer.getUses(pCfaEdge.getExpression().get());
       if (!uses.isEmpty()) {
         return usageTransformer
-            .explUse(new ArrayList<>(uses), new ArraySegmentationState<>(state), pCfaEdge);
+            .explUse(new ArrayList<>(uses), state.getDeepCopy(), pCfaEdge);
       }
     }
-    return state != null ? new ArraySegmentationState<>(state) : state;
+    return state != null ? state.getDeepCopy() : state;
   }
 
   @Override
@@ -161,7 +161,7 @@ public class UsageAnalysisTransferRelation extends
       handleStatementEdge(CStatementEdge pCfaEdge, CStatement pStatement)
           throws CPATransferException {
 
-    return usageTransformer.use(pStatement, new ArraySegmentationState<>(state), pCfaEdge);
+    return usageTransformer.use(pStatement, state.getDeepCopy(), pCfaEdge);
 
   }
 

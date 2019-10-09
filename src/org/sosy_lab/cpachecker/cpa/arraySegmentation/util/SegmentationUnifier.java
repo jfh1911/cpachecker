@@ -103,8 +103,8 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
       throws CPAException {
 
     Language language = pD1.getLanguage();
-    ArraySegmentationState<T> d1 = new ArraySegmentationState<>(pD1);
-    ArraySegmentationState<T> d2 = new ArraySegmentationState<>(pD2);
+    ArraySegmentationState<T> d1 = pD1.getDeepCopy();
+    ArraySegmentationState<T> d2 = pD2.getDeepCopy();
 
     // Case 1:
     if (d1 instanceof ErrorSegmentation

@@ -162,7 +162,7 @@ public class CLUPAnanylsisTransferRelation extends
     // Clone the state
     Collection<ArraySegmentationState<VariableUsageState>> arraySegmentation =
         usageTransfer.getAbstractSuccessorsForEdge(
-            new ArraySegmentationState<>(state.getArraySegmentation()),
+            state.getArraySegmentation().getDeepCopy(),
             getPrecision(),
             pCfaEdge);
     // Check if a single result is returned
@@ -236,8 +236,7 @@ public class CLUPAnanylsisTransferRelation extends
       @SuppressWarnings("unchecked")
       Collection<ArraySegmentationState<VariableUsageState>> strengthenSegmentations =
           this.usageTransfer.strengthen(
-              new ArraySegmentationState<>(
-                  ((CLUPAnalysisState<VariableUsageState>) pState).getArraySegmentation()),
+              ((CLUPAnalysisState<VariableUsageState>) pState).getArraySegmentation().getDeepCopy(),
               others,
               pCfaEdge,
               pPrecision);

@@ -57,30 +57,31 @@ public class UsageTransformer {
   public @Nullable ArraySegmentationState<VariableUsageState>
       use(
           CStatement pStatement,
-          ArraySegmentationState<VariableUsageState> state,
+          ArraySegmentationState<VariableUsageState> pState,
           CFAEdge pCfaEdge) {
     List<CArraySubscriptExpression> arrayUses = getUses(pStatement);
-    return explUse(arrayUses, state, pCfaEdge);
+    return explUse(arrayUses, pState, pCfaEdge);
   }
 
   public @Nullable ArraySegmentationState<VariableUsageState> explUse(
       Collection<CArraySubscriptExpression> pUses,
-      ArraySegmentationState<VariableUsageState> state,
+      ArraySegmentationState<VariableUsageState> pState,
       CFAEdge pCfaEdge) {
+
     for (CArraySubscriptExpression use : pUses) {
 
       CExpression subscriptExpr = use.getSubscriptExpression();
-      if (!state.storeAnalysisInformationAtIndex(
+      if (!pState.storeAnalysisInformationAtIndex(
           subscriptExpr,
           new VariableUsageState(VariableUsageType.USED),
           false,
           machineModel,
           visitor,
           pCfaEdge)) {
-        return new ErrorSegmentation<>(state);
+        return new ErrorSegmentation<>(pState);
       }
     }
-    return state;
+    return pState;
   }
 
   public List<CArraySubscriptExpression> getUses(CStatement pStatement) {

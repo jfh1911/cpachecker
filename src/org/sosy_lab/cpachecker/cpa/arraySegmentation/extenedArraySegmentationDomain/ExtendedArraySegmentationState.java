@@ -82,7 +82,7 @@ public class ExtendedArraySegmentationState<T extends ExtendedCompletLatticeAbst
     super();
     List<ArraySegmentationState<T>> copiedElements =
         new ArrayList<>(pState.getSegmentations().size());
-    pState.getSegmentations().forEach(s -> copiedElements.add(new ArraySegmentationState<>(s)));
+    pState.getSegmentations().forEach(s -> copiedElements.add(s.getDeepCopy()));
     segmentations = copiedElements;
     logger = pState.getLogger();
   }
@@ -154,7 +154,7 @@ public class ExtendedArraySegmentationState<T extends ExtendedCompletLatticeAbst
           && shorterSeg.getSplitCondition().equals(trueExpr)) {
 
         for (int i = 0; i < longer.getSegmentations().size(); i++) {
-          ArraySegmentationState<T> temp = new ArraySegmentationState<>(shorterSeg);
+          ArraySegmentationState<T> temp = shorterSeg.getDeepCopy();
           temp.setSplitCondition(longer.getSegmentations().get(i).getSplitCondition());
           extendedShorter.add(temp);
         }

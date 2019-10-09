@@ -149,7 +149,7 @@ public class VariableUsageState
     if (obj == null) {
       return false;
     }
-    if (getClass() != obj.getClass()) {
+    if (!(obj instanceof VariableUsageState)) {
       return false;
     }
     VariableUsageState other = (VariableUsageState) obj;

@@ -78,6 +78,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   protected CallstackState callStack;
   protected FormulaState pathFormula;
   protected AExpression splitCondition;
+
   /**
    *
    * @param pSegments list of segments present
@@ -132,28 +133,54 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   }
 
   /**
+   * <b> IMPORTANT: Don't use this constructor as a copy constructor! Instead, use
+   * {@link ArraySegmentationState#getDeepCopy()} </b> (Explanation: We cannot use a single copy
+   * constructor for the ArraySegmentationState and the sub-types Error and UnreachableSegmentaiton.
+   * Hence, to simplify the code in general, we decided to use a geetDeepCopy method instead of
+   * checking at every position where the element needs to be cloned, which copy constructor needs
+   * to be called
+   *
    * Minimal constructor, only usable for error segmentation or unreachable segmentation, because
    * the attributes set to null are never requested
    *
+   *
+   *
    * @param pPreviousState the previous state, used to get all information needed
    */
-  public ArraySegmentationState(ArraySegmentationState<T> pPreviousState) {
+  protected ArraySegmentationState(ArraySegmentationState<T> pPreviousState) {
     super();
-    segments = pPreviousState.segments;
-
+    List<ArraySegment<T>> copiedElements = new ArrayList<>();
+    pPreviousState.getSegments()
+        .stream()
+        .forEachOrdered(s -> copiedElements.add(new ArraySegment<>(s)));
+    // Set the references to the next element for each segment:
+    for (int i = 0; i < copiedElements.size() - 1; i++) {
+      copiedElements.get(i).setNextSegment(copiedElements.get(i + 1));
+    }
+    segments = copiedElements;
     unifier = new SegmentationUnifier<>();
     tEmptyElement = pPreviousState.gettEmptyElement();
-    tLisOfArrayVariables = new ArrayList<>();
+    tLisOfArrayVariables = new ArrayList<>(pPreviousState.gettListOfArrayVariables());
     tArray = pPreviousState.gettArray();
     sizeVar = pPreviousState.getSizeVar();
     language = pPreviousState.getLanguage();
-    this.canBeEmpty = false;
+    this.canBeEmpty = pPreviousState.canBeEmpty;
     cpaName = pPreviousState.getCPAName();
     propertyPredicate = pPreviousState.getPropertyPredicate();
     logger = pPreviousState.getLogger();
-    callStack = pPreviousState.callStack;
-    pathFormula = pPreviousState.pathFormula;
+    callStack = pPreviousState.getCallStack();
+    pathFormula = pPreviousState.getPathFormula();
     splitCondition = pPreviousState.getSplitCondition();
+  }
+
+  public ArraySegmentationState<T> getDeepCopy() {
+    if (this instanceof ErrorSegmentation) {
+      return new ErrorSegmentation<>(this);
+    } else if (this instanceof UnreachableSegmentation) {
+      return new UnreachableSegmentation<>(this);
+    } else {
+      return new ArraySegmentationState<>(this);
+    }
   }
 
   /**
@@ -195,8 +222,8 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
 
     // Don't need to create a copy the elements to avoid side effects, since this is done during
     // unify
-    ArraySegmentationState<T> first = new ArraySegmentationState<>(this);
-    ArraySegmentationState<T> second = new ArraySegmentationState<>(pOther);
+    ArraySegmentationState<T> first = this.getDeepCopy();
+    ArraySegmentationState<T> second = pOther.getDeepCopy();
 
     if (this.splitCondition.equals(pOther.splitCondition)) {
 
@@ -444,7 +471,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
       try {
         ArraySegmentationState<T> res =
             modifier.storeAnalysisInformationAtIndex(
-                new ArraySegmentationState<>(this),
+                this.getDeepCopy(),
                 (CExpression) index,
                 analysisInfo,
                 newSegmentIsPotentiallyEmpty,
@@ -480,7 +507,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     try {
       ArraySegmentationState<T> res =
           modifier.storeAnalysisInformationAtIndexWithoutAddingBounds(
-              new ArraySegmentationState<>(this),
+              this.getDeepCopy(),
               index,
               analysisInfo,
               newSegmentIsPotentiallyEmpty);
@@ -571,7 +598,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     return tArray;
   }
 
-
   public AExpression getSizeVar() {
     return sizeVar;
   }
@@ -579,7 +605,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   public T gettEmptyElement() {
     return tEmptyElement;
   }
-
 
   public boolean isShouldBeHighlighted() {
     return shouldBeHighlighted;
@@ -600,7 +625,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
   public Language getLanguage() {
     return language;
   }
-
 
   public Predicate<ArraySegmentationState<T>> getPropertyPredicate() {
     return propertyPredicate;
@@ -656,7 +680,6 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
         && Objects.equals(this.canBeEmpty, other.canBeEmpty)
         && Objects.equals(tEmptyElement, other.tEmptyElement);
   }
-
 
   @Override
   public String toString() {

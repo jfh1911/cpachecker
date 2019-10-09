@@ -86,7 +86,7 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
     }
 
     // For logging:
-    ArraySegmentationState<T> copy = new ArraySegmentationState<>(pSegmentation);
+    ArraySegmentationState<T> copy = pSegmentation.getDeepCopy();
 
     // There is a formula to strengthen the segmentation, hence continue;
     // Check, if the formula has any information about the variables present in the formula
@@ -114,7 +114,7 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
     // clause (SIZE != 0) and see, if we can infer a more precise result. Since we made the
     // Assumption that the array segmentation belongs to an empty array, we set the flag
     // "mayBeEmpty"
-    ArraySegmentationState<T> copyAfterFirstiteration = new ArraySegmentationState<>(pSegmentation);
+    ArraySegmentationState<T> copyAfterFirstiteration = pSegmentation.getDeepCopy();
     try {
       Optional<BooleanFormula> bfGEQ =
           getBooleanFormula(

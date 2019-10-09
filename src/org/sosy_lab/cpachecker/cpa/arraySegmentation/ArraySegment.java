@@ -77,7 +77,7 @@ public class ArraySegment<T extends ClonableLatticeAbstractState<T>> implements 
     segmentBound = new ArrayList<>(pS.getSegmentBound());
     analysisInformation = pS.getAnalysisInformation().getDeepCopy();
     isPotentiallyEmpty = pS.isPotentiallyEmpty;
-    nextSegment = new ArraySegment<>(pS.getNextSegment());
+    nextSegment = pS.getNextSegment();
     language = pS.getLanguage();
   }
 

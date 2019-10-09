@@ -46,7 +46,6 @@ import org.sosy_lab.cpachecker.cpa.arraySegmentation.CPropertySpec;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.ArraySegmentationCPAHelper;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.EnhancedCExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.transfer.CSegmentationTransferRelation;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 @Options(prefix = UsageAnalysisCPA.NAME_OF_ANALYSIS)
@@ -141,15 +140,11 @@ public class UsageAnalysisCPA extends AbstractCPA {
 
   @Override
   public TransferRelation getTransferRelation() {
-    return new CSegmentationTransferRelation<VariableUsageState>(
-        new UsageAnalysisTransferRelation(
-            new LogManagerWithoutDuplicates(logger),
-            this.cfa.getMachineModel()),
+    return new UsageAnalysisTransferRelation(
         new LogManagerWithoutDuplicates(logger),
-        cfa.getMachineModel(),
-        "SimpleUsage");
-  }
+        this.cfa.getMachineModel());
 
+  }
 
   @Override
   public ArraySegmentationState<VariableUsageState>
