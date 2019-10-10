@@ -32,14 +32,12 @@ import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpressionBuilder;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIntegerLiteralExpression;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
-import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ErrorSegmentation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.formula.FormulaState;
-import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.EnhancedCExpressionSimplificationVisitor;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 import org.sosy_lab.cpachecker.util.Pair;
@@ -58,7 +56,6 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
   private LogManagerWithoutDuplicates logger;
   private CBinaryExpressionBuilder binExprBuilder;
   private CUpdateTransformer<T> updateTransformer;
-  private ExpressionSimplificationVisitor visitor;
 
   public CSegmentationStrengthener(
       MachineModel pMachineModel,
@@ -69,7 +66,6 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
     logger = pLogger;
     updateTransformer = pUpdateTransformer;
     binExprBuilder = new CBinaryExpressionBuilder(machineModel, logger);
-    visitor = new EnhancedCExpressionSimplificationVisitor(machineModel, logger);
   }
 
   public ArraySegmentationState<T> strengthen(
@@ -77,7 +73,7 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
       FormulaState pFormulaState,
       PathFormula pPathFormula,
       CFAEdge pCfaEdge)
-      throws InterruptedException, UnrecognizedCodeException {
+      throws InterruptedException {
 
     // Firstly, check for corner cases Unreachable and Error segment
     if (pSegmentation instanceof UnreachableSegmentation
@@ -99,7 +95,6 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
             pSegmentation,
             pFormulaState,
             pCfaEdge,
-            ssa,
             manager,
             converter);
 
@@ -163,14 +158,13 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
                       pPathFormula.getLength() + 1),
                   pFormulaState.getPr());
           updatedFormulaState.whilebefore = pFormulaState.whilebefore;
-          updatedFormulaState.formulabefore1 = pFormulaState.formulabefore1;
+          updatedFormulaState.formulabefore = pFormulaState.formulabefore;
 
           pSegmentation =
               strengthenWithSmallerAndSmallerEqual(
                   pSegmentation,
                   updatedFormulaState,
                   pCfaEdge,
-                  ssa,
                   manager,
                   converter);
           if (!copyAfterFirstiteration.equals(pSegmentation)) {
@@ -265,7 +259,6 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
       ArraySegmentationState<T> pSegmentation,
       FormulaState pFormulaState,
       CFAEdge pCfaEdge,
-      SSAMap ssa,
       FormulaManagerView manager,
       CtoFormulaConverter converter)
       throws InterruptedException {
@@ -278,7 +271,6 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
                 pSegmentation.getSegments().get(i).getSegmentBound(),
                 pSegmentation.getSegments().get(i + 1).getSegmentBound(),
                 BinaryOperator.LESS_THAN,
-                ssa,
                 manager,
                 converter,
                 binExprBuilder,
@@ -289,7 +281,6 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
                 pSegmentation.getSegments().get(i + 1).getSegmentBound(),
                 pSegmentation.getSegments().get(i).getSegmentBound(),
                 BinaryOperator.LESS_EQUAL,
-                ssa,
                 manager,
                 converter,
                 binExprBuilder,
@@ -337,7 +328,6 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
    * @param pSB1 used on LHS
    * @param pSB2 used on RHS
    * @param pBinaryOp the operator
-   * @param pSsa current SSA transformation
    * @param pConverter to convert the expressions
    * @param pManager of the path formula
    * @param pBinExprBuilder to build expressions
@@ -350,7 +340,6 @@ public class CSegmentationStrengthener<T extends ExtendedCompletLatticeAbstractS
       List<AExpression> pSB1,
       List<AExpression> pSB2,
       BinaryOperator pBinaryOp,
-      SSAMap pSsa,
       FormulaManagerView pManager,
       CtoFormulaConverter pConverter,
       CBinaryExpressionBuilder pBinExprBuilder,

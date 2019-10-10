@@ -35,10 +35,8 @@ import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedCompletLatticeAbstractState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.SegmentationReachabilityChecker;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.transfer.CUpdateTransformer;
-import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
-import org.sosy_lab.java_smt.api.SolverException;
 
 public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
     extends CUpdateTransformer<T> {
@@ -56,13 +54,14 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
 
   /**
    * An extended version of the update transformer, making use of splitting
+   * 
+   * @param expr the condition of the edge
+   * @param pTruthAssumption the assumption,if the condition is true or not
+   * @param pState the current state that should be updated
+   * @param pCfaEdge the edge
    *
-   * @param pCfaEdge
-   *
-   * @throws InterruptedException
-   * @throws SolverException
-   *
-   * @throws CPAException if the code cannot be modified
+   * 
+   * @throws CPATransferException if the code cannot be modified
    */
 
   public @Nullable ExtendedArraySegmentationState<T> updateWithSplit(
@@ -70,7 +69,7 @@ public class CExtendedUpdateTransformer<T extends ExtendedCompletLatticeAbstract
       boolean pTruthAssumption,
       @Nullable ArraySegmentationState<T> pState,
       CFAEdge pCfaEdge)
-      throws SolverException, InterruptedException, CPATransferException {
+      throws CPATransferException {
 
     // Apply the truth assumption. In case of false, invert the operator
     if (!pTruthAssumption) {

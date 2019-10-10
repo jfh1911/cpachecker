@@ -246,7 +246,7 @@ public class ExtendedArraySegmentationState<T extends ExtendedCompletLatticeAbst
    *        (default is false)
    * @param machineModel of the computation
    * @param pVisitor to create expressions
-   * @param pCfaEdge
+   * @param pCfaEdge the current edge, needed for logging
    * @return true, if the operation was successful
    */
   public boolean storeAnalysisInformationAtIndex(

@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.ast.c.CArraySubscriptExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CAssignment;
 import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
@@ -37,20 +36,19 @@ import org.sosy_lab.cpachecker.cfa.simplification.ExpressionSimplificationVisito
 import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ErrorSegmentation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageType;
 
 public class UsageTransformer {
 
   private MachineModel machineModel;
-  private LogManager logger;
   private ExpressionSimplificationVisitor visitor;
 
   public UsageTransformer(
       MachineModel pMachineModel,
-      LogManager pLogger,
       ExpressionSimplificationVisitor pVisitor) {
     super();
     machineModel = pMachineModel;
-    logger = pLogger;
     visitor = pVisitor;
   }
 

@@ -19,8 +19,10 @@
  */
 package org.sosy_lab.cpachecker.cpa.usageAnalysis;
 
+import com.google.common.base.Throwables;
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
@@ -46,6 +48,10 @@ import org.sosy_lab.cpachecker.cpa.arraySegmentation.CPropertySpec;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.ArraySegmentationCPAHelper;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.EnhancedCExpressionSimplificationVisitor;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisCPA;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisTransferRelation;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageType;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 @Options(prefix = UsageAnalysisCPA.NAME_OF_ANALYSIS)
@@ -55,7 +61,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
     secure = true,
     name = "merge",
     toUppercase = true,
-    values = {"SEP", "JOIN"},
+    values = {"JOIN"},
     description = "which merge operator to use for UsageOfArrayElemensCPA")
   private String mergeType = "JOIN";
 
@@ -63,7 +69,7 @@ public class UsageAnalysisCPA extends AbstractCPA {
     secure = true,
     name = "stop",
     toUppercase = true,
-    values = {"SEP", "JOIN"},
+    values = {"SEP"},
     description = "which stop operator to use for UsageOfArrayElemensCPA")
   private String stopType = "SEP";
 
@@ -104,7 +110,10 @@ public class UsageAnalysisCPA extends AbstractCPA {
    * This method acts as the constructor of the interval analysis CPA.
    *
    * @param config the configuration of the CPAinterval analysis CPA.
-   * @param pVarnameArray
+   * @param pLogger the logger for the analysis
+   * @param cfa the CFA of the program
+   * @param pVarnameArray the name of the array, that should be analyzed
+   * @param shutdownNotifier of the analysis
    */
   public UsageAnalysisCPA(
       Configuration config,
@@ -171,9 +180,13 @@ public class UsageAnalysisCPA extends AbstractCPA {
                       visitor,
                       builder);
             } catch (CPAException e) {
-              // TODO Auto-generated catch block
-              e.printStackTrace();
+              logger.log(
+                  Level.CONFIG,
+                  "Cannot check the state due to an interal error "
+                      + Throwables.getStackTraceAsString(e));
+              return false;
             }
+
             List<CGenericInterval> overApproxP = properties.getOverApproxIntervals();
             boolean isCorrect =
                 pT.isEmptyArray()

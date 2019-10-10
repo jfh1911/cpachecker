@@ -417,6 +417,7 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
     return s instanceof ErrorSegmentation || s instanceof UnreachableSegmentation;
   }
 
+  @SuppressWarnings("unchecked")
   public Optional<ArraySegmentationState<T>> applyInnerTransferRelation(
       CFAEdge pCfaEdge,
       ArraySegmentationState<T> pArraySegmentationState)
@@ -470,12 +471,6 @@ public class CSegmentationTransferRelation<T extends ExtendedCompletLatticeAbstr
       logTransformation(String inputToTransfer, @Nullable ArraySegmentationState<T> pState) {
     logger.log(Level.FINE, PREFIX + " " + inputToTransfer + ")=" + pState);
     logger.flush();
-    // try {
-    // Thread.sleep(400);
-    // } catch (InterruptedException e) {
-    // // TODO Auto-generated catch block
-    // e.printStackTrace();
-    // }
     return pState;
   }
 

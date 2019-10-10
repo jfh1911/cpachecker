@@ -45,7 +45,6 @@ import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 import org.sosy_lab.cpachecker.util.Triple;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
-import org.sosy_lab.cpachecker.util.predicates.pathformula.SSAMap;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.ctoformula.CtoFormulaConverter;
 import org.sosy_lab.cpachecker.util.predicates.smt.FormulaManagerView;
 import org.sosy_lab.cpachecker.util.predicates.smt.Solver;
@@ -498,7 +497,6 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
         pEx,
         pSizeVar,
         pOperator,
-        pF.getPathFormula().getSsa(),
         pF.getPr().getFormulaManager(),
         pF.getPr().getConverter(),
         pF.getPathFormula(),
@@ -582,9 +580,6 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
     if (comparison < 0) {
       // The constant is smaller than pEx, continue with {e_j,..} p_j ? {i} p_j ?_j ...
 
-      List<AExpression> otherExpr = new ArrayList<>(segOfVar.getSegmentBound());
-      otherExpr.remove(pVar);
-
       // remove var from seOfVar
       List<AExpression> newSegBounds = new ArrayList<>(segOfVar.getSegmentBound());
       newSegBounds.remove(pVar);
@@ -641,7 +636,6 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
    * @param e1 used on LHS
    * @param e2 used on RHS
    * @param pBinaryOp the operator
-   * @param pSsa current SSA transformation
    * @param pConverter to convert the expressions
    * @param pManager of the path formula
    * @param pFormula the path formula
@@ -653,7 +647,6 @@ public class CSplitTransformer<T extends ExtendedCompletLatticeAbstractState<T>>
       CExpression e1,
       CExpression e2,
       BinaryOperator pBinaryOp,
-      SSAMap pSsa,
       FormulaManagerView pManager,
       CtoFormulaConverter pConverter,
       PathFormula pFormula,

@@ -227,9 +227,7 @@ public class CPropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
   /**
    * Compute all segment bounds having the desired element stored, in an ordered way
    *
-   * @param pSegmentBound where to search
-   * @param pSizeVar
-   * @return
+   * @return list of intervals, for that the desired property holds
    */
   private List<CGenericInterval> computeIntervals(ArraySegmentationState<T> pState, T pProperty) {
     List<CGenericInterval> res = new ArrayList<>();
@@ -314,7 +312,8 @@ public class CPropertySpec<T extends ExtendedCompletLatticeAbstractState<T>> {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    CPropertySpec other = (CPropertySpec) obj;
+    @SuppressWarnings("unchecked")
+    CPropertySpec<T> other = (CPropertySpec<T>) obj;
     return Objects.equals(lowerMappingOfExpr, other.lowerMappingOfExpr)
         && Objects.equals(property, other.property)
         && Objects.equals(segmentintervals, other.segmentintervals)

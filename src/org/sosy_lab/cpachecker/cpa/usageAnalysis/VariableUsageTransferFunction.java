@@ -21,6 +21,7 @@ package org.sosy_lab.cpachecker.cpa.usageAnalysis;
 
 import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
 
 public class VariableUsageTransferFunction
     extends ForwardingTransferRelation<VariableUsageState, VariableUsageState, Precision> {

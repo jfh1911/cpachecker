@@ -115,8 +115,8 @@ public class SegmentationReachabilityChecker<T extends ExtendedCompletLatticeAbs
     }
 
     // Case 4: The ordering of segment bounds implies that i ≤ c, but e = (i > c) or vice versa
-    if (pOperator.equals(BinaryOperator.GREATER_THAN) && segOfVar < segOfExpr
-        || pOperator.equals(BinaryOperator.LESS_THAN) && segOfVar > segOfExpr) {
+    if ((pOperator.equals(BinaryOperator.GREATER_THAN) && segOfVar < segOfExpr)
+        || (pOperator.equals(BinaryOperator.LESS_THAN) && segOfVar > segOfExpr)) {
       return new UnreachableSegmentation<>(pSegmentation);
     }
 

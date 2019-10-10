@@ -19,6 +19,7 @@
  */
 package org.sosy_lab.cpachecker.cpa.arraySegmentation.util.transfer;
 
+import com.google.common.base.Throwables;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
@@ -56,7 +57,7 @@ public class TransformationHelper<T extends ExtendedCompletLatticeAbstractState<
               + pVar.toASTString()
               + " from "
               + state.toDOTLabel()
-              + e.getStackTrace().toString());
+              + Throwables.getStackTraceAsString(e));
       // TODO Enhance error handling
       return null;
     }

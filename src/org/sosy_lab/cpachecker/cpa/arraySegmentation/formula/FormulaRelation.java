@@ -27,8 +27,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.NavigableSet;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.collect.MapsDifference;
@@ -77,7 +75,7 @@ import org.sosy_lab.java_smt.api.FormulaType;
 public class FormulaRelation
     extends ForwardingTransferRelation<FormulaState, FormulaState, Precision> {
 
-  // TODO REMOVE
+  // TODO replace the formula relation by a more sophisticated version in the near future
   @SuppressWarnings("unused")
   private Configuration config;
   private Solver solver;
@@ -119,8 +117,6 @@ public class FormulaRelation
   private final ShutdownNotifier shutdownNotifier;
 
   CtoFormulaTypeHandler typeHandler;
-  private Map<CFANode, NavigableSet<CFANode>> rcd;
-
   /**
    * Internal Variable: Control Dependencies
    */
@@ -130,15 +126,13 @@ public class FormulaRelation
       Configuration pConfig,
       LogManager pLogger,
       ShutdownNotifier pShutdownNotifier,
-      CFA pCfa,
-      Map<CFANode, NavigableSet<CFANode>> pRcd)
+      CFA pCfa)
       throws InvalidConfigurationException {
 
     config = pConfig;
     logger = pLogger;
     shutdownNotifier = pShutdownNotifier;
     solver = Solver.create(config, logger, pShutdownNotifier);
-    FormulaManagerView tmpformulaManager = solver.getFormulaManager();
     formulaManager = solver.getFormulaManager();
 
     FormulaEncodingOptions options = new FormulaEncodingOptions(config);
@@ -164,7 +158,6 @@ public class FormulaRelation
             shutdownNotifier,
             pCfa,
             AnalysisDirection.FORWARD);
-    this.rcd = pRcd;
   }
 
   public FormulaState makeInitial() {
@@ -183,7 +176,7 @@ public class FormulaRelation
     }
     FormulaState result = new FormulaState(newformula1, this);
     result.whilebefore = state.whilebefore;
-    result.formulabefore1 = state.formulabefore1;
+    result.formulabefore = state.formulabefore;
     if (pCfaEdge.getPredecessor() != null) {
       CFANode pre = pCfaEdge.getPredecessor();
       int length = pre.getNumEnteringEdges();
@@ -210,10 +203,10 @@ public class FormulaRelation
 
               newformula1 =
                   new PathFormula(
-                      state.formulabefore1.getFormula(),
+                      state.formulabefore.getFormula(),
                       newmap1,
-                      state.formulabefore1.getPointerTargetSet(),
-                      state.formulabefore1.getLength());
+                      state.formulabefore.getPointerTargetSet(),
+                      state.formulabefore.getLength());
 
               newformula1 = pathFormulaManager.makeAnd(newformula1, pCfaEdge);
 
@@ -223,7 +216,7 @@ public class FormulaRelation
 
             result = new FormulaState(newformula1, this);
             result.whilebefore = state.whilebefore;
-            result.formulabefore1 = state.formulabefore1;
+            result.formulabefore = state.formulabefore;
           } else {
             // The non-loop part is not considered here
           }
@@ -247,16 +240,16 @@ public class FormulaRelation
                   }
                   SSAMap newmap1 = mb1.build();
 
-                  if (state.formulabefore1 == null) {
+                  if (state.formulabefore == null) {
                     throw new CPATransferException(
                         "The formulaBefore needs to be set, hence the transformation is aborted");
                   }
                   newformula1 =
                       new PathFormula(
-                          state.formulabefore1.getFormula(),
+                          state.formulabefore.getFormula(),
                           newmap1,
-                          state.formulabefore1.getPointerTargetSet(),
-                          state.formulabefore1.getLength());
+                          state.formulabefore.getPointerTargetSet(),
+                          state.formulabefore.getLength());
 
                   newformula1 = pathFormulaManager.makeAnd(newformula1, pCfaEdge);
 
@@ -316,12 +309,12 @@ public class FormulaRelation
     FormulaState result = new FormulaState(newformula1, this);
 
     result.whilebefore = state.whilebefore;
-    result.formulabefore1 = state.formulabefore1;
+    result.formulabefore = state.formulabefore;
     // Workaround for for-loops
     for (int i = 0; i < pCfaEdge.getPredecessor().getNumEnteringEdges(); i++) {
       if (pCfaEdge.getPredecessor().getEnteringEdge(i).getEdgeType().equals(CFAEdgeType.BlankEdge)
           && pCfaEdge.getPredecessor().getEnteringEdge(i).getDescription().contains("for")) {
-        result.formulabefore1 = state.formulabefore1;
+        result.formulabefore = state.formulabefore;
       }
     }
     return result;
@@ -341,12 +334,12 @@ public class FormulaRelation
     }
     FormulaState result = new FormulaState(newformula1, this);
     result.whilebefore = state.whilebefore;
-    result.formulabefore1 = state.formulabefore1;
+    result.formulabefore = state.formulabefore;
     // Workaround for for-loops
     for (int i = 0; i < pCfaEdge.getPredecessor().getNumEnteringEdges(); i++) {
       if (pCfaEdge.getPredecessor().getEnteringEdge(i).getEdgeType().equals(CFAEdgeType.BlankEdge)
           && pCfaEdge.getPredecessor().getEnteringEdge(i).getDescription().contains("for")) {
-        result.formulabefore1 = state.formulabefore1;
+        result.formulabefore = state.formulabefore;
       }
     }
     return result;
@@ -369,7 +362,7 @@ public class FormulaRelation
       SSAMapBuilder mb1 = map1.builder();
       SSAMap newmap1 = mb1.build();
       result.whilebefore = newmap1;
-      result.formulabefore1 = state.path1;
+      result.formulabefore = state.path1;
       return result;
     }
 
@@ -402,7 +395,7 @@ public class FormulaRelation
             int index2 = symbolDifference.getRightValue().orElse(1);
             if (index1 + 1 == index2 && state.whilebefore.containsVariable(v)) {
               // Consider History of Not rewritten variables
-              p1add = formulaManager.makeAnd(p1add, makeEqual(v, v, index2, index1, 1, 1));
+              p1add = formulaManager.makeAnd(p1add, makeEqual(v, v, index2, index1));
 
               length1++;
             }
@@ -431,7 +424,7 @@ public class FormulaRelation
       SSAMapBuilder mb1 = map1.builder();
       SSAMap newmap1 = mb1.build();
       result.whilebefore = newmap1;
-      result.formulabefore1 = state.path1;
+      result.formulabefore = state.path1;
       return result;
     }
 
@@ -464,7 +457,7 @@ public class FormulaRelation
             int index2 = symbolDifference.getRightValue().orElse(1);
             if (index1 + 1 == index2 && state.whilebefore.containsVariable(v)) {
               // Consider History of Not rewritten variables
-              p1add = formulaManager.makeAnd(p1add, makeEqual(v, v, index2, index1, 1, 1));
+              p1add = formulaManager.makeAnd(p1add, makeEqual(v, v, index2, index1));
 
               length1++;
             }
@@ -522,7 +515,7 @@ public class FormulaRelation
     }
   }
 
-  public BooleanFormula makeEqual(String v1, String v2, int i1, int i2, int tag1, int tag2) {
+  public BooleanFormula makeEqual(String v1, String v2, int i1, int i2) {
     FormulaType<?> vartype = converter.getFormulaTypeFromCType(CNumericTypes.INT);
 
     Formula f1 = formulaManager.makeVariable(vartype, v1, i1);
@@ -534,7 +527,7 @@ public class FormulaRelation
   }
 
   public BooleanFormula makeEqualforBothPaths(Variable v, int i) {
-    return makeEqual(v.toString(), v.toString(), i, i, 1, 2);
+    return makeEqual(v.toString(), v.toString(), i, i);
   }
 
   public BooleanFormula makeEqualforBothPaths(List<Variable> pVars, int i) {

@@ -131,7 +131,7 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
     // The algorithm terminates, if the left and the right segment bound are reached with the
     // pointer
 
-    while ((!(b1 instanceof FinalSegment)) && (!(b2 instanceof FinalSegment))) {
+    while (!(b1 instanceof FinalSegment) && !(b2 instanceof FinalSegment)) {
       // Case 2: Both segment bounds are equal
       if (b1.getSegmentBound().containsAll(b2.getSegmentBound())
           && b2.getSegmentBound().containsAll(b1.getSegmentBound())) {
@@ -317,7 +317,7 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
           }
         }
 
-        if ((!b1Bar.isEmpty()) && b2Bar.isEmpty()) {
+        if (!b1Bar.isEmpty() && b2Bar.isEmpty()) {
           if (!b2Hat.isEmpty()) {
 
             // Case 6.1.1
@@ -368,7 +368,7 @@ public class SegmentationUnifier<T extends ExtendedCompletLatticeAbstractState<T
             b2 = b0Prime;
             continue;
           }
-        } else if (b1Bar.isEmpty() && (!b2Bar.isEmpty())) {
+        } else if (b1Bar.isEmpty() && !b2Bar.isEmpty()) {
 
           if (!b1Hat.isEmpty()) {
             // Case 6.1.3

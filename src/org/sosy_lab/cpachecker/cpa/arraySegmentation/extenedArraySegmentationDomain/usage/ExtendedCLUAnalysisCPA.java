@@ -24,7 +24,6 @@ import java.util.function.Predicate;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
-import org.sosy_lab.common.configuration.Option;
 import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.common.log.LogManagerWithoutDuplicates;
@@ -50,14 +49,6 @@ import org.sosy_lab.cpachecker.exceptions.CPAException;
 @Options(prefix = "cpa.arrayContentCPA")
 public class ExtendedCLUAnalysisCPA extends ExtendedLocationArrayContentCPA<VariableUsageState> {
 
-
-  @Option(
-    name = "arrayName",
-    toUppercase = false,
-    description = "The array that needs to be analyzed")
-  private String varnameArray = "";
-
-
   protected ExtendedCLUAnalysisCPA(
       Configuration pConfig,
       LogManager pLogger,
@@ -82,7 +73,6 @@ public class ExtendedCLUAnalysisCPA extends ExtendedLocationArrayContentCPA<Vari
     return new UsageAnalysisCPA(pConfig, pLogger, pCfa, pVarnameArray, pShutdownNotifier);
   }
 
-
   @Override
   protected String getName() {
     return "UsageAnalysisCPA";
@@ -94,8 +84,7 @@ public class ExtendedCLUAnalysisCPA extends ExtendedLocationArrayContentCPA<Vari
   }
 
   @Override
-  protected VariableUsageState
-      getInitialInnerState(CFANode pNode, StateSpacePartition pPartition) {
+  protected VariableUsageState getInitialInnerState(CFANode pNode, StateSpacePartition pPartition) {
     return new VariableUsageState(VariableUsageType.NOT_USED);
   }
 
@@ -121,8 +110,7 @@ public class ExtendedCLUAnalysisCPA extends ExtendedLocationArrayContentCPA<Vari
                   visitor,
                   builder);
         } catch (CPAException e) {
-          // TODO Auto-generated catch block
-          e.printStackTrace();
+          throw new IllegalArgumentException(e);
         }
         List<CGenericInterval> overApproxP = properties.getOverApproxIntervals();
         boolean isCorrect =
@@ -134,6 +122,5 @@ public class ExtendedCLUAnalysisCPA extends ExtendedLocationArrayContentCPA<Vari
       }
     };
   }
-
 
 }

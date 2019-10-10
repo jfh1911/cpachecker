@@ -46,6 +46,8 @@ import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.EnhancedCExpressionSimplificationVisitor;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageTransformer;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
 public class UsageAnalysisTransferRelation extends
@@ -65,7 +67,7 @@ public class UsageAnalysisTransferRelation extends
     logger = pLogger;
     machineModel = pMachineModel;
     visitor = new EnhancedCExpressionSimplificationVisitor(machineModel, logger);
-    usageTransformer = new UsageTransformer(machineModel, logger, visitor);
+    usageTransformer = new UsageTransformer(machineModel, visitor);
 
   }
 

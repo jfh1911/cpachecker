@@ -75,11 +75,6 @@ public class FormulaCPA implements ConfigurableProgramAnalysis {
   private StopOperator stop;
   private MergeOperator merge;
 
-  /**
-   * Internal Variable: Control Dependencies
-   */
-  private Map<CFANode, NavigableSet<CFANode>> rcd;
-
   public static CPAFactory factory() {
     return AutomaticCPAFactory.forType(FormulaCPA.class);
   }
@@ -112,9 +107,7 @@ public class FormulaCPA implements ConfigurableProgramAnalysis {
     Map<CFANode, NavigableSet<CFANode>> recd = cdcom.getReversedControlDependency();
     pLogger.log(Level.FINE, "Reversed Control Dependency");
     pLogger.log(Level.FINE, recd);
-    this.rcd = recd;
-
-    transfer = new FormulaRelation(pConfig, pLogger, pShutdownNotifier, pCfa,this.rcd);
+    transfer = new FormulaRelation(pConfig, pLogger, pShutdownNotifier, pCfa);
      if (stopType.equals("SEP")) {
       stop = new StopSepOperator(domain);
     } else if (mergeType.equals("JOIN")) {

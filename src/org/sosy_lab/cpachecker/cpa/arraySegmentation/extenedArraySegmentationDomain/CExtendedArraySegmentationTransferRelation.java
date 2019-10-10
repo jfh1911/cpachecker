@@ -64,7 +64,6 @@ import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.transfer.CSegmentation
 import org.sosy_lab.cpachecker.cpa.callstack.CallstackState;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
-import org.sosy_lab.java_smt.api.SolverException;
 
 public class CExtendedArraySegmentationTransferRelation<T extends ExtendedCompletLatticeAbstractState<T>>
     extends
@@ -159,15 +158,11 @@ public class CExtendedArraySegmentationTransferRelation<T extends ExtendedComple
 
       // Case 3: Update(e,d) and Case 4 Split
       if (updatedEdge.getExpression() instanceof CBinaryExpression) {
-        try {
-          return extendedUpdateTransformer.updateWithSplit(
-              (CBinaryExpression) updatedEdge.getExpression(),
-              pTruthAssumption,
-              resState.get(),
-              updatedEdge);
-        } catch (SolverException | InterruptedException e) {
-          throw new CPATransferException("", e);
-        }
+        return extendedUpdateTransformer.updateWithSplit(
+            (CBinaryExpression) updatedEdge.getExpression(),
+            pTruthAssumption,
+            resState.get(),
+            updatedEdge);
       }
     }
     return applyTransferFunctionsAndLog(pCfaEdge);
@@ -263,8 +258,6 @@ public class CExtendedArraySegmentationTransferRelation<T extends ExtendedComple
 
   private ExtendedArraySegmentationState<T> applyTransferFunctionsAndLog(AbstractCFAEdge pCfaEdge)
       throws CPATransferException {
-    // TODO: Verify that this is the correct behavior
-    String inputArgumentsAsString = computeInnputString(pCfaEdge);
     if (super.state == null) {
       // logger.log(Level.FINE, PREFIX + " " + inputArgumentsAsString + ")= NULL");
       // logger.flush();
@@ -285,18 +278,10 @@ public class CExtendedArraySegmentationTransferRelation<T extends ExtendedComple
               transferRelationForSegmentation
                   .getAbstractSuccessorsForEdge(segmentation, precision, pCfaEdge)).get(0));
     }
-    return logTransformation(inputArgumentsAsString, transformedStates);
+    return new ExtendedArraySegmentationState<>(transformedStates, logger);
   }
 
 
-  /**
-   * @param inputToTransfer needed, if the input should be logged (e.g. for debugging purposes)
-   */
-  private ExtendedArraySegmentationState<T> logTransformation(
-      String inputToTransfer,
-      List<ArraySegmentationState<T>> pTransformedStates) {
-    return new ExtendedArraySegmentationState<>(pTransformedStates, logger);
-  }
 
   private String computeInnputString(AbstractCFAEdge pCfaEdge) {
     return pCfaEdge.getSuccessor().getNodeNumber()

@@ -63,7 +63,7 @@ public class FormulaState implements AbstractState, Cloneable, Serializable,
   }
 
   public SSAMap whilebefore = null;
-  public PathFormula formulabefore1 = null;
+  public PathFormula formulabefore = null;
 
   // protected SSAMap whileafter=null;
 
@@ -156,7 +156,7 @@ public class FormulaState implements AbstractState, Cloneable, Serializable,
     return this.isCovered(pOther) && pOther.isCovered(this);
   }
 
-  public PathFormula formulajoin(PathFormula p1, PathFormula q1, int tag) {
+  public PathFormula formulajoin(PathFormula p1, PathFormula q1) {
     FormulaManagerView fm = pr.getFormulaManager();
     // BooleanFormulaManagerView bm = fm.getBooleanFormulaManager();
 
@@ -177,11 +177,11 @@ public class FormulaState implements AbstractState, Cloneable, Serializable,
       int index1 = symbolDifference.getLeftValue().orElse(1);
       int index2 = symbolDifference.getRightValue().orElse(1);
       if (index1 < index2) {
-        p1add = fm.makeAnd(p1add, pr.makeEqual(v, v, index2, index1, tag, tag));
+        p1add = fm.makeAnd(p1add, pr.makeEqual(v, v, index2, index1));
         length1++;
       }
       if (index1 > index2) {
-        q1add = fm.makeAnd(q1add, pr.makeEqual(v, v, index1, index2, tag, tag));
+        q1add = fm.makeAnd(q1add, pr.makeEqual(v, v, index1, index2));
         length2++;
       }
     }
@@ -212,26 +212,26 @@ public class FormulaState implements AbstractState, Cloneable, Serializable,
     PathFormula p1 = this.getPathFormula();
 
     PathFormula q1 = pOther.getPathFormula();
-    PathFormula newpf = formulajoin(p1, q1, 1);
+    PathFormula newpf = formulajoin(p1, q1);
 
 
     merge = new FormulaState(newpf, pr);
 
-    if (this.formulabefore1 != null && pOther.formulabefore1 != null) {
-      merge.formulabefore1 = formulajoin(this.formulabefore1, pOther.formulabefore1, 1);
+    if (this.formulabefore != null && pOther.formulabefore != null) {
+      merge.formulabefore = formulajoin(this.formulabefore, pOther.formulabefore);
 
-      SSAMap map1 = merge.formulabefore1.getSsa();
+      SSAMap map1 = merge.formulabefore.getSsa();
       SSAMapBuilder mb1 = map1.builder();
       SSAMap newmap1 = mb1.build();
       merge.whilebefore = newmap1;
     } else {
-      if (this.formulabefore1 != null) {
+      if (this.formulabefore != null) {
         merge.whilebefore = this.whilebefore;
-        merge.formulabefore1 = this.formulabefore1;
+        merge.formulabefore = this.formulabefore;
 
       } else {
         merge.whilebefore = pOther.whilebefore;
-        merge.formulabefore1 = pOther.formulabefore1;
+        merge.formulabefore = pOther.formulabefore;
 
       }
     }
@@ -260,13 +260,13 @@ public class FormulaState implements AbstractState, Cloneable, Serializable,
 
     FormulaState result = new FormulaState(path1, pr);
     result.whilebefore = this.whilebefore;
-    result.formulabefore1 = this.formulabefore1;
+    result.formulabefore = this.formulabefore;
     return result;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(formulabefore1, path1, whilebefore);
+    return Objects.hash(formulabefore, path1, whilebefore);
   }
 
   @Override
@@ -281,7 +281,7 @@ public class FormulaState implements AbstractState, Cloneable, Serializable,
       return false;
     }
     FormulaState other = (FormulaState) obj;
-    return Objects.equals(formulabefore1, other.formulabefore1)
+    return Objects.equals(formulabefore, other.formulabefore)
         && Objects.equals(path1, other.path1)
     // FIXME: Just for test (maybe guarantees termination
     // && Objects.equals(whilebefore, other.whilebefore)

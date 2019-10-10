@@ -23,6 +23,9 @@ import java.io.Serializable;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedCompletLatticeAbstractState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.EmptyVariableUsageElement;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageType;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 public class VariableUsageState
@@ -52,7 +55,7 @@ public class VariableUsageState
   /**
    * The meet function looks as follows: this / pOther | U N U | U N N | N N
    *
-   * @throws CPAException
+   * @throws CPAException if the empty element is joined with non-empty elements
    */
   public VariableUsageState meet(VariableUsageState pOther) throws CPAException {
     if (type.equals(VariableUsageType.NOT_USED)) {

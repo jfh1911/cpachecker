@@ -19,6 +19,9 @@
  */
 package org.sosy_lab.cpachecker.cpa.usageAnalysis;
 
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.EmptyVariableUsageElement;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageType;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 public class EmptyVariableUsageElement extends VariableUsageState {

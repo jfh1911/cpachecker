@@ -121,7 +121,7 @@ public class ArraySegment<T extends ClonableLatticeAbstractState<T>> implements 
   @Override
   public ArraySegment<T> clone() {
     List<AExpression> boundsCopy = new ArrayList<>(segmentBound.size());
-    this.segmentBound.parallelStream().forEach(e -> boundsCopy.add((e)));
+    this.segmentBound.parallelStream().forEach(e -> boundsCopy.add(e));
     // TODO: Add deep copying!
     return new ArraySegment<>(
         boundsCopy,
@@ -281,8 +281,8 @@ public class ArraySegment<T extends ClonableLatticeAbstractState<T>> implements 
     for (int i = 0; i < this.segmentBound.size(); i++) {
       AExpression e = this.segmentBound.get(i);
       if (contains(e, pVar)) {
-        if ((e instanceof CExpression && (!(pReplacement instanceof CExpression)))
-            || e instanceof JExpression && (!(pReplacement instanceof JExpression))) {
+        if (((e instanceof CExpression) && !(pReplacement instanceof CExpression))
+            || ((e instanceof JExpression) && !(pReplacement instanceof JExpression))) {
           throw new IllegalArgumentException(
               "Cannot replace a java exprssion by a C expression or vice versa");
         }
@@ -351,7 +351,7 @@ public class ArraySegment<T extends ClonableLatticeAbstractState<T>> implements 
       return true;
     } else if (pE instanceof ABinaryExpression) {
       return contains(((ABinaryExpression) pE).getOperand1(), pVar)
-          || contains(((ABinaryExpression) pE).getOperand1(), pVar);
+          || contains(((ABinaryExpression) pE).getOperand2(), pVar);
     }
     return false;
   }
@@ -376,20 +376,21 @@ public class ArraySegment<T extends ClonableLatticeAbstractState<T>> implements 
   /**
    * Computes, if the segment bound contains any constant values
    *
-   * @param pVisitor used to simplif the expressions
+   * @param pVisitor used to simplify the expressions
    * @return either -1, if no constant value is found or the constant value
    */
   public BigInteger evaluateToInteger(ExpressionSimplificationVisitor pVisitor) {
     if (language.equals(Language.C)) {
       for (AExpression e : this.segmentBound) {
-        CExpression simplified;
+
         if (e instanceof CBinaryExpression) {
-          simplified = pVisitor.visit((CBinaryExpression) e);
+          CExpression simplified = pVisitor.visit((CBinaryExpression) e);
           if (simplified instanceof CIntegerLiteralExpression) {
             return ((CIntegerLiteralExpression) simplified).getValue();
-          } else if (e instanceof CIntegerLiteralExpression) {
-            return ((CIntegerLiteralExpression) e).getValue();
           }
+        } else if (e instanceof CIntegerLiteralExpression) {
+          return ((CIntegerLiteralExpression) e).getValue();
+
         }
       }
       return BigInteger.valueOf(-1);

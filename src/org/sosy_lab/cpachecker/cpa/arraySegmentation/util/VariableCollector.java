@@ -39,14 +39,11 @@ import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 
 public class VariableCollector {
 
-  private MachineModel machineModel;
-  private LogManager logger;
+
   CBinaryExpressionBuilder builder;
 
   public VariableCollector(MachineModel pMachineModel, LogManager pLogger) {
     super();
-    machineModel = pMachineModel;
-    logger = pLogger;
     builder = new CBinaryExpressionBuilder(pMachineModel, pLogger);
   }
 

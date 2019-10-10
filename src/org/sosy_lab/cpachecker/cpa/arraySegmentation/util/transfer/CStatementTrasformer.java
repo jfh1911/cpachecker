@@ -266,7 +266,7 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
           segBounds.add(pVar);
           segBounds.add(pRightHandSide);
           ArraySegment<T> newSeg =
-              new ArraySegment<T>(
+              new ArraySegment<>(
                   segBounds,
                   state.gettEmptyElement(),
                   prevSeg.isPotentiallyEmpty(),
@@ -293,10 +293,10 @@ public class CStatementTrasformer<T extends ExtendedCompletLatticeAbstractState<
    * Replace the variable pVar in all segment bounds with the inverse of pRightHandSide (meaning if
    * RHS = i+1 --> replaced with i-1 and vice versa)
    *
-   * @param pVar
-   * @param pRightHandSide
-   * @param state
-   * @return
+   * @param pVar the variable to replace
+   * @param pRightHandSide the replacement
+   * @param state where to replace
+   * @return the state with replaced variable
    */
   public ArraySegmentationState<T> replace(
       CIdExpression pVar,

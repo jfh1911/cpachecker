@@ -109,10 +109,9 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
     Map<CFANode, NavigableSet<CFANode>> recd = cdcom.getReversedControlDependency();
     pLogger.log(Level.FINE, "Reversed Control Dependency");
     pLogger.log(Level.FINE, recd);
-    Map<CFANode, NavigableSet<CFANode>> rcd = recd;
-
-    transfer = new FormulaRelation(pConfig, pLogger, pShutdownNotifier, pCfa, rcd);
+    transfer = new FormulaRelation(pConfig, pLogger, pShutdownNotifier, pCfa);
   }
+
   /**
    * Create a initial state
    *
@@ -120,9 +119,9 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
    * @param pPredicate the predicate for checking error states
    * @param pEmptyElement the empty element
    * @param pName of the analysis
-   * @param pNode
+   * @param pNode the initial node
    * @return an initial element
-   * @throws InterruptedException if an error occured
+   * @throws InterruptedException if an error occurred
    */
   public ArraySegmentationState<T>
       computeInitaleState(
@@ -138,7 +137,7 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
 
     List<ArraySegment<T>> segments =
         buildInitaleSegmentation(
-            initalValuesForArraySegmentationDomain,
+            initalValuesForArraySegmentationDomain.getFirst(),
             pEmptyElement,
             pInnerInitaleState);
 
@@ -162,20 +161,23 @@ public class ArraySegmentationCPAHelper<T extends ExtendedCompletLatticeAbstract
   }
 
   /**
+   * Creates the initial segmentation {0} _|_ ? {SIZE}
    *
-   * @param initalValuesForArraySegmentationDomain
-   * @param pEmptyElement
-   * @param pInitaleAnalysisInformaiton
-   * @return
+   * @param sizeOfArray the the sizeVariable/Constant used to create the array that needs to be
+   *        analyzed
+   * @param pEmptyElement the empty element of the domain. It needs to reference
+   * @param pInitaleAnalysisInformaiton the initial information, that are used for all array
+   *        elements
+   * @return the initial element
    */
   private List<ArraySegment<T>> buildInitaleSegmentation(
-      Triple<AExpression, CVariableDeclaration, List<AExpression>> initalValuesForArraySegmentationDomain,
+      AExpression sizeOfArray,
       T pEmptyElement,
       T pInitaleAnalysisInformaiton) {
     List<AExpression> pSBSecond = new ArrayList<>();
     // TODO: add handling for Java programs
-    // Assume that the Size-var is defined in main method
-    pSBSecond.add(initalValuesForArraySegmentationDomain.getFirst());
+    // Assume that the Size-Var is defined in main method
+    pSBSecond.add(sizeOfArray);
     List<AExpression> pSBFirst = new ArrayList<>();
     pSBFirst.add(CIntegerLiteralExpression.ZERO);
 

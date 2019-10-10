@@ -83,17 +83,29 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
       // that 0 <= i and i <= SIZE and check, if the analysis information that hold be stored in the
       // interval is already present in the over-approximated interval computed for i
       boolean error = false;
-      int lowerBound = computeLowerBound(state, pIndex, pCfaEdge);
-      int upperBound = computeUpperBound(state, pIndex, pCfaEdge);
-      for (int i = lowerBound; i < upperBound; i++) {
-        if (!state.getSegments().get(i).getAnalysisInformation().equals(pAnalysisInfo)) {
-          error = true;
-        }
-      }
-      if (!error && upperBound > lowerBound) {
-        return state;
-      } else {
 
+      try {
+        int lowerBound = computeLowerBound(state, pIndex, pCfaEdge);
+        int upperBound = computeUpperBound(state, pIndex, pCfaEdge);
+        for (int i = lowerBound; i < upperBound; i++) {
+          if (!state.getSegments().get(i).getAnalysisInformation().equals(pAnalysisInfo)) {
+            error = true;
+          }
+        }
+        if (!error && upperBound > lowerBound) {
+          return state;
+        } else {
+          String errorMsg =
+              UsageAnalysisTransferRelation.PREFIX
+                  + "Cannot create a usage since the variable "
+                  + pIndex.toASTString()
+                  + " is not present in the segmentation, hence the error symbol is returned. Current State is: "
+                  + state.toDOTLabel();
+          logger.log(Level.FINE, errorMsg);
+          throw new ArrayModificationException(errorMsg);
+        }
+
+      } catch (SolverException | InterruptedException e) {
         String errorMsg =
             UsageAnalysisTransferRelation.PREFIX
                 + "Cannot create a usage since the variable "
@@ -152,7 +164,8 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
   }
 
   private int
-      computeUpperBound(ArraySegmentationState<T> pState, CExpression pIndex, CFAEdge pCfaEdge) {
+      computeUpperBound(ArraySegmentationState<T> pState, CExpression pIndex, CFAEdge pCfaEdge)
+          throws SolverException, InterruptedException {
     int index = pState.getSegments().size() - 1;
     BooleanFormula formula = pState.getPathFormula().getPathFormula().getFormula();
     FormulaRelation pr = pState.getPathFormula().getPr();
@@ -174,14 +187,9 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
                 pCfaEdge,
                 pr.getFormulaManager());
         if (smaller.isPresent()) {
-          try {
-            if (solver.implies(formula, smaller.get())) {
-              index = i;
-              break;
-            }
-          } catch (SolverException | InterruptedException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
+          if (solver.implies(formula, smaller.get())) {
+            index = i;
+            break;
           }
         }
       }
@@ -190,7 +198,8 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
   }
 
   private int
-      computeLowerBound(ArraySegmentationState<T> pState, CExpression pIndex, CFAEdge pCfaEdge) {
+      computeLowerBound(ArraySegmentationState<T> pState, CExpression pIndex, CFAEdge pCfaEdge)
+          throws SolverException, InterruptedException {
     int index = 0;
     BooleanFormula formula = pState.getPathFormula().getPathFormula().getFormula();
     FormulaRelation pr = pState.getPathFormula().getPr();
@@ -211,14 +220,11 @@ public class CSegmentationModifier<T extends ExtendedCompletLatticeAbstractState
                 pCfaEdge,
                 pr.getFormulaManager());
         if (smaller.isPresent()) {
-          try {
-            if (solver.implies(formula, smaller.get())) {
-              index = i;
-              break;
-            }
-          } catch (SolverException | InterruptedException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
+
+          if (solver.implies(formula, smaller.get())) {
+            index = i;
+            break;
+
           }
         }
       }

@@ -284,7 +284,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
             new ArraySegment<>(
                 firstSeg.getSegmentBound(),
                 firstSeg.getAnalysisInformation().join(secondSeg.getAnalysisInformation()),
-                firstSeg.isPotentiallyEmpty() | secondSeg.isPotentiallyEmpty(),
+                firstSeg.isPotentiallyEmpty() || secondSeg.isPotentiallyEmpty(),
                 last,
                 this.language);
         res.add(0, current);
@@ -436,7 +436,7 @@ public class ArraySegmentationState<T extends ExtendedCompletLatticeAbstractStat
     }
     int posToAdd = segments.indexOf(after) + 1;
     ArraySegment<T> cur = segments.get((posToAdd - 1));
-    toAdd.setNextSegment((cur).getNextSegment());
+    toAdd.setNextSegment(cur.getNextSegment());
     cur.setNextSegment(toAdd);
     segments.add(posToAdd, toAdd);
     return true;

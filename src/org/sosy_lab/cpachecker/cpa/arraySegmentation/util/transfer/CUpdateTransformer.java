@@ -222,7 +222,7 @@ public class CUpdateTransformer<T extends ExtendedCompletLatticeAbstractState<T>
               newSegments.add(prevSegs.get(i));
             }
           }
-          return new ArraySegmentationState<T>(
+          return new ArraySegmentationState<>(
               newSegments,
               state.gettEmptyElement(),
               state.gettListOfArrayVariables(),

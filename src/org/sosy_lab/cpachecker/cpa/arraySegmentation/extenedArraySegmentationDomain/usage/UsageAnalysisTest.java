@@ -92,7 +92,7 @@ public class UsageAnalysisTest {
             "false",
             "analysis.traversal.order",
             "BFS");
-    Map<String, String> props = new HashMap<String, String>();
+    Map<String, String> props = new HashMap<>();
     props.putAll(prop);
     props.putAll(prop2);
     return props;
