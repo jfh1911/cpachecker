@@ -17,15 +17,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis;
+package org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis;
 
 import java.io.Serializable;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedCompletLatticeAbstractState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.EmptyVariableUsageElement;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageType;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis.EmptyVariableUsageElement;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis.VariableUsageType;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 public class VariableUsageState

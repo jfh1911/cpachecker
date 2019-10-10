@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis;
+package org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis;
 
 import com.google.common.base.Throwables;
 import java.util.List;
@@ -46,12 +46,12 @@ import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.CGenericInterval;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.CPropertySpec;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.UnreachableSegmentation;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis.UsageAnalysisCPA;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis.UsageAnalysisTransferRelation;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis.VariableUsageState;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis.VariableUsageType;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.ArraySegmentationCPAHelper;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.EnhancedCExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisCPA;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisTransferRelation;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageType;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 @Options(prefix = UsageAnalysisCPA.NAME_OF_ANALYSIS)

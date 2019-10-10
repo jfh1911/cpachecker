@@ -21,7 +21,7 @@
  *  CPAchecker web page:
  *    http://cpachecker.sosy-lab.org
  */
-package org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.usage;
+package org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.HashMap;

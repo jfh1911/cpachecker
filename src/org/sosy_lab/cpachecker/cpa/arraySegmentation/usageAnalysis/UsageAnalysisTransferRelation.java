@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.usageAnalysis;
+package org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,9 +45,9 @@ import org.sosy_lab.cpachecker.cfa.types.MachineModel;
 import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ArraySegmentationState;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis.UsageTransformer;
+import org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis.VariableUsageState;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.EnhancedCExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageTransformer;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
 public class UsageAnalysisTransferRelation extends

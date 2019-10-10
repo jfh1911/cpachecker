@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.cpa.arraySegmentation.extenedArraySegmentationDomain.usage;
+package org.sosy_lab.cpachecker.cpa.arraySegmentation.usageAnalysis;
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -41,9 +41,6 @@ import org.sosy_lab.cpachecker.cpa.arraySegmentation.CPropertySpec;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.ExtendedLocationArrayContentCPA;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.UnreachableSegmentation;
 import org.sosy_lab.cpachecker.cpa.arraySegmentation.util.EnhancedCExpressionSimplificationVisitor;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.UsageAnalysisCPA;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageState;
-import org.sosy_lab.cpachecker.cpa.usageAnalysis.VariableUsageType;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 @Options(prefix = "cpa.arrayContentCPA")
