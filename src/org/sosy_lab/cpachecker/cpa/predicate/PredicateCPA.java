@@ -24,6 +24,7 @@
 package org.sosy_lab.cpachecker.cpa.predicate;
 
 import com.google.common.collect.ImmutableSet;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -60,6 +61,7 @@ import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.util.blocking.BlockedCFAReducer;
 import org.sosy_lab.cpachecker.util.blocking.interfaces.BlockComputer;
+import org.sosy_lab.cpachecker.util.invariantimport.SeahornInvariantGenerator;
 import org.sosy_lab.cpachecker.util.predicates.AbstractionManager;
 import org.sosy_lab.cpachecker.util.predicates.BlockOperator;
 import org.sosy_lab.cpachecker.util.predicates.bdd.BDDManagerFactory;
@@ -228,6 +230,18 @@ public class PredicateCPA
             abstractionManager,
             predicateManager,
             statistics);
+
+    System.out.println("Remove me!");
+      SeahornInvariantGenerator gen = new SeahornInvariantGenerator();
+      gen.generateInvariant(
+          pCfa,
+          new ArrayList<CFANode>(),
+          specification,
+          logger,
+          shutdownNotifier,
+          config);
+
+
   }
 
   @Override

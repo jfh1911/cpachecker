@@ -57,6 +57,7 @@ import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.BiPredicate;
 import java.util.function.ToIntFunction;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -96,6 +97,7 @@ import org.sosy_lab.cpachecker.core.interfaces.conditions.AdjustableConditionCPA
 import org.sosy_lab.cpachecker.core.reachedset.AggregatedReachedSets;
 import org.sosy_lab.cpachecker.core.reachedset.ReachedSet;
 import org.sosy_lab.cpachecker.core.reachedset.ReachedSetFactory;
+import org.sosy_lab.cpachecker.cpa.arg.ARGState;
 import org.sosy_lab.cpachecker.cpa.assumptions.storage.AssumptionStorageState;
 import org.sosy_lab.cpachecker.cpa.invariants.InvariantsCPA;
 import org.sosy_lab.cpachecker.cpa.predicate.PredicateAbstractState;
@@ -111,6 +113,7 @@ import org.sosy_lab.cpachecker.util.LoopStructure.Loop;
 import org.sosy_lab.cpachecker.util.automaton.CachingTargetLocationProvider;
 import org.sosy_lab.cpachecker.util.automaton.TargetLocationProvider;
 import org.sosy_lab.cpachecker.util.automaton.TestTargetLocationProvider;
+import org.sosy_lab.cpachecker.util.invariantimport.CFA2ReachedSetTransformer;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormulaManager;
 import org.sosy_lab.cpachecker.util.predicates.smt.BooleanFormulaManagerView;
@@ -207,6 +210,8 @@ abstract class AbstractBMCAlgorithm
   private final List<ConditionAdjustmentEventSubscriber> conditionAdjustmentEventSubscribers =
       new CopyOnWriteArrayList<>();
 
+  private Configuration config;
+
   protected AbstractBMCAlgorithm(
       Algorithm pAlgorithm,
       ConfigurableProgramAnalysis pCPA,
@@ -230,6 +235,7 @@ abstract class AbstractBMCAlgorithm
     reachedSetFactory = pReachedSetFactory;
     cfa = pCFA;
     specification = checkNotNull(pSpecification);
+    config = pConfig;
 
     shutdownNotifier = pShutdownManager.getNotifier();
     TestTargetCPA testCPA = CPAs.retrieveCPA(pCPA, TestTargetCPA.class);
@@ -337,7 +343,8 @@ abstract class AbstractBMCAlgorithm
     return true;
   }
 
-  public AlgorithmStatus run(final ReachedSet reachedSet) throws CPAException,
+  public AlgorithmStatus run(final ReachedSet reachedSet)
+      throws CPAException,
       SolverException,
       InterruptedException {
     CFANode initialLocation = extractLocation(reachedSet.getFirstState());
@@ -446,6 +453,28 @@ abstract class AbstractBMCAlgorithm
       }
       while (status.isSound() && adjustConditions());
     }
+    System.out.println("To not forget about that location");
+    // FIXME: Here, check if restartwithInvGen should be called
+    CFA2ReachedSetTransformer transformer = new CFA2ReachedSetTransformer();
+    Path path = null;
+    // try {
+    //
+    // List<Pair<AbstractState, Precision>> dummyReached =
+    // transformer.transformCFAToReachedSet(cfa, path, logger, shutdownNotifier, config, 3);
+    // reachedSet.clear();
+    // for (Pair<AbstractState, Precision> elem : dummyReached) {
+    // reachedSet.add(elem.getFirst(), elem.getSecond());
+    // }
+    //
+    // for (AbstractState state : reachedSet) {
+    // System.out.println(state.toString());
+    // }
+    //
+    // return AlgorithmStatus.SOUND_AND_PRECISE;
+    // } catch (InvalidConfigurationException e) {
+    // // TODO Auto-generated catch block
+    // e.printStackTrace();
+    // }
 
     return AlgorithmStatus.UNSOUND_AND_PRECISE;
   }
@@ -587,6 +616,43 @@ abstract class AbstractBMCAlgorithm
       }
     }
     if (!adjusted) {
+      System.out.println("To not forget about that location");
+      //FIXME: Here, check if restartwithInvGen should be called
+      CFA2ReachedSetTransformer transformer = new CFA2ReachedSetTransformer();
+      Path path = null;
+      // try {
+        // ReachedSet res =
+        // transformer.transformCFAToReachedSet(cfa, path, logger, shutdownNotifier, config, 3);
+      // } catch (InvalidConfigurationException e) {
+      // // TODO Auto-generated catch block
+      // e.printStackTrace();
+      // }
+
+      // WitnessExporter exporter = new WitnessExporter(config, logger, specification, cfa);
+      ARGState pRootState;
+      Predicate<? super ARGState> pIsRelevantState = new Predicate<ARGState>() {
+
+        @Override
+        public boolean apply(@Nullable ARGState pInput) {
+          return true;
+        }
+      };
+      BiPredicate<ARGState, ARGState> pIsRelevantEdge = new BiPredicate<ARGState, ARGState>() {
+
+        @Override
+        public boolean test(ARGState pArg0, ARGState pArg1) {
+          return true;
+        }
+      };
+      // Witness witness =
+      // exporter.generateProofWitness(pRootState, pIsRelevantState, pIsRelevantEdge);
+      // ProofGenerator proofGenerator = new ProofGenerator(config, logger, shutdownNotifier);
+      // CPAcheckerResult pResult = new CPAcheckerResult();
+      // proofGenerator.generateProof(pResult );
+  //exporter.
+
+
+
       // these cpas said "do not continue"
       logger.log(
           Level.INFO,
