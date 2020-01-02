@@ -111,6 +111,8 @@ import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateI
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.EdgeFormulaNegation;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.ExpressionTreeLocationInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.TargetLocationCandidateInvariant;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerators;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
@@ -165,6 +167,11 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
       description = "Check candidate invariants in a separate thread asynchronously."
     )
     private boolean async = true;
+
+    @Option(
+      secure = true,
+      description = "Define, if a external invariant generation tool should be called in the initale step. Options")
+    private ExternalInvariantGenerators extInvGens = null;
   }
 
   private static class KInductionInvariantGeneratorStatistics extends BMCStatistics {
@@ -526,8 +533,21 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
               pOptions.invariantsAutomatonFile);
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
     }
-
     candidates.add(TargetLocationCandidateInvariant.INSTANCE);
+    // Check if the external invariant generation needs to be called
+    if (pOptions.extInvGens != null) {
+      ExternalInvariantGenerator gen = ExternalInvariantGenerator.getInstance(pOptions.extInvGens);
+      Set<CandidateInvariant> ret =
+          gen.generateInvariant(
+          pCFA,
+          new ArrayList<CFANode>(),
+          pSpecification,
+          pLogger,
+          pShutdownManager.getNotifier(),
+          pConfig);
+      candidates.addAll(ret);
+
+    }
 
     if (pOptions.terminateOnCounterexample) {
       return new StaticCandidateProvider(candidates) {
