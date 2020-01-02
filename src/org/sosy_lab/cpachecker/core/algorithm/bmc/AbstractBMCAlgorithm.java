@@ -917,6 +917,44 @@ abstract class AbstractBMCAlgorithm
       }
     },
 
+    REACHED_SET_EXT_INV_GEN {
+      @Override
+      InvariantGenerator createInvariantGenerator(
+          Configuration pConfig,
+          LogManager pLogger,
+          ReachedSetFactory pReachedSetFactory,
+          ShutdownManager pShutdownManager,
+          CFA pCFA,
+          Specification pSpecification,
+          AggregatedReachedSets pAggregatedReachedSets,
+          TargetLocationProvider pTargetLocationProvider) {
+        return new AbstractInvariantGenerator() {
+
+          @Override
+          protected void startImpl(CFANode pInitialLocation) {
+
+          }
+
+          @Override
+          public boolean isProgramSafe() {
+            // just return false, program will be ended by parallel algorithm if the invariant
+            // generator can prove safety before the current analysis
+            return false;
+          }
+
+          @Override
+          public void cancel() {
+            // do nothing
+          }
+
+          @Override
+          public AggregatedReachedSets get() throws CPAException, InterruptedException {
+            return pAggregatedReachedSets;
+          }
+        };
+      }
+    },
+
     DO_NOTHING {
 
       @Override
