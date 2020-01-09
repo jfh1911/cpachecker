@@ -596,7 +596,7 @@ bmc.induction = false
 
 # Strategy for generating auxiliary invariants
 bmc.invariantGenerationStrategy = REACHED_SET
-  enum:     [INDUCTION, REACHED_SET, DO_NOTHING]
+  enum:     [INDUCTION, REACHED_SET, REACHED_SET_EXT_INV_GEN, DO_NOTHING]
 
 # k-induction configuration to be used as an invariant generator for
 # k-induction (ki-ki(-ai)).
@@ -1668,12 +1668,19 @@ cpa.loopbound.loopIterationsBeforeAbstraction = 0
 # this option controls how the maxLoopIterations condition is adjusted when a
 # condition adjustment is invoked.
 cpa.loopbound.maxLoopIterationAdjusterFactory = STATIC
-  enum:     [STATIC, INCREMENT, DOUBLE]
+  enum:     [STATIC, INCREMENT, EXT_INV_GEN_AND_INCREMENT, DOUBLE]
 
 # threshold for unrolling loops of the program (0 is infinite)
 # works only if assumption storage CPA is enabled, because otherwise it would
 # be unsound
 cpa.loopbound.maxLoopIterations = 0
+
+# threshold for adjusting the threshold for unrolling loops of the program,
+# until the program is interrupted and an external invariant generation tool
+# is called  (0 is infinite).
+# only relevant in combination with a non-static invGen maximum loop
+# iteration adjuster.
+cpa.loopbound.maxLoopIterationsUntilInvGenCalled = 0
 
 # threshold for adjusting the threshold for unrolling loops of the program (0
 # is infinite).
@@ -3219,6 +3226,11 @@ invariantGeneration.config = no default value
 
 # Check candidate invariants in a separate thread asynchronously.
 invariantGeneration.kInduction.async = true
+
+# Define, if a external invariant generation tool should be called in the
+# initale step. Options
+invariantGeneration.kInduction.extInvGens = no default value
+  enum:     [SEAHORN]
 
 # Guess some candidates for the k-induction invariant generator from the CFA.
 invariantGeneration.kInduction.guessCandidatesFromCFA = ASSUME_EDGES_PLAIN

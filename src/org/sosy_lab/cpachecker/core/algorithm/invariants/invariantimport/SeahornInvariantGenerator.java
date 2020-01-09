@@ -84,8 +84,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   private static final String MAIN_FUNCTION = "main";
   private static final String TEXT_ENTERING_EDGE = "Function start dummy edge";
 
-  public SeahornInvariantGenerator() {
-  }
+  public SeahornInvariantGenerator() {}
 
   @Override
   public Set<CandidateInvariant> generateInvariant(
@@ -128,10 +127,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       Map<Integer, Set<CFAEdge>> lineToEdgesOfMain = new HashMap<>();
       lineNumberOfMain =
           getMappingLinesToEdgesOfFunction(
-              pCfa,
-              lineNumberOfMain,
-              lineToEdgesOfMain,
-              SeahornInvariantGenerator.MAIN_FUNCTION);
+              pCfa, lineNumberOfMain, lineToEdgesOfMain, SeahornInvariantGenerator.MAIN_FUNCTION);
 
       CFANode mainEntryNode = getEntryNodeForFunction(pCfa, MAIN_FUNCTION);
       if (mainEntryNode == null || lineNumberOfMain == -1) {
@@ -184,9 +180,9 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
                   invElement,
                   startingNode.isLoopStart(),
                   new ArrayList<>(
-                      AutomatonGraphmlCommon
-                          .getFileLocationsFromCfaEdge(lastOfPrevLine, pCfa.getMainFunction()))
-                              .get(0));
+                          AutomatonGraphmlCommon.getFileLocationsFromCfaEdge(
+                              lastOfPrevLine, pCfa.getMainFunction()))
+                      .get(0));
           graph.appendChild(edge);
           // Remove the pair to avoid duplicates (since processed once)
           genINvs.remove(e.getFileLocation().getStartingLineNumber());
@@ -214,19 +210,16 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
 
       WitnessInvariantsExtractor extractor =
           new WitnessInvariantsExtractor(
-              pConfig,
-              pSpecification,
-              pLogger,
-              pCfa,
-              pShutdownNotifier,
-              tempFile.toPath());
+              pConfig, pSpecification, pLogger, pCfa, pShutdownNotifier, tempFile.toPath());
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
       System.out.println(candidates.toString());
       return candidates;
-    } catch (TransformerException | ParserConfigurationException | IOException
-        | InvalidConfigurationException | InterruptedException |
-
-        URISyntaxException e) {
+    } catch (TransformerException
+        | ParserConfigurationException
+        | IOException
+        | InvalidConfigurationException
+        | InterruptedException
+        | URISyntaxException e) {
       throw new CPAException(getMessage() + System.lineSeparator() + e.toString(), e);
     }
   }
@@ -234,21 +227,17 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   private Map<Integer, Pair<String, String>> generateInvariantsAndLoad(Path pPath)
       throws IOException, InterruptedException {
 
-
-    ProcessBuilder builder = new ProcessBuilder();
+    ProcessBuilder builder = new ProcessBuilder().inheritIO();
     builder.command(
         PATH_TO_DIR + "compute_invariants_with_seahorn.sh",
         pPath.toFile().getAbsolutePath(),
         PATH_TO_OUT_DIR);
-    System.out.println(builder.command().toString());
     Process process = builder.start();
 
     int exitCode = process.waitFor();
     assert exitCode == 0;
 
-
     return parseInvFile(PATH_TO_OUT_DIR + "invars_in_c.txt");
-
   }
 
   @SuppressWarnings("resource")
@@ -334,11 +323,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   private Element addPredefinedGraphElements(
-      CFA pCfa,
-      Specification pSpecification,
-      File sourceFile,
-      Document doc,
-      Element graphml)
+      CFA pCfa, Specification pSpecification, File sourceFile, Document doc, Element graphml)
       throws IOException {
     Element graph = doc.createElement("graph");
     graphml.appendChild(graph);
@@ -383,7 +368,6 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
           }
         }
         return ret;
-
       }
       currVal = currVal - 1;
     }
@@ -398,7 +382,8 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
 
   private String getSpecification(Specification pSpecification) {
     StringBuilder builder = new StringBuilder();
-    pSpecification.getPathToSpecificationAutomata()
+    pSpecification
+        .getPathToSpecificationAutomata()
         .values()
         .forEach(a -> builder.append(a.toString()));
     return builder.toString();
@@ -435,22 +420,13 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     }
     edge =
         createAndAppandDataNode(
-            edge,
-            pDoc,
-            "startline",
-            String.valueOf(pFileLocation.getStartingLineNumber()));
+            edge, pDoc, "startline", String.valueOf(pFileLocation.getStartingLineNumber()));
     edge =
         createAndAppandDataNode(
-            edge,
-            pDoc,
-            "endline",
-            String.valueOf(pFileLocation.getEndingLineNumber()));
+            edge, pDoc, "endline", String.valueOf(pFileLocation.getEndingLineNumber()));
     edge =
         createAndAppandDataNode(
-            edge,
-            pDoc,
-            "startoffset",
-            String.valueOf(pFileLocation.getNodeOffset()));
+            edge, pDoc, "startoffset", String.valueOf(pFileLocation.getNodeOffset()));
     edge =
         createAndAppandDataNode(
             edge,
@@ -498,28 +474,19 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     node.setAttributeNode(createAttrForDoc(pDoc, "id", nameOfNode));
     pGraph.appendChild(node);
     return node;
-
   }
 
   private Element createNodeWithDataNode(
-      Element pGraph,
-      Document pDoc,
-      String nameOfNode,
-      String key,
-      String value) {
+      Element pGraph, Document pDoc, String nameOfNode, String key, String value) {
     Element node = pDoc.createElement("node");
     node.setAttributeNode(createAttrForDoc(pDoc, "id", nameOfNode));
     node = createAndAppandDataNode(node, pDoc, key, value);
     pGraph.appendChild(node);
     return node;
-
   }
 
   private Element createAndAppandDataNode(
-      Element pGraph,
-      Document pDoc,
-      String pStringpKeyValue,
-      String textValue) {
+      Element pGraph, Document pDoc, String pStringpKeyValue, String textValue) {
 
     Element data = pDoc.createElement(DATA_STRING);
     data.setAttributeNode(createAttrForDoc(pDoc, KEY_STRING, pStringpKeyValue));
@@ -542,19 +509,11 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
         getDefaultNode(doc, "\"invariant\"", "\"string\"", "\"node\"", "\"invariant\""));
     graphml.appendChild(
         getDefaultNode(
-            doc,
-            "\"invariant.scope\"",
-            "\"string\"",
-            "\"node\"",
-            "\"invariant.scope\""));
+            doc, "\"invariant.scope\"", "\"string\"", "\"node\"", "\"invariant.scope\""));
 
     graphml.appendChild(
         getDefaultNode(
-            doc,
-            "\"sourcecodeLanguage\"",
-            "\"string\" ",
-            "\"graph\" ",
-            "\"sourcecodelang\""));
+            doc, "\"sourcecodeLanguage\"", "\"string\" ", "\"graph\" ", "\"sourcecodelang\""));
     graphml.appendChild(
         getDefaultNode(doc, "\"programFile\"", "\"string\" ", "\"graph\" ", "\"programfile\""));
     graphml.appendChild(
@@ -572,28 +531,20 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     graphml.appendChild(getDefaultNode(doc, "\"endline\"", "\"int\" ", "\"edge\" ", "\"endline\""));
     graphml.appendChild(
         getDefaultNode(doc, "\"startoffset\"", "\"int\" ", "\"edge\" ", "\"startoffset\""));
-    graphml
-        .appendChild(getDefaultNode(doc, "\"endoffset\"", "\"int\"", "\"edge\"", "\"endoffset\""));
-    graphml
-        .appendChild(getDefaultNode(doc, "\"control\"", "\"string\" ", "\"edge\" ", "\"control\""));
+    graphml.appendChild(
+        getDefaultNode(doc, "\"endoffset\"", "\"int\"", "\"edge\"", "\"endoffset\""));
+    graphml.appendChild(
+        getDefaultNode(doc, "\"control\"", "\"string\" ", "\"edge\" ", "\"control\""));
     graphml.appendChild(
         getDefaultNode(doc, "\"enterFunction\"", "\"string\" ", "\"edge\" ", "\"enterFunction\""));
     graphml.appendChild(
         getDefaultNode(
-            doc,
-            "\"returnFromFunction\"",
-            "\"string\" ",
-            "\"edge\" ",
-            "\"returnFrom\""));
+            doc, "\"returnFromFunction\"", "\"string\" ", "\"edge\" ", "\"returnFrom\""));
     graphml.appendChild(
         getDefaultNode(doc, "\"witness-type\"", "\"string\" ", "\"graph\" ", "\"witness-type\""));
     graphml.appendChild(
         getDefaultNode(
-            doc,
-            "\"inputWitnessHash\"",
-            "\"string\" ",
-            "\"graph\" ",
-            "\"inputwitnesshash\""));
+            doc, "\"inputWitnessHash\"", "\"string\" ", "\"graph\" ", "\"inputwitnesshash\""));
     graphml.appendChild(
         getDefaultNode(doc, "\"originFileName\"", "\"string\"", "\"edge\"", "\"originfile\""));
 
@@ -601,12 +552,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
         getDefaultNode(doc, "\"isEntryNode\"", "\"boolean\"", "\"node\"", "\"entry\"", "false"));
     graphml.appendChild(
         getDefaultNode(
-            doc,
-            "\"enterLoopHead\"",
-            "\"boolean\"",
-            "\"edge\"",
-            "\"enterLoopHead\"",
-            "false"));
+            doc, "\"enterLoopHead\"", "\"boolean\"", "\"edge\"", "\"enterLoopHead\"", "false"));
     Element scope = doc.createElement(DATA_STRING);
     scope.setAttributeNode(createAttrForDoc(doc, KEY_STRING, "invariant.scope"));
     scope.appendChild(doc.createTextNode("main"));
@@ -620,8 +566,8 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     return newAttr;
   }
 
-  private Node
-      getDefaultNode(Document doc, String attr1, String attr2, String attr3, String attr4) {
+  private Node getDefaultNode(
+      Document doc, String attr1, String attr2, String attr3, String attr4) {
     Element node = doc.createElement(KEY_STRING);
     node.setAttributeNode(createAttrForDoc(doc, "attr.name", attr1));
     node.setAttributeNode(createAttrForDoc(doc, "attr.type", attr2));
@@ -631,12 +577,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   private Node getDefaultNode(
-      Document doc,
-      String attr1,
-      String attr2,
-      String attr3,
-      String attr4,
-      String defaultVal) {
+      Document doc, String attr1, String attr2, String attr3, String attr4, String defaultVal) {
     Element node = doc.createElement(KEY_STRING);
     node.setAttributeNode(createAttrForDoc(doc, "attr.name", attr1));
     node.setAttributeNode(createAttrForDoc(doc, "attr.type", attr2));
@@ -654,5 +595,4 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     String sha256hex = AutomatonGraphmlCommon.computeHash(pSourceFile.toPath()).toLowerCase();
     return sha256hex;
   }
-
 }
