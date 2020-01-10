@@ -60,9 +60,7 @@ public class AddGeneratedInvToBlankWitness {
       scope.setAttribute("key", "invariant.scope");
       scope.appendChild(doc.createTextNode("main"));
 
-      // Get the root element
-      Node graphml = doc.getElementsByTagName("graphml").item(0);
-      Node graph = doc.getElementsByTagName("graph").item(0);
+
 
       NodeList nodes = doc.getElementsByTagName("node");
       // Get the graph
@@ -88,19 +86,10 @@ public class AddGeneratedInvToBlankWitness {
       StreamResult result = new StreamResult(new File(file.getAbsolutePath() + "2"));
       transformer.transform(source, result);
 
-      System.out.println("Done");
-
-    } catch (ParserConfigurationException pce) {
-      pce.printStackTrace();
-    } catch (TransformerException tfe) {
-      tfe.printStackTrace();
-    } catch (IOException ioe) {
-      ioe.printStackTrace();
-    } catch (SAXException sae) {
-      sae.printStackTrace();
-    } catch (URISyntaxException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+    } catch (ParserConfigurationException | TransformerException | IOException | SAXException
+        | URISyntaxException e) {
+      // TODO Extend error handling
+      throw new IllegalArgumentException(e);
     }
   }
 
