@@ -20,14 +20,17 @@
 package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.collect.PathCopyingPersistentTreeMap;
 import org.sosy_lab.common.collect.PersistentSortedMap;
@@ -142,7 +145,7 @@ public class CFA2ReachedSetTransformer {
       }
     }
 
-    System.out.println(nodeToInv.toString());
+    pLogger.log(Level.FINER, nodeToInv.toString());
     solver.close();
     return returnSet;
   }
@@ -184,7 +187,10 @@ public class CFA2ReachedSetTransformer {
     BufferedReader reader = null;
     Map<Pair<Integer, String>, String> invs = new HashMap<>();
     try {
-      reader = new BufferedReader(new FileReader("/home/cppp/Documents/seahorn/invars_in_c.txt"));
+      reader =
+          Files.newBufferedReader(
+              Paths.get("/home/cppp/Documents/seahorn/invars_in_c.txt"),
+              Charset.defaultCharset());
       String line = reader.readLine();
       // Skip the first line
 
@@ -203,7 +209,8 @@ public class CFA2ReachedSetTransformer {
       }
       reader.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      // TODO: Enhance logging
+      throw new IllegalArgumentException(e);
     }
 
     return invs;
