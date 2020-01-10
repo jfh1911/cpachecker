@@ -23,11 +23,13 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -245,7 +247,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     BufferedReader reader = null;
     Map<Integer, Pair<String, String>> invs = new HashMap<>();
     try {
-      reader = new BufferedReader(new FileReader(pPathToInvFile));
+      reader = Files.newBufferedReader(Paths.get(pPathToInvFile), Charset.defaultCharset());
       String line = reader.readLine();
       // Skip the first line
 
@@ -270,7 +272,8 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       }
       reader.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      // TOO enhance error logging
+      throw new IllegalArgumentException(e);
     }
 
     return invs;
