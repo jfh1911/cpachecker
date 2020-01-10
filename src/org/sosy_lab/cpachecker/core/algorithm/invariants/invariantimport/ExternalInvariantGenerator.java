@@ -35,7 +35,6 @@ public interface ExternalInvariantGenerator {
   /**
    *
    * @param pCfa of the program
-   * @param targetNodesToGenerateFor A List of nodes for that a invariant should be generated
    * @return A set of candidate invariants generated and verified
    * @throws CPAException If the CFA contains more than one source file or to wrap different
    *         exceptions
