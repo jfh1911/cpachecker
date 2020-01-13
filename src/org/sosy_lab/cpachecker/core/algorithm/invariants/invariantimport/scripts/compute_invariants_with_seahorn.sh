@@ -3,7 +3,7 @@
 # $2 = path to the output directory to store generated invariants to
 
 abs_path_to_seahorn_exchange_dir=~/Documents/seahorn/output/
-name_of_Docker = inspiring_lalande
+name_of_Docker=inspiring_lalande
 
 echo $1
 echo $2
@@ -32,7 +32,6 @@ cp ${abs_path_to_seahorn_exchange_dir}program.c $2
 
 # Transform the llvm ll file (modify the path to the source file
 ./transform_llvm_file $2/out.ll $2 $2
-cp program.c $2
 
 # Parse the invariants to c
  ./transform_invariants  $2program.ll $2invariants.txt $2

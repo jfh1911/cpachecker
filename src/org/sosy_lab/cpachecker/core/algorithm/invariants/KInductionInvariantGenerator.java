@@ -536,7 +536,8 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
     candidates.add(TargetLocationCandidateInvariant.INSTANCE);
     // Check if the external invariant generation needs to be called
     if (pOptions.extInvGens != null) {
-      ExternalInvariantGenerator gen = ExternalInvariantGenerator.getInstance(pOptions.extInvGens);
+      ExternalInvariantGenerator gen =
+          ExternalInvariantGenerator.getInstance(pOptions.extInvGens, pConfig);
       Set<CandidateInvariant> ret =
           gen.generateInvariant(
           pCFA,

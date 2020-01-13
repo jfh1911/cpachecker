@@ -24,8 +24,6 @@ import com.google.common.collect.Multimap;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,6 +54,8 @@ import javax.xml.transform.stream.StreamResult;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
+import org.sosy_lab.common.configuration.Option;
+import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.ast.FileLocation;
@@ -75,10 +75,16 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import scala.NotImplementedError;
 
+@Options(prefix = "invariantGeneration.kInduction.seahorn")
 public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
-  private static final String PATH_TO_DIR = "/home/cppp/Documents/seahorn/";
-  private static final String PATH_TO_OUT_DIR =
-      "/home/cppp/Documents/cpachecker/cpachecker/output/";
+
+  private static final String PATH_TO_SCRIPTS =
+      "src/org/sosy_lab/cpachecker/core/algorithm/invariants/invariantimport/scripts/";
+
+  @Option(
+    secure = true,
+    description = "Path to the directory where the generated files should be stored. by default we use the /output dir")
+  private String pathToOutDir = "output/";
   private static final String KEY_STRING = "key";
   private static final String DATA_STRING = "data";
   private static final int OFFSET = 4;
@@ -86,7 +92,11 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   private static final String MAIN_FUNCTION = "main";
   private static final String TEXT_ENTERING_EDGE = "Function start dummy edge";
 
-  public SeahornInvariantGenerator() {}
+  public SeahornInvariantGenerator(Configuration pConfiguration)
+      throws InvalidConfigurationException {
+    // set the output directory to the directory used by the cpa checker
+    pConfiguration.inject(this);
+  }
 
   @Override
   public Set<CandidateInvariant> generateInvariant(
@@ -98,6 +108,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       Configuration pConfig)
       throws CPAException {
     try {
+
 
       // Start Seahorn:
       List<Path> sourceFiles = pCfa.getFileNames();
@@ -199,10 +210,8 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       transformer.setOutputProperty(OutputKeys.INDENT, "yes");
       transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
       DOMSource source = new DOMSource(doc);
-      File tempFile =
-          new File(
-              new URI(
-                  "file:///home/cppp/Documents/cpachecker/cpachecker/output/proofWitness42.graphml"));
+      File tempFile = new File(pathToOutDir, "proofWitness42.graphml");
+      tempFile.createNewFile();
       StreamResult result = new StreamResult(tempFile);
       transformer.transform(source, result);
 
@@ -220,8 +229,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
         | ParserConfigurationException
         | IOException
         | InvalidConfigurationException
-        | InterruptedException
-        | URISyntaxException e) {
+        | InterruptedException e) {
       throw new CPAException(getMessage() + System.lineSeparator() + e.toString(), e);
     }
   }
@@ -231,15 +239,18 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
     builder.command(
-        PATH_TO_DIR + "compute_invariants_with_seahorn.sh",
+        PATH_TO_SCRIPTS + "compute_invariants_with_seahorn.sh",
         pPath.toFile().getAbsolutePath(),
-        PATH_TO_OUT_DIR);
+        System.getProperty("user.dir") + "/" + pathToOutDir);
+    System.out.println(PATH_TO_SCRIPTS + "compute_invariants_with_seahorn.sh");
+    System.out.println(pPath.toFile().getAbsolutePath());
+    System.out.println(System.getProperty("user.dir") + "/" + pathToOutDir);
     Process process = builder.start();
 
     int exitCode = process.waitFor();
     assert exitCode == 0;
 
-    return parseInvFile(PATH_TO_OUT_DIR + "invars_in_c.txt");
+    return parseInvFile(System.getProperty("user.dir") + "/" + pathToOutDir + "invars_in_c.txt");
   }
 
   @SuppressWarnings("resource")
