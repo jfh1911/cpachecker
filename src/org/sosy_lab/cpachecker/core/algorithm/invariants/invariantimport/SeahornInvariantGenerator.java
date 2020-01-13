@@ -241,7 +241,8 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     builder.command(
         PATH_TO_SCRIPTS + "compute_invariants_with_seahorn.sh",
         pPath.toFile().getAbsolutePath(),
-        absolutePathToInvFile);
+        absolutePathToInvFile,
+        System.getProperty("user.dir") + "/" + PATH_TO_SCRIPTS);
     Process process = builder.start();
 
     int exitCode = process.waitFor();
