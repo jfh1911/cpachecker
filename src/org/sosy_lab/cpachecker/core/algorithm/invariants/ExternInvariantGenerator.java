@@ -125,6 +125,7 @@ public class ExternInvariantGenerator extends AbstractInvariantGenerator impleme
 
   private volatile boolean programIsSafe = false;
 
+  @SuppressWarnings("UnnecessaryAnonymousClass")
   private final ShutdownRequestListener shutdownListener = new ShutdownRequestListener() {
 
     @Override
