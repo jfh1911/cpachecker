@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
+import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
@@ -48,11 +49,13 @@ public interface ExternalInvariantGenerator {
       Configuration pConfig)
       throws CPAException;
 
-  static ExternalInvariantGenerator getInstance(ExternalInvariantGenerators instance) {
+  static ExternalInvariantGenerator
+      getInstance(ExternalInvariantGenerators instance, Configuration pConfiguration)
+          throws InvalidConfigurationException {
     switch (instance) {
       case SEAHORN:
       default:
-        return new SeahornInvariantGenerator();
+        return new SeahornInvariantGenerator(pConfiguration);
 
     }
   }
