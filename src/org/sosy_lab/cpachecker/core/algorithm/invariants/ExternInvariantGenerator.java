@@ -338,7 +338,7 @@ public class ExternInvariantGenerator extends AbstractInvariantGenerator impleme
     }
   }
 
-
+  @SuppressWarnings("UnnecessaryLambda")
   private final Predicate<AbstractState> HAS_ASSUMPTIONS =
       state -> {
         AssumptionStorageState assumption =
