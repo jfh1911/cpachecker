@@ -123,7 +123,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
       DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
       Document doc = docBuilder.newDocument();
-      Element graphml = getDochWithHeader(doc);
+      Element graphml = getDocWithHeader(doc);
 
       // append child elements to root element
       // Extract the information about the source code file the invarinas belong to:
@@ -156,8 +156,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       // Otherwise, add a path from entering node f main to that node
 
       // Get the edge containing the line number of the invariant, the starting node of the edge is
-      // the
-      // desired one
+      // the desired one
       for (Entry<Integer, Pair<String, String>> inv : genINvs.entrySet()) {
         int key = inv.getKey();
         if (!lineToEdgesOfMain.containsKey(key)) {
@@ -210,7 +209,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       transformer.setOutputProperty(OutputKeys.INDENT, "yes");
       transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
       DOMSource source = new DOMSource(doc);
-      File tempFile = new File(pathToOutDir, "proofWitness42.graphml");
+      File tempFile = new File(pathToOutDir, "proofWitness_Seahorn.graphml");
       tempFile.createNewFile();
       StreamResult result = new StreamResult(tempFile);
       transformer.transform(source, result);
@@ -223,7 +222,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
           new WitnessInvariantsExtractor(
               pConfig, pSpecification, pLogger, pCfa, pShutdownNotifier, tempFile.toPath());
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
-      System.out.println(candidates.toString());
+      pLogger.log(Level.FINER, "The invariants imported are" + candidates.toString());
       return candidates;
     } catch (TransformerException
         | ParserConfigurationException
@@ -238,19 +237,18 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
+    String absolutePathToInvFile = System.getProperty("user.dir") + "/" + pathToOutDir;
     builder.command(
         PATH_TO_SCRIPTS + "compute_invariants_with_seahorn.sh",
         pPath.toFile().getAbsolutePath(),
-        System.getProperty("user.dir") + "/" + pathToOutDir);
-    System.out.println(PATH_TO_SCRIPTS + "compute_invariants_with_seahorn.sh");
-    System.out.println(pPath.toFile().getAbsolutePath());
-    System.out.println(System.getProperty("user.dir") + "/" + pathToOutDir);
+        absolutePathToInvFile);
     Process process = builder.start();
 
     int exitCode = process.waitFor();
+    // After finishing the invariant generation script ensure that everything worked out as planned!
     assert exitCode == 0;
 
-    return parseInvFile(System.getProperty("user.dir") + "/" + pathToOutDir + "invars_in_c.txt");
+    return parseInvFile(absolutePathToInvFile + "invars_in_c.txt");
   }
 
   @SuppressWarnings("resource")
@@ -509,7 +507,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     return pGraph;
   }
 
-  private Element getDochWithHeader(Document doc) {
+  private Element getDocWithHeader(Document doc) {
 
     Element graphml = doc.createElement("graphml");
     doc.appendChild(graphml);
