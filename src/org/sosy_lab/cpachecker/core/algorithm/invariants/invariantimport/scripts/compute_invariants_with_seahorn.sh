@@ -32,6 +32,7 @@ cp ${abs_path_to_seahorn_exchange_dir}program.c $2
 
 # Transform the llvm ll file (modify the path to the source file
 ./transform_llvm_file $2/out.ll $2 $2
+echo "The LLVM-IR file is prepared, starting transformation of the invariant"
 
 # Parse the invariants to c
  ./transform_invariants  $2program.ll $2invariants.txt $2

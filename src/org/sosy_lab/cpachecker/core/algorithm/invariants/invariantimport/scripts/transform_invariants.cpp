@@ -277,7 +277,7 @@ int main(int argc, char **argv) {
 	//Write the output to the file
 	std::ofstream myfile;
 	std::string fileName = argv[3];
-	fileName +="/invars_in_c.txt";
+	fileName +="invars_in_c.txt";
 	myfile.open(fileName);
 
 	myfile
