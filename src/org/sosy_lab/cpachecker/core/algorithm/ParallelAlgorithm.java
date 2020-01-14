@@ -264,7 +264,13 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
                   Level.INFO,
                   "Although the analysis "
                       + result.getAnalysisName()
-                      + " finished, the computation is not aborted!");
+                      + " finished, the computation is not aborted!"
+                      + " Analysis to abort on is " +  ParallelAlgorithm.class.getProtectionDomain()
+                      .getCodeSource()
+                      .getLocation()
+                          .getPath()
+                      + "../"
+                      + result.getAnalysisName());
             }
           }
         }
