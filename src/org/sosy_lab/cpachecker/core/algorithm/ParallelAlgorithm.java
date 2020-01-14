@@ -251,12 +251,8 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
           // violation)
           if (cancleOnSpecificAnalysis) {
             if (nameOfAnalysisToCancleOn != null
-                && nameOfAnalysisToCancleOn
-                    .equals(
-                        ParallelAlgorithm.class.getProtectionDomain()
-                            .getCodeSource()
-                            .getLocation()
-                            .getPath() + "../" + result.getAnalysisName())) {
+                && result.getAnalysisName().contains(nameOfAnalysisToCancleOn)) {
+              // We are using contains since the name of the analysis my contain the absolute path
               logger.log(Level.INFO, CANLCE_MESSAGE);
               shutdownManager.requestShutdown(CANLCE_MESSAGE);
             } else {
@@ -265,12 +261,8 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
                   "Although the analysis "
                       + result.getAnalysisName()
                       + " finished, the computation is not aborted!"
-                      + " Analysis to abort on is " +  ParallelAlgorithm.class.getProtectionDomain()
-                      .getCodeSource()
-                      .getLocation()
-                          .getPath()
-                      + "../"
-                      + result.getAnalysisName());
+                      + " Analysis to abort on is "
+                      + nameOfAnalysisToCancleOn);
             }
           }
         }
