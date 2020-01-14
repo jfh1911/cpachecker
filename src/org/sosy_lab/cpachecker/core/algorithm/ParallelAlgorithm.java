@@ -254,6 +254,12 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
                 && nameOfAnalysisToCancleOn.equals(result.getAnalysisName())) {
               logger.log(Level.INFO, CANLCE_MESSAGE);
               shutdownManager.requestShutdown(CANLCE_MESSAGE);
+            } else {
+              logger.log(
+                  Level.INFO,
+                  "Although the analysis "
+                      + result.getAnalysisName()
+                      + "finished, the computation is not aborted!");
             }
           }
         }
