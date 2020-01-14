@@ -32,7 +32,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -91,11 +90,13 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   private static final String NAME_OF_TOOL = "CoInVerify";
   private static final String MAIN_FUNCTION = "main";
   private static final String TEXT_ENTERING_EDGE = "Function start dummy edge";
+  private int nodeNameCounter;
 
   public SeahornInvariantGenerator(Configuration pConfiguration)
       throws InvalidConfigurationException {
     // set the output directory to the directory used by the cpa checker
     pConfiguration.inject(this);
+    this.nodeNameCounter = 0;
   }
 
   @Override
@@ -108,7 +109,6 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       Configuration pConfig)
       throws CPAException {
     try {
-
 
       // Start Seahorn:
       List<Path> sourceFiles = pCfa.getFileNames();
@@ -126,21 +126,23 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       Element graphml = getDocWithHeader(doc);
 
       // append child elements to root element
-      // Extract the information about the source code file the invarinas belong to:
+      // Extract the information about the source code file the invariants belong to:
       Element graph = addPredefinedGraphElements(pCfa, pSpecification, sourceFile, doc, graphml);
 
       // Than, find the necessary nodes (start node and node to enter the main function to get to
       // the invariant
-      CFANode cfaEntry = pCfa.getMainFunction();
       Element globalEntryElement =
-          createNodeWithDataNode(graph, doc, cfaEntry.toString(), "entry", "true");
+          createNodeWithDataNode(graph, doc, getNewNameForNode(), "entry", "true");
 
       int lineNumberOfMain = -1;
 
       Map<Integer, Set<CFAEdge>> lineToEdgesOfMain = new HashMap<>();
       lineNumberOfMain =
           getMappingLinesToEdgesOfFunction(
-              pCfa, lineNumberOfMain, lineToEdgesOfMain, SeahornInvariantGenerator.MAIN_FUNCTION);
+              pCfa,
+              lineNumberOfMain,
+              lineToEdgesOfMain,
+              SeahornInvariantGenerator.MAIN_FUNCTION);
 
       CFANode mainEntryNode = getEntryNodeForFunction(pCfa, MAIN_FUNCTION);
       if (mainEntryNode == null || lineNumberOfMain == -1) {
@@ -148,58 +150,65 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
             "Could not find main function, hence aborted computation of invariants");
       }
 
-      Element mainEntryElement = createBlankNode(graph, doc, mainEntryNode.toString());
+      Element mainEntryElement = createBlankNode(graph, doc, getNewNameForNode());
       Element toEntry =
           getEnterFunctionEdge(doc, globalEntryElement, mainEntryElement, "main", lineNumberOfMain);
       graph.appendChild(toEntry);
       // afterwards, find the node where the invariants belong to. If more than one, abort
       // Otherwise, add a path from entering node f main to that node
 
+
       // Get the edge containing the line number of the invariant, the starting node of the edge is
       // the desired one
       for (Entry<Integer, Pair<String, String>> inv : genINvs.entrySet()) {
-        int key = inv.getKey();
-        if (!lineToEdgesOfMain.containsKey(key)) {
+        int lineNumber = inv.getKey();
+        if (!lineToEdgesOfMain.containsKey(lineNumber)) {
           pLogger.log(
               Level.FINE,
               "Cannot parse the invariant, because no matching line number was found: "
                   + inv.toString());
           continue;
         }
-        for (CFAEdge e : lineToEdgesOfMain.get(key)) {
-          Pair<String, String> sourceAndInv = inv.getValue();
-          // Check, if the invariant belongs to a loop
 
-          if (belongsToLoopLoc(sourceAndInv) && !e.getPredecessor().isLoopStart()) {
-            // Need to find the loop start (the node representing this
-            continue;
+        // Determine the minimal Start and maximal end offset for a given line (if there are more
+        // statements present
+        int minStartOffset = Integer.MAX_VALUE;
+        int maxEndOffset = Integer.MIN_VALUE;
+        boolean isLoopStart = true;
+
+        for (CFAEdge e : lineToEdgesOfMain.get(lineNumber)) {
+
+          Set<FileLocation> fileLocs =
+              AutomatonGraphmlCommon.getFileLocationsFromCfaEdge(e, pCfa.getMainFunction());
+          for (FileLocation loc : fileLocs) {
+            // TODO: Add handling for edges with different starting and finishing line
+            minStartOffset = Math.min(minStartOffset, loc.getNodeOffset());
+            maxEndOffset = Math.max(maxEndOffset, loc.getNodeOffset() + loc.getNodeLength());
           }
-          CFANode startingNode = e.getPredecessor();
-
-          Element invElement =
-              createNodeWithInvariant(doc, sourceAndInv.getSecond(), startingNode.toString());
-          graph.appendChild(invElement);
-
-          // Next, find the edge where the previous line is present (to create an edge to that
-          // location)
-          CFAEdge lastOfPrevLine = getLastOfPrevLine(key, lineToEdgesOfMain);
-          // Create a edge in the witness from mainEntryElement to the invElement node
-
-          Element edge =
-              getEdge(
-                  doc,
-                  mainEntryElement,
-                  invElement,
-                  startingNode.isLoopStart(),
-                  new ArrayList<>(
-                          AutomatonGraphmlCommon.getFileLocationsFromCfaEdge(
-                              lastOfPrevLine, pCfa.getMainFunction()))
-                      .get(0));
-          graph.appendChild(edge);
-          // Remove the pair to avoid duplicates (since processed once)
-          genINvs.remove(e.getFileLocation().getStartingLineNumber());
-          break;
+          // Check if the flag "enterLoopHead" is true, meaning that the edge is one into a loop
+          // head. If one is not a loop head don't set the flag
+          if (!e.getSuccessor().isLoopStart()) {
+            isLoopStart = false;
+          }
         }
+        Pair<String, String> sourceAndInv = inv.getValue();
+        Element invElement =
+            createNodeWithInvariant(doc, sourceAndInv.getSecond(), getNewNameForNode());
+        graph.appendChild(invElement);
+
+        // Create a edge in the witness from mainEntryElement to the invElement node
+        Element edge =
+            getEdge(
+                doc,
+                mainEntryElement,
+                invElement,
+                isLoopStart,
+                lineNumber,
+                lineNumber,
+                minStartOffset,
+                maxEndOffset);
+        graph.appendChild(edge);
+
       }
 
       // write the content into xml file
@@ -220,17 +229,24 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
 
       WitnessInvariantsExtractor extractor =
           new WitnessInvariantsExtractor(
-              pConfig, pSpecification, pLogger, pCfa, pShutdownNotifier, tempFile.toPath());
+              pConfig,
+              pSpecification,
+              pLogger,
+              pCfa,
+              pShutdownNotifier,
+              tempFile.toPath());
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
       pLogger.log(Level.FINER, "The invariants imported are" + candidates.toString());
       return candidates;
-    } catch (TransformerException
-        | ParserConfigurationException
-        | IOException
-        | InvalidConfigurationException
-        | InterruptedException e) {
+    } catch (TransformerException | ParserConfigurationException | IOException
+        | InvalidConfigurationException | InterruptedException e) {
       throw new CPAException(getMessage() + System.lineSeparator() + e.toString(), e);
     }
+  }
+
+  private String getNewNameForNode() {
+    nodeNameCounter = nodeNameCounter + 1;
+    return "N" + nodeNameCounter;
   }
 
   private Map<Integer, Pair<String, String>> generateInvariantsAndLoad(Path pPath)
@@ -306,6 +322,16 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     return mainEntryNode;
   }
 
+  /**
+   *
+   * Computes for each source code line the edges associated to that line
+   *
+   * @param pCfa the cfa to search in
+   * @param lineNumberOfMain the line number of the main function
+   * @param lineToEdgesOfMain the map to add elements to
+   * @param pNameOfFunction the name of the function to considere
+   * @return the extended map
+   */
   private int getMappingLinesToEdgesOfFunction(
       CFA pCfa,
       int lineNumberOfMain,
@@ -336,7 +362,11 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   private Element addPredefinedGraphElements(
-      CFA pCfa, Specification pSpecification, File sourceFile, Document doc, Element graphml)
+      CFA pCfa,
+      Specification pSpecification,
+      File sourceFile,
+      Document doc,
+      Element graphml)
       throws IOException {
     Element graph = doc.createElement("graph");
     graphml.appendChild(graph);
@@ -366,37 +396,10 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     return graph;
   }
 
-  private CFAEdge getLastOfPrevLine(Integer pKey, Map<Integer, Set<CFAEdge>> pLineToEdgesOfMain)
-      throws CPAException {
-
-    int currVal = pKey - 1;
-    while (currVal > 0) {
-
-      if (pLineToEdgesOfMain.containsKey(currVal)) {
-        List<CFAEdge> possEdges = new ArrayList<>(pLineToEdgesOfMain.get(currVal));
-        CFAEdge ret = possEdges.get(0);
-        for (CFAEdge edge : possEdges) {
-          if (edge.getFileLocation().getNodeOffset() > ret.getFileLocation().getNodeOffset()) {
-            ret = edge;
-          }
-        }
-        return ret;
-      }
-      currVal = currVal - 1;
-    }
-    throw new CPAException(
-        "An internal error occured, since an invariant is generated for a statement not present in the source code");
-  }
-
-  private boolean belongsToLoopLoc(Pair<String, String> pSourceAndInv) {
-    // TODO: Think about for loops!
-    return pSourceAndInv.getFirst().contains("while");
-  }
 
   private String getSpecification(Specification pSpecification) {
     StringBuilder builder = new StringBuilder();
-    pSpecification
-        .getPathToSpecificationAutomata()
+    pSpecification.getPathToSpecificationAutomata()
         .values()
         .forEach(a -> builder.append(a.toString()));
     return builder.toString();
@@ -422,8 +425,10 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       Element pSource,
       Element pTarget,
       boolean pIsLoopStart,
-      FileLocation pFileLocation) {
-
+      int pLineNumberStart,
+      int pLineNumberEnd,
+      int pStartOffset,
+      int pEndOffset) {
     Element edge = pDoc.createElement("edge");
     edge.setAttributeNode(createAttrForDoc(pDoc, "source", pSource.getAttribute("id")));
     edge.setAttributeNode(createAttrForDoc(pDoc, "target", pTarget.getAttribute("id")));
@@ -431,21 +436,10 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     if (pIsLoopStart) {
       edge = createAndAppandDataNode(edge, pDoc, "enterLoopHead", "true");
     }
-    edge =
-        createAndAppandDataNode(
-            edge, pDoc, "startline", String.valueOf(pFileLocation.getStartingLineNumber()));
-    edge =
-        createAndAppandDataNode(
-            edge, pDoc, "endline", String.valueOf(pFileLocation.getEndingLineNumber()));
-    edge =
-        createAndAppandDataNode(
-            edge, pDoc, "startoffset", String.valueOf(pFileLocation.getNodeOffset()));
-    edge =
-        createAndAppandDataNode(
-            edge,
-            pDoc,
-            "endoffset",
-            String.valueOf(pFileLocation.getNodeOffset() + pFileLocation.getNodeLength()));
+    edge = createAndAppandDataNode(edge, pDoc, "startline", String.valueOf(pLineNumberStart));
+    edge = createAndAppandDataNode(edge, pDoc, "endline", String.valueOf(pLineNumberEnd));
+    edge = createAndAppandDataNode(edge, pDoc, "startoffset", String.valueOf(pStartOffset));
+    edge = createAndAppandDataNode(edge, pDoc, "endoffset", String.valueOf(pEndOffset));
     return edge;
   }
 
@@ -490,7 +484,11 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   private Element createNodeWithDataNode(
-      Element pGraph, Document pDoc, String nameOfNode, String key, String value) {
+      Element pGraph,
+      Document pDoc,
+      String nameOfNode,
+      String key,
+      String value) {
     Element node = pDoc.createElement("node");
     node.setAttributeNode(createAttrForDoc(pDoc, "id", nameOfNode));
     node = createAndAppandDataNode(node, pDoc, key, value);
@@ -499,7 +497,10 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   private Element createAndAppandDataNode(
-      Element pGraph, Document pDoc, String pStringpKeyValue, String textValue) {
+      Element pGraph,
+      Document pDoc,
+      String pStringpKeyValue,
+      String textValue) {
 
     Element data = pDoc.createElement(DATA_STRING);
     data.setAttributeNode(createAttrForDoc(pDoc, KEY_STRING, pStringpKeyValue));
@@ -522,11 +523,19 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
         getDefaultNode(doc, "\"invariant\"", "\"string\"", "\"node\"", "\"invariant\""));
     graphml.appendChild(
         getDefaultNode(
-            doc, "\"invariant.scope\"", "\"string\"", "\"node\"", "\"invariant.scope\""));
+            doc,
+            "\"invariant.scope\"",
+            "\"string\"",
+            "\"node\"",
+            "\"invariant.scope\""));
 
     graphml.appendChild(
         getDefaultNode(
-            doc, "\"sourcecodeLanguage\"", "\"string\" ", "\"graph\" ", "\"sourcecodelang\""));
+            doc,
+            "\"sourcecodeLanguage\"",
+            "\"string\" ",
+            "\"graph\" ",
+            "\"sourcecodelang\""));
     graphml.appendChild(
         getDefaultNode(doc, "\"programFile\"", "\"string\" ", "\"graph\" ", "\"programfile\""));
     graphml.appendChild(
@@ -544,20 +553,28 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     graphml.appendChild(getDefaultNode(doc, "\"endline\"", "\"int\" ", "\"edge\" ", "\"endline\""));
     graphml.appendChild(
         getDefaultNode(doc, "\"startoffset\"", "\"int\" ", "\"edge\" ", "\"startoffset\""));
-    graphml.appendChild(
-        getDefaultNode(doc, "\"endoffset\"", "\"int\"", "\"edge\"", "\"endoffset\""));
-    graphml.appendChild(
-        getDefaultNode(doc, "\"control\"", "\"string\" ", "\"edge\" ", "\"control\""));
+    graphml
+        .appendChild(getDefaultNode(doc, "\"endoffset\"", "\"int\"", "\"edge\"", "\"endoffset\""));
+    graphml
+        .appendChild(getDefaultNode(doc, "\"control\"", "\"string\" ", "\"edge\" ", "\"control\""));
     graphml.appendChild(
         getDefaultNode(doc, "\"enterFunction\"", "\"string\" ", "\"edge\" ", "\"enterFunction\""));
     graphml.appendChild(
         getDefaultNode(
-            doc, "\"returnFromFunction\"", "\"string\" ", "\"edge\" ", "\"returnFrom\""));
+            doc,
+            "\"returnFromFunction\"",
+            "\"string\" ",
+            "\"edge\" ",
+            "\"returnFrom\""));
     graphml.appendChild(
         getDefaultNode(doc, "\"witness-type\"", "\"string\" ", "\"graph\" ", "\"witness-type\""));
     graphml.appendChild(
         getDefaultNode(
-            doc, "\"inputWitnessHash\"", "\"string\" ", "\"graph\" ", "\"inputwitnesshash\""));
+            doc,
+            "\"inputWitnessHash\"",
+            "\"string\" ",
+            "\"graph\" ",
+            "\"inputwitnesshash\""));
     graphml.appendChild(
         getDefaultNode(doc, "\"originFileName\"", "\"string\"", "\"edge\"", "\"originfile\""));
 
@@ -565,7 +582,12 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
         getDefaultNode(doc, "\"isEntryNode\"", "\"boolean\"", "\"node\"", "\"entry\"", "false"));
     graphml.appendChild(
         getDefaultNode(
-            doc, "\"enterLoopHead\"", "\"boolean\"", "\"edge\"", "\"enterLoopHead\"", "false"));
+            doc,
+            "\"enterLoopHead\"",
+            "\"boolean\"",
+            "\"edge\"",
+            "\"enterLoopHead\"",
+            "false"));
     Element scope = doc.createElement(DATA_STRING);
     scope.setAttributeNode(createAttrForDoc(doc, KEY_STRING, "invariant.scope"));
     scope.appendChild(doc.createTextNode("main"));
@@ -579,23 +601,28 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     return newAttr;
   }
 
-  private Node getDefaultNode(
-      Document doc, String attr1, String attr2, String attr3, String attr4) {
+  private Node
+      getDefaultNode(Document doc, String attrName, String attrType, String forStr, String id) {
     Element node = doc.createElement(KEY_STRING);
-    node.setAttributeNode(createAttrForDoc(doc, "attr.name", attr1));
-    node.setAttributeNode(createAttrForDoc(doc, "attr.type", attr2));
-    node.setAttributeNode(createAttrForDoc(doc, "for", attr3));
-    node.setAttributeNode(createAttrForDoc(doc, "id", attr4));
+    node.setAttributeNode(createAttrForDoc(doc, "attr.name", attrName));
+    node.setAttributeNode(createAttrForDoc(doc, "attr.type", attrType));
+    node.setAttributeNode(createAttrForDoc(doc, "for", forStr));
+    node.setAttributeNode(createAttrForDoc(doc, "id", id));
     return node;
   }
 
   private Node getDefaultNode(
-      Document doc, String attr1, String attr2, String attr3, String attr4, String defaultVal) {
+      Document doc,
+      String attrName,
+      String attrType,
+      String forStr,
+      String id,
+      String defaultVal) {
     Element node = doc.createElement(KEY_STRING);
-    node.setAttributeNode(createAttrForDoc(doc, "attr.name", attr1));
-    node.setAttributeNode(createAttrForDoc(doc, "attr.type", attr2));
-    node.setAttributeNode(createAttrForDoc(doc, "for", attr3));
-    node.setAttributeNode(createAttrForDoc(doc, "id", attr4));
+    node.setAttributeNode(createAttrForDoc(doc, "attr.name", attrName));
+    node.setAttributeNode(createAttrForDoc(doc, "attr.type", attrType));
+    node.setAttributeNode(createAttrForDoc(doc, "for", forStr));
+    node.setAttributeNode(createAttrForDoc(doc, "id", id));
 
     Node child = doc.createElement("default");
     child.setTextContent(defaultVal);
