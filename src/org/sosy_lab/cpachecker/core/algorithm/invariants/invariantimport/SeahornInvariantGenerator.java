@@ -91,12 +91,18 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   private static final String MAIN_FUNCTION = "main";
   private static final String TEXT_ENTERING_EDGE = "Function start dummy edge";
   private int nodeNameCounter;
+  private final String PATH_TO_CPA_DIR;
 
   public SeahornInvariantGenerator(Configuration pConfiguration)
       throws InvalidConfigurationException {
     // set the output directory to the directory used by the cpa checker
     pConfiguration.inject(this);
     this.nodeNameCounter = 0;
+    PATH_TO_CPA_DIR =
+        SeahornInvariantGenerator.class.getProtectionDomain()
+            .getCodeSource()
+            .getLocation()
+            .getPath() + "../";
   }
 
   @Override
@@ -218,7 +224,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       transformer.setOutputProperty(OutputKeys.INDENT, "yes");
       transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
       DOMSource source = new DOMSource(doc);
-      File tempFile = new File(pathToOutDir, "proofWitness_Seahorn.graphml");
+      File tempFile = new File(PATH_TO_CPA_DIR + pathToOutDir, "proofWitness_Seahorn.graphml");
       tempFile.createNewFile();
       StreamResult result = new StreamResult(tempFile);
       transformer.transform(source, result);
@@ -253,18 +259,19 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
-    String absolutePathToInvFile = System.getProperty("user.dir") + "/" + pathToOutDir;
+
+    String absolutePathToInvFile = PATH_TO_CPA_DIR + pathToOutDir;
+
     builder.command(
-        PATH_TO_SCRIPTS + "compute_invariants_with_seahorn.sh",
+        PATH_TO_CPA_DIR + PATH_TO_SCRIPTS + "compute_invariants_with_seahorn.sh",
         pPath.toFile().getAbsolutePath(),
         absolutePathToInvFile,
-        System.getProperty("user.dir") + "/" + PATH_TO_SCRIPTS);
+        PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
     Process process = builder.start();
 
     int exitCode = process.waitFor();
     // After finishing the invariant generation script ensure that everything worked out as planned!
     assert exitCode == 0;
-
     return parseInvFile(absolutePathToInvFile + "invars_in_c.txt");
   }
 
