@@ -22,7 +22,9 @@ package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -86,10 +88,13 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   private String pathToOutDir = "output/";
   private static final String KEY_STRING = "key";
   private static final String DATA_STRING = "data";
-  private static final int OFFSET = 4;
+  private static final int OFFSET = 0;
   private static final String NAME_OF_TOOL = "CoInVerify";
   private static final String MAIN_FUNCTION = "main";
   private static final String TEXT_ENTERING_EDGE = "Function start dummy edge";
+
+  private static final String TRUE = "true";
+  private static final String FALSE = "false";
   private int nodeNameCounter;
   private final String PATH_TO_CPA_DIR;
 
@@ -122,7 +127,8 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
         throw new CPAException("Can onyl handle CFAs, where one source file is contained");
       }
       File sourceFile = sourceFiles.get(0).toFile();
-      Map<Integer, Pair<String, String>> genINvs = generateInvariantsAndLoad(sourceFiles.get(0));
+      Map<Integer, Pair<String, String>> genINvs =
+          generateInvariantsAndLoad(sourceFiles.get(0), pCfa);
 
       // Next, create an xml file and put the header to it
 
@@ -167,6 +173,12 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       // Get the edge containing the line number of the invariant, the starting node of the edge is
       // the desired one
       for (Entry<Integer, Pair<String, String>> inv : genINvs.entrySet()) {
+        if (inv.getValue().getSecond().strip().equalsIgnoreCase(TRUE)
+            || inv.getValue().getSecond().strip().equalsIgnoreCase(FALSE)) {
+          // No need to add true or false
+          continue;
+        }
+
         int lineNumber = inv.getKey();
         if (!lineToEdgesOfMain.containsKey(lineNumber)) {
           pLogger.log(
@@ -255,7 +267,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     return "N" + nodeNameCounter;
   }
 
-  private Map<Integer, Pair<String, String>> generateInvariantsAndLoad(Path pPath)
+  private Map<Integer, Pair<String, String>> generateInvariantsAndLoad(Path pPath, CFA pCfa)
       throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
@@ -272,21 +284,29 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     int exitCode = process.waitFor();
     // After finishing the invariant generation script ensure that everything worked out as planned!
     assert exitCode == 0;
-    return parseInvFile(absolutePathToInvFile + "invars_in_c.txt");
+    return parseInvFile(absolutePathToInvFile + "invars_in_c.txt", pCfa);
   }
 
   @SuppressWarnings("resource")
-  private Map<Integer, Pair<String, String>> parseInvFile(String pPathToInvFile) {
+  private Map<Integer, Pair<String, String>> parseInvFile(String pPathToInvFile, CFA pCfa) {
     BufferedReader reader = null;
     Map<Integer, Pair<String, String>> invs = new HashMap<>();
     try {
       reader = Files.newBufferedReader(Paths.get(pPathToInvFile), Charset.defaultCharset());
       String line = reader.readLine();
       // Skip the first line
+      FileWriter fw;
+      try {
+        fw = new FileWriter("/home/cppp/Documents/seahorn/generatedINvariants.txt", true);
+        BufferedWriter bw = new BufferedWriter(fw);
+        bw.write(pCfa.getFileNames().get(0) + ":");
+        bw.newLine();
 
       while ((line = reader.readLine()) != null) {
         if (line.indexOf(",") == -1) {
-          if (line.startsWith("main@entry") || line.startsWith("main@verifier.error.split")) {
+            if (line.startsWith("main@entry")
+                || line.startsWith("main@verifier.error.split")
+                || line.startsWith("main@")) {
             // Cannot parse these invariants (true or false, hence ignore it)
             reader.readLine();
           } else {
@@ -301,9 +321,18 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
           String code = line.substring(line.indexOf(",") + 1);
           String inv = reader.readLine();
           invs.put(lineNumber - OFFSET, Pair.of(code, inv));
+
+            bw.write(code + " <-->" + inv);
+            bw.newLine();
         }
       }
       reader.close();
+        // Store the generated invariant for later evaluations
+        bw.close();
+      } catch (IOException e) {
+        throw new IllegalArgumentException(e);
+      }
+
     } catch (IOException e) {
       // TOO enhance error logging
       throw new IllegalArgumentException(e);
