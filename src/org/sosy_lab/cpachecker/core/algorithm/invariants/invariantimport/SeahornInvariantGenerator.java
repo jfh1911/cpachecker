@@ -286,7 +286,8 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   @SuppressWarnings("resource")
-  private Map<Integer, Pair<String, String>> parseInvFile(String pPathToInvFile, CFA pCfa) {
+  private Map<Integer, Pair<String, String>>
+      parseInvFile(String pPathToInvFile, @SuppressWarnings("unused") CFA pCfa) {
     BufferedReader reader = null;
     Map<Integer, Pair<String, String>> invs = new HashMap<>();
     try {
