@@ -22,14 +22,15 @@ package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -295,12 +296,16 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       reader = Files.newBufferedReader(Paths.get(pPathToInvFile), Charset.defaultCharset());
       String line = reader.readLine();
       // Skip the first line
-      FileWriter fw;
       try {
-        fw = new FileWriter("/home/cppp/Documents/seahorn/generatedINvariants.txt", true);
-        BufferedWriter bw = new BufferedWriter(fw);
-        bw.write(pCfa.getFileNames().get(0) + ":");
-        bw.newLine();
+
+        Writer fw =
+            Files.newBufferedWriter(
+                Paths.get("/home/cppp/Documents/seahorn/generatedINvariants.txt"),
+                Charset.defaultCharset(),
+                StandardOpenOption.APPEND);
+        PrintWriter out = new PrintWriter(fw);
+
+        out.println(pCfa.getFileNames().get(0) + ":");
 
       while ((line = reader.readLine()) != null) {
         if (line.indexOf(",") == -1) {
@@ -322,13 +327,15 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
           String inv = reader.readLine();
           invs.put(lineNumber - OFFSET, Pair.of(code, inv));
 
-            bw.write(code + " <-->" + inv);
-            bw.newLine();
+            out.println(code + " <-->" + inv);
+
         }
       }
       reader.close();
         // Store the generated invariant for later evaluations
-        bw.close();
+
+        out.flush();
+        out.close();
       } catch (IOException e) {
         throw new IllegalArgumentException(e);
       }
