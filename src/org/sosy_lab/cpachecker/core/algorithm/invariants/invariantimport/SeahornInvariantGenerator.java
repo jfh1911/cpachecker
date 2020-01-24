@@ -24,13 +24,10 @@ import com.google.common.collect.Multimap;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -298,14 +295,14 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       // Skip the first line
       try {
 
-        Writer fw =
-            Files.newBufferedWriter(
-                Paths.get("/home/cppp/Documents/seahorn/generatedINvariants.txt"),
-                Charset.defaultCharset(),
-                StandardOpenOption.APPEND);
-        PrintWriter out = new PrintWriter(fw);
+        // Writer fw =
+        // Files.newBufferedWriter(
+        // Paths.get("/home/jfh/Documents/seahorn/generatedINvariants.txt"),
+        // Charset.defaultCharset(),
+        // StandardOpenOption.APPEND);
+        // PrintWriter out = new PrintWriter(fw);
 
-        out.println(pCfa.getFileNames().get(0) + ":");
+        // out.println(pCfa.getFileNames().get(0) + ":");
 
       while ((line = reader.readLine()) != null) {
         if (line.indexOf(",") == -1) {
@@ -327,15 +324,15 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
           String inv = reader.readLine();
           invs.put(lineNumber - OFFSET, Pair.of(code, inv));
 
-            out.println(code + " <-->" + inv);
+            // out.println(code + " <-->" + inv);
 
         }
       }
       reader.close();
         // Store the generated invariant for later evaluations
 
-        out.flush();
-        out.close();
+        // out.flush();
+        // out.close();
       } catch (IOException e) {
         throw new IllegalArgumentException(e);
       }
