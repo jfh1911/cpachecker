@@ -20,35 +20,35 @@ int main(int argc, char **argv)
 	myfile.open(pathToFile);
 
     //Add the needed include
-    myfile << "#include \"seahorn/seahorn.h\"\n";
+ //   myfile << "#include \"seahorn/seahorn.h\"\n";
 
-    string toReplace1 = "extern void __VERIFIER_error() __attribute__ ((__noreturn__));";
-    string replacement1 = "extern void __VERIFIER_error() {\n";
-    replacement1 += "printf(\"[sea] __VERIFIER_error was executd\");\n";
-    replacement1 += "exit(1);\n";
-    replacement1 += "}";
+   // string toReplace1 = "extern void __VERIFIER_error() __attribute__ ((__noreturn__));";
+   // string replacement1 = "extern void __VERIFIER_error() {\n";
+  //  replacement1 += "printf(\"[sea] __VERIFIER_error was executd\");\n";
+   // replacement1 += "exit(1);\n";
+   // replacement1 += "}";
 
-    string toReplace2 = "__VERIFIER_assert";
-    string replacement2 = "sassert";
-        string toNotReplace2 ="void __VERIFIER_assert(";
+   // string toReplace2 = "__VERIFIER_assert";
+//    string replacement2 = "sassert";
+ //       string toNotReplace2 ="void __VERIFIER_assert(";
 
 
     string line;
 
     while (getline(fin, line))
     {
-        if (line.find(toReplace1) != std::string::npos)
-        {
-            myfile << replacement1 << '\n';
-        }
-        else  if (line.find(toReplace2) != std::string::npos && line.find(toNotReplace2) == std::string::npos) 
-        {
-               boost::replace_all(line, toReplace2, replacement2);
-               myfile  << line << '\n';   
-        } else
-        {
+ //       if (line.find(toReplace1) != std::string::npos)
+  //      {
+ //           myfile << replacement1 << '\n';
+  //      }
+   //     else  if (line.find(toReplace2) != std::string::npos && line.find(toNotReplace2) == std::string::npos) 
+ //       {
+//               boost::replace_all(line, toReplace2, replacement2);
+  //             myfile  << line << '\n';   
+   //     } else
+    //    {
             myfile << line << '\n';
-        }
+     //   }
         
     }
     fin.close();
