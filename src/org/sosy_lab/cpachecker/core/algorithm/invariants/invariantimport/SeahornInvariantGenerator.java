@@ -19,6 +19,7 @@
  */
 package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.io.BufferedReader;
@@ -125,7 +126,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
         throw new CPAException("Can onyl handle CFAs, where one source file is contained");
       }
       File sourceFile = sourceFiles.get(0).toFile();
-      Map<Integer, Pair<String, String>> genINvs =
+      Multimap<Integer, Pair<String, String>> genINvs =
           generateInvariantsAndLoad(sourceFiles.get(0), pCfa);
 
       // Next, create an xml file and put the header to it
@@ -170,7 +171,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
 
       // Get the edge containing the line number of the invariant, the starting node of the edge is
       // the desired one
-      for (Entry<Integer, Pair<String, String>> inv : genINvs.entrySet()) {
+      for (Entry<Integer, Pair<String, String>> inv : genINvs.entries()) {
         if (inv.getValue().getSecond().strip().equalsIgnoreCase(TRUE)
             || inv.getValue().getSecond().strip().equalsIgnoreCase(FALSE)) {
           // No need to add true or false
@@ -265,7 +266,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     return "N" + nodeNameCounter;
   }
 
-  private Map<Integer, Pair<String, String>> generateInvariantsAndLoad(Path pPath, CFA pCfa)
+  private Multimap<Integer, Pair<String, String>> generateInvariantsAndLoad(Path pPath, CFA pCfa)
       throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
@@ -286,10 +287,10 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   @SuppressWarnings("resource")
-  private Map<Integer, Pair<String, String>>
+  private Multimap<Integer, Pair<String, String>>
       parseInvFile(String pPathToInvFile, @SuppressWarnings("unused") CFA pCfa) {
     BufferedReader reader = null;
-    Map<Integer, Pair<String, String>> invs = new HashMap<>();
+    Multimap<Integer, Pair<String, String>> invs = ArrayListMultimap.create();
     try {
       reader = Files.newBufferedReader(Paths.get(pPathToInvFile), Charset.defaultCharset());
       String line = reader.readLine();
