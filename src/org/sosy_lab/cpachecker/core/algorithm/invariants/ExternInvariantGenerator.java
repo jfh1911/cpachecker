@@ -125,6 +125,7 @@ public class ExternInvariantGenerator extends AbstractInvariantGenerator impleme
 
   private volatile boolean programIsSafe = false;
 
+  @SuppressWarnings("UnnecessaryAnonymousClass")
   private final ShutdownRequestListener shutdownListener = new ShutdownRequestListener() {
 
     @Override
@@ -338,7 +339,7 @@ public class ExternInvariantGenerator extends AbstractInvariantGenerator impleme
     }
   }
 
-
+  @SuppressWarnings("UnnecessaryLambda")
   private final Predicate<AbstractState> HAS_ASSUMPTIONS =
       state -> {
         AssumptionStorageState assumption =

@@ -10,9 +10,10 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
-
-#include <boost/algorithm/string/trim.hpp>
-#include <boost/filesystem.hpp>
+#include <algorithm>
+#include <functional>
+#include <cctype>
+#include <locale>
 
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/DebugLoc.h>
@@ -30,170 +31,168 @@ using namespace psr;
 
 namespace psr {
 
+
+
 std::string getSrcCodeLine(const std::string &Dir, const std::string &File,
-                           unsigned int num) {
-  boost::filesystem::path FilePath;
-  // Its possible that File holds the complete path
-  if (File.find("/home/") == std::string::npos) {
-    boost::filesystem::path DirPath(Dir);
-    boost::filesystem::path FileName(File);
-    FilePath = DirPath / FileName;
-  } else {
-    FilePath = File;
-  }
-  if (boost::filesystem::exists(FilePath) &&
-      !boost::filesystem::is_directory(FilePath)) {
-    std::ifstream ifs(FilePath.string(), std::ios::binary);
-    if (ifs.is_open()) {
-      ifs.seekg(std::ios::beg);
-      std::string line;
-      for (unsigned int i = 0; i < num - 1; ++i) {
-        ifs.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      }
-      std::getline(ifs, line);
-      boost::algorithm::trim(line);
-      return line;
-    }
-  }
-  return "file does not exist: " + FilePath.string();
+		unsigned int num) {
+	std::string FilePath;
+	// Its possible that File holds the complete path
+	if (File.find("/home/") == std::string::npos) {
+		FilePath = Dir + "/" + File;
+	} else {
+		FilePath = File;
+	}
+	std::ifstream ifs(FilePath.c_str(), std::ios::binary);
+	if (ifs.is_open()) {
+		ifs.seekg(std::ios::beg);
+		std::string line;
+		for (unsigned int i = 0; i < num - 1; ++i) {
+			ifs.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+		}
+		std::getline(ifs, line);
+		std::cout << line;
+		return line;
+	} else {
+		return "file does not exist: " + FilePath;
+	}
 }
 
-llvm::DILocalVariable *getDILocVarFromValue(const llvm::Value *V) {
-	llvm::DILocalVariable  * retVal = nullptr;
-  if (auto *L =
-          llvm::LocalAsMetadata::getIfExists(const_cast<llvm::Value *>(V))) {
+llvm::DILocalVariable* getDILocVarFromValue(const llvm::Value *V) {
+	llvm::DILocalVariable *retVal = nullptr;
+	if (auto *L = llvm::LocalAsMetadata::getIfExists(
+			const_cast<llvm::Value*>(V))) {
 
-    if (auto *MDV = llvm::MetadataAsValue::getIfExists(V->getContext(), L)) {
-      for (auto *U : MDV->users()) {
-        if (auto *DDI = llvm::dyn_cast<llvm::DbgDeclareInst>(U)) {
-          retVal = DDI->getVariable();
+		if (auto *MDV = llvm::MetadataAsValue::getIfExists(V->getContext(),
+				L)) {
+			for (auto *U : MDV->users()) {
+				if (auto *DDI = llvm::dyn_cast<llvm::DbgDeclareInst>(U)) {
+					retVal = DDI->getVariable();
 //          retVal->print(llvm::outs());
 //          llvm::outs() << "\n ";
-        }
-        if (auto *DVI = llvm::dyn_cast<llvm::DbgValueInst>(U)) {
-          retVal = DVI->getVariable();
-        }
-      }
-    }
-  }
-  return retVal;
+				}
+				if (auto *DVI = llvm::dyn_cast<llvm::DbgValueInst>(U)) {
+					retVal = DVI->getVariable();
+				}
+			}
+		}
+	}
+	return retVal;
 }
 
 std::string getLocalVarSrcInfo(const llvm::Value *V, bool ScopeInfo) {
-  if (auto DILocVar = getDILocVarFromValue(V)) {
-    std::string VarName("Var : " + DILocVar->getName().str() + "\n");
-    std::string Line("Line: " + std::to_string(DILocVar->getLine()));
-    std::string Scope;
-    if (ScopeInfo) {
-      Scope =
-          "\nFunc: " + DILocVar->getScope()->getSubprogram()->getName().str() +
-          "\n";
-      Scope += "File: " + DILocVar->getScope()->getFilename().str();
-    }
-    return VarName + Line + Scope;
-  }
-  return "No source information available!";
+	if (auto DILocVar = getDILocVarFromValue(V)) {
+		std::string VarName("Var : " + DILocVar->getName().str() + "\n");
+		std::string Line("Line: " + std::to_string(DILocVar->getLine()));
+		std::string Scope;
+		if (ScopeInfo) {
+			Scope = "\nFunc: "
+					+ DILocVar->getScope()->getSubprogram()->getName().str()
+					+ "\n";
+			Scope += "File: " + DILocVar->getScope()->getFilename().str();
+		}
+		return VarName + Line + Scope;
+	}
+	return "No source information available!";
 }
 
-
 std::string llvmInstructionToOnlySrcCodeLine(const llvm::Instruction *I) {
-	 // Otherwise get the corresponding source code line instead
-	  if (I->getMetadata(llvm::LLVMContext::MD_dbg)) {
-	    auto &DILoc = I->getDebugLoc();
-	    std::string ScopeStr;
-	    std::string SrcCode("");
-	    if (auto Scope = DILoc->getScope()) {
-	    	int temp = DILoc.getLine();
-	      SrcCode += std::to_string(temp) ;
-	      SrcCode += ",";
-	      SrcCode += getSrcCodeLine(Scope->getDirectory().str(),
-	                                Scope->getFilename().str(), DILoc.getLine());
-	    } else {
-	      SrcCode += "No source code found!";
-	    }
-	    return SrcCode ;
-	  }
-	  return "";
+	// Otherwise get the corresponding source code line instead
+	if (I->getMetadata(llvm::LLVMContext::MD_dbg)) {
+		auto &DILoc = I->getDebugLoc();
+		std::string ScopeStr;
+		std::string SrcCode("");
+		if (auto Scope = DILoc->getScope()) {
+			int temp = DILoc.getLine();
+			SrcCode += std::to_string(temp);
+			SrcCode += ",";
+			SrcCode += getSrcCodeLine(Scope->getDirectory().str(),
+					Scope->getFilename().str(), DILoc.getLine());
+		} else {
+			SrcCode += "No source code found!";
+		}
+		return SrcCode;
+	}
+	return "";
 }
 
 std::string llvmInstructionToSrc(const llvm::Instruction *I, bool ScopeInfo) {
-  // Get source variable name if available
-  if (I->isUsedByMetadata()) {
-    return getLocalVarSrcInfo(I, ScopeInfo);
-  }
-  // Otherwise get the corresponding source code line instead
-  if (I->getMetadata(llvm::LLVMContext::MD_dbg)) {
-    auto &DILoc = I->getDebugLoc();
-    std::string ScopeStr;
-    std::string SrcCode("Src : ");
-    if (auto Scope = DILoc->getScope()) {
-      if (ScopeInfo) {
-        // Scope is not necessarily a DISubprogram - could be a DILexicalblock
-        ScopeStr = "Func: " + Scope->getSubprogram()->getName().str() + "\n";
-        ScopeStr += "File: " + Scope->getFilename().str() + "\n";
-      }
-      SrcCode += getSrcCodeLine(Scope->getDirectory().str(),
-                                Scope->getFilename().str(), DILoc.getLine());
-      SrcCode += "\n";
-    } else {
-      SrcCode += "No source code found!\n";
-    }
-    std::string Line = "Line: " + std::to_string(DILoc.getLine()) + "\n";
-    std::string Col = "Col : " + std::to_string(DILoc.getCol());
-    return SrcCode + ScopeStr + Line + Col;
-  }
-  return "No source information available!";
+	// Get source variable name if available
+	if (I->isUsedByMetadata()) {
+		return getLocalVarSrcInfo(I, ScopeInfo);
+	}
+	// Otherwise get the corresponding source code line instead
+	if (I->getMetadata(llvm::LLVMContext::MD_dbg)) {
+		auto &DILoc = I->getDebugLoc();
+		std::string ScopeStr;
+		std::string SrcCode("Src : ");
+		if (auto Scope = DILoc->getScope()) {
+			if (ScopeInfo) {
+				// Scope is not necessarily a DISubprogram - could be a DILexicalblock
+				ScopeStr = "Func: " + Scope->getSubprogram()->getName().str()
+						+ "\n";
+				ScopeStr += "File: " + Scope->getFilename().str() + "\n";
+			}
+			SrcCode += getSrcCodeLine(Scope->getDirectory().str(),
+					Scope->getFilename().str(), DILoc.getLine());
+			SrcCode += "\n";
+		} else {
+			SrcCode += "No source code found!\n";
+		}
+		std::string Line = "Line: " + std::to_string(DILoc.getLine()) + "\n";
+		std::string Col = "Col : " + std::to_string(DILoc.getCol());
+		return SrcCode + ScopeStr + Line + Col;
+	}
+	return "No source information available!";
 }
 
 std::string llvmArgumentToSrc(const llvm::Argument *A, bool ScopeInfo) {
-  return getLocalVarSrcInfo(A, ScopeInfo);
+	return getLocalVarSrcInfo(A, ScopeInfo);
 }
 
 std::string llvmFunctionToSrc(const llvm::Function *F) {
-  if (auto SubProg = F->getSubprogram()) {
-    return "Fname: " + SubProg->getName().str() +
-           "\nLine : " + std::to_string(SubProg->getLine()) +
-           "\nFile : " + SubProg->getFilename().str();
-    ;
-  } else {
-    return "Fname: " + F->getName().str();
-  }
+	if (auto SubProg = F->getSubprogram()) {
+		return "Fname: " + SubProg->getName().str() + "\nLine : "
+				+ std::to_string(SubProg->getLine()) + "\nFile : "
+				+ SubProg->getFilename().str();;
+	} else {
+		return "Fname: " + F->getName().str();
+	}
 }
 
 std::string llvmGlobalValueToSrc(const llvm::GlobalVariable *GV) {
-  // There is no dbg info for external global variable's
-  if (auto DbgMetaNode = GV->getMetadata(llvm::LLVMContext::MD_dbg)) {
-    if (auto DIGVExp =
-            llvm::dyn_cast<llvm::DIGlobalVariableExpression>(DbgMetaNode)) {
-      if (auto DIGV = DIGVExp->getVariable()) {
-        return "Var : " + DIGV->getName().str() +
-               "\nLine: " + std::to_string(DIGV->getLine()) +
-               "\nFile: " + DIGV->getFilename().str();
-      }
-    }
-  }
-  return "No source information available!";
+	// There is no dbg info for external global variable's
+	if (auto DbgMetaNode = GV->getMetadata(llvm::LLVMContext::MD_dbg)) {
+		if (auto DIGVExp = llvm::dyn_cast<llvm::DIGlobalVariableExpression>(
+				DbgMetaNode)) {
+			if (auto DIGV = DIGVExp->getVariable()) {
+				return "Var : " + DIGV->getName().str() + "\nLine: "
+						+ std::to_string(DIGV->getLine()) + "\nFile: "
+						+ DIGV->getFilename().str();
+			}
+		}
+	}
+	return "No source information available!";
 }
 
 std::string llvmModuleToSrc(const llvm::Module *M) {
-  return M->getModuleIdentifier();
+	return M->getModuleIdentifier();
 }
 
 std::string llvmValueToSrc(const llvm::Value *V, bool ScopeInfo) {
-  // if possible delegate call to appropriate method
-  if (auto F = llvm::dyn_cast<llvm::Function>(V)) {
-    return llvmFunctionToSrc(F);
-  }
-  if (auto GV = llvm::dyn_cast<llvm::GlobalVariable>(V)) {
-    return llvmGlobalValueToSrc(GV);
-  }
-  if (auto Arg = llvm::dyn_cast<llvm::Argument>(V)) {
-    return llvmArgumentToSrc(Arg, ScopeInfo);
-  }
-  if (auto I = llvm::dyn_cast<llvm::Instruction>(V)) {
-    return llvmInstructionToSrc(I, ScopeInfo);
-  }
-  return "No source information available!";
+	// if possible delegate call to appropriate method
+	if (auto F = llvm::dyn_cast<llvm::Function>(V)) {
+		return llvmFunctionToSrc(F);
+	}
+	if (auto GV = llvm::dyn_cast<llvm::GlobalVariable>(V)) {
+		return llvmGlobalValueToSrc(GV);
+	}
+	if (auto Arg = llvm::dyn_cast<llvm::Argument>(V)) {
+		return llvmArgumentToSrc(Arg, ScopeInfo);
+	}
+	if (auto I = llvm::dyn_cast<llvm::Instruction>(V)) {
+		return llvmInstructionToSrc(I, ScopeInfo);
+	}
+	return "No source information available!";
 }
 
 } // namespace psr

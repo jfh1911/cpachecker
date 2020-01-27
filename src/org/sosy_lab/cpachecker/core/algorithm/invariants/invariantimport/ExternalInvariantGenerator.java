@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
+import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
@@ -35,7 +36,6 @@ public interface ExternalInvariantGenerator {
   /**
    *
    * @param pCfa of the program
-   * @param targetNodesToGenerateFor A List of nodes for that a invariant should be generated
    * @return A set of candidate invariants generated and verified
    * @throws CPAException If the CFA contains more than one source file or to wrap different
    *         exceptions
@@ -49,11 +49,13 @@ public interface ExternalInvariantGenerator {
       Configuration pConfig)
       throws CPAException;
 
-  static ExternalInvariantGenerator getInstance(ExternalInvariantGenerators instance) {
+  static ExternalInvariantGenerator
+      getInstance(ExternalInvariantGenerators instance, Configuration pConfiguration)
+          throws InvalidConfigurationException {
     switch (instance) {
       case SEAHORN:
       default:
-        return new SeahornInvariantGenerator();
+        return new SeahornInvariantGenerator(pConfiguration);
 
     }
   }

@@ -67,9 +67,27 @@ std::string getLlvmName(Value *inst) {
 
 }
 
+llvm::Instruction* getFirstNonPhiAndNonTailCall(llvm::BasicBlock &BB) {
+	for (llvm::Instruction &I : BB) {
+		std::string lineStr = "";
+		llvm::raw_string_ostream rso(lineStr);
+		I.print(rso);
+		//Check if the statement is an variable assignment (needed to parse the variables of the invariant)
+		if (auto phi = llvm::dyn_cast<llvm::PHINode>(&I)) {
+			continue;
+		} else if (boost::contains(lineStr, "tail call void")) {
+			continue;
+		} else {
+			return &I;
+		}
+	}
+	return BB.getFirstNonPHI();
+}
+
 int main(int argc, char **argv) {
 	if (argc != 4) {
-		std::cout << "usage: <prog> <IR file> <OutPut Seahorn> <Dir to output files>\n";
+		std::cout
+				<< "usage: <prog> <IR file> <OutPut Seahorn> <Dir to output files>\n";
 		return 1;
 	}
 	// parse an IR file into an LLVM module
@@ -95,26 +113,31 @@ int main(int argc, char **argv) {
 	llvm::outs() << "of file " << M->getSourceFileName() << "\n";
 
 	map<string, string> foundVars;
-	map<string, string> blocksToScrLines;
+	map<string, set<string>> blocksToScrLines;
 
 	for (BasicBlock &BB : *F) {
 		string srcLineOfBasicBlock = "";
 		bool isLast = false;
 		for (llvm::Instruction &I : BB) {
 
+			//Check if the current statement is the last of the block and a branch instance.
 			if (auto branch = llvm::dyn_cast<llvm::BranchInst>(&I)) {
 				isLast = true;
-				for (unsigned i = 0; i < branch->getNumSuccessors(); i++) {
-					if (branch->getSuccessor(i) == &BB) {
+//				cout << BB.getName().str() << ":  \n";
+//				TODO: Test if this leads to better performance (ignoring, where the last branch is going to
+//				for (unsigned i = 0; i < branch->getNumSuccessors(); i++) {
+//					if (branch->getSuccessor(i) == &BB) {
 						srcLineOfBasicBlock =
 								psr::llvmInstructionToOnlySrcCodeLine(&I);
-					}
-				}
+//					}
+//				}
+//				cout << "line to that is: " <<srcLineOfBasicBlock << "\n";
 			} else {
 				isLast = false;
 			}
 
 			std::string sourceStr = psr::llvmInstructionToSrc(&I, false);
+			//Check if the statement is an variable assignment (needed to parse the variables of the invariant)
 			if (boost::starts_with(sourceStr, "Var") || (&I)->getName() != "") {
 				std::string llvmVarName = getLlvmName(&I);
 
@@ -151,15 +174,26 @@ int main(int argc, char **argv) {
 
 			}
 		}
-		//if the first node is a phi node, check if the block is a loop body.
+		//check if the block is a loop body.
 		//THerefore, check if the last statement is a jump containing the block as one target
 		if (isLast && srcLineOfBasicBlock != "") {
-			blocksToScrLines[PREFIX + BB.getName().str()] = srcLineOfBasicBlock;
+			set<string> lines;
+			lines.insert(srcLineOfBasicBlock);
+			lines.insert(
+					psr::llvmInstructionToOnlySrcCodeLine(
+							getFirstNonPhiAndNonTailCall(BB)));
+
+			blocksToScrLines[PREFIX + BB.getName().str()] = lines;
 		} else {
 			//If no loop structure, just use the first non phi nod of the block
-			blocksToScrLines[PREFIX + BB.getName().str()] =
-					psr::llvmInstructionToOnlySrcCodeLine(BB.getFirstNonPHI());
+			set<string> lines;
+
+			lines.insert(
+					psr::llvmInstructionToOnlySrcCodeLine(
+							getFirstNonPhiAndNonTailCall(BB)));
+			blocksToScrLines[PREFIX + BB.getName().str()] = lines;
 		}
+
 	}
 
 //Next, identify the location, where the invariants belong to:
@@ -235,11 +269,12 @@ int main(int argc, char **argv) {
 
 			locToInv[invLoc] = conjunction.substr(0, conjunction.size() - 2);
 		} else {
-			locToInv[invLoc] = e;
+			//To remove the leading ":"
+			locToInv[invLoc] = e.substr(1,e.length());
 		}
 	}
 
-	//prefix the variables with "main@"
+//prefix the variables with "main@"
 	map<string, string> prefixedVars;
 	for (auto const &e : foundVars) {
 		//remove two leading and one following whitespace
@@ -266,29 +301,37 @@ int main(int argc, char **argv) {
 	cout
 			<< "Mapping of Source locations (including main@entry and main@exit) <-> invariant in C syntax \n";
 	for (auto const &en : updatedInvs) {
-		if (blocksToScrLines.count(en.first) > 0
-				&& blocksToScrLines[en.first] != "") {
-			cout << blocksToScrLines[en.first] << "<->" << en.second << "\n";
+		if (blocksToScrLines.count(en.first) > 0) {
+			for (string srcCodeStr : blocksToScrLines[en.first]) {
+				if (srcCodeStr != "") {
+					cout << srcCodeStr << "<->" << en.second << "\n";
+				} else {
+					cout << en.first << "<->" << en.second << "\n";
+				}
+			}
 		} else {
 			cout << en.first << "<->" << en.second << "\n";
 		}
 	}
 
-	//Write the output to the file
+//Write the output to the file
 	std::ofstream myfile;
 	std::string fileName = argv[3];
-	fileName +="/invars_in_c.txt";
+	fileName += "invars_in_c.txt";
 	myfile.open(fileName);
-
 	myfile
-			<< "Mapping of Source locations (including main@entry and main@exit) <-(represented by a newline)-> invariant in C syntax \n";
+			<< "Mapping of Source locations (including main@entry and main@exit) <-> invariant in C syntax \n";
 	for (auto const &en : updatedInvs) {
-		if (blocksToScrLines.count(en.first) > 0
-				&& blocksToScrLines[en.first] != "") {
-			myfile << blocksToScrLines[en.first] << DELIMITOR << en.second
-					<< "\n";
+		if (blocksToScrLines.count(en.first) > 0) {
+			for (string srcCodeStr : blocksToScrLines[en.first]) {
+				if (srcCodeStr != "") {
+					myfile << srcCodeStr << DELIMITOR << en.second << "\n";
+				} else {
+					myfile << en.first << DELIMITOR << en.second << "\n";
+				}
+			}
 		} else {
-			myfile << en.first << DELIMITOR << en.second << "\n";
+			myfile << en.first << DELIMITOR<< en.second << "\n";
 		}
 	}
 

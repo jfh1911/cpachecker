@@ -3313,6 +3313,10 @@ invariantGeneration.kInduction.guessCandidatesFromCFA = ASSUME_EDGES_PLAIN
 # generator.
 invariantGeneration.kInduction.invariantsAutomatonFile = no default value
 
+# Path to the directory where the generated files should be stored. by
+# default we use the /output dir
+invariantGeneration.kInduction.seahorn.pathToOutDir = "output/"
+
 # For correctness-witness validation: Shut down if a candidate invariant is
 # found to be incorrect.
 invariantGeneration.kInduction.terminateOnCounterexample = false
@@ -3486,6 +3490,11 @@ overflow.trackPointers = false
 # variables.
 overflow.useLiveness = true
 
+# In case that all parallel running analyses should be aborted, if a specific
+# analysis is finished (regardingless, if the result is sound or notset this
+# flag
+parallelAlgorithm.cancleOnSpecificAnalysis = false
+
 # List of files with configurations to use. Files can be suffixed with
 # ::supply-reached this signalizes that the (finished) reached set of an
 # analysis can be used in other analyses (e.g. for invariants computation).
@@ -3494,6 +3503,11 @@ overflow.useLiveness = true
 # analysis has to be instanceof ReachedSetAdjustingCPA) to make this work
 # properly.
 parallelAlgorithm.configFiles = no default value
+
+# Specify the name beeing the full path  to the config file) of the anaylsis,
+# thats termination leeds to aborting of all other analyses currently
+# running. Note that the flag 'cancleOnSpecificAnalysis' needs to be set
+parallelAlgorithm.nameOfAnalysisToCancleOn = no default value
 
 # C dialect for parser
 parser.dialect = GNUC

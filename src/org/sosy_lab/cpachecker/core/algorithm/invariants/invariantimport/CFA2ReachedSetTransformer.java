@@ -20,15 +20,17 @@
 package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.collect.PathCopyingPersistentTreeMap;
 import org.sosy_lab.common.collect.PersistentSortedMap;
@@ -42,7 +44,6 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.AnalysisDirection;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
-import org.sosy_lab.cpachecker.core.reachedset.ReachedSetFactory;
 import org.sosy_lab.cpachecker.cpa.alwaystop.AlwaysTopCPA;
 import org.sosy_lab.cpachecker.cpa.predicate.PredicateAbstractState;
 import org.sosy_lab.cpachecker.util.AbstractStates;
@@ -59,7 +60,6 @@ public class CFA2ReachedSetTransformer {
 
   public List<Pair<AbstractState, Precision>> transformCFAToReachedSet(
       CFA pCfa,
-      Path pathToInvFile,
       LogManager pLogger,
       ShutdownNotifier pShutdownNotifier,
       Configuration pConfig,
@@ -68,11 +68,9 @@ public class CFA2ReachedSetTransformer {
     ConfigurationBuilder builder = Configuration.builder();
 
     builder.setOption("reachedSet", "NORMAL");
-    Configuration dummyConfigForReachedSet = builder.build();
-
-    ReachedSetFactory factory = new ReachedSetFactory(dummyConfigForReachedSet, pLogger);
     List<Pair<AbstractState, Precision>> returnSet = new ArrayList<>();
 
+    @SuppressWarnings("resource")
     Solver solver = Solver.create(pConfig, pLogger, pShutdownNotifier);
     FormulaManagerView view = solver.getFormulaManager();
 
@@ -106,7 +104,7 @@ public class CFA2ReachedSetTransformer {
 
     // Firstly, read the file and parse it, such that we have a map of the form: location ->
     // invarinat
-    Map<Pair<Integer, String>, String> invariants = parseInvFile(pathToInvFile);
+    Map<Pair<Integer, String>, String> invariants = parseInvFile();
     Map<String, String> nodeToInv = new HashMap<>();
 
     // Now, iterate over the cfa nodes and check for each leaving edge, if the assosiated source
@@ -130,7 +128,7 @@ public class CFA2ReachedSetTransformer {
 
           returnSet.add(
               Pair.of(
-                  getAbstrStateForInv(node, initale, view, pathFormulaManager, regionmngr, bfmgr),
+                  getAbstrStateForInv(node, view, pathFormulaManager, regionmngr, bfmgr),
                   precision));
           nodeToInv.put("N" + node.getNodeNumber(), invariants.get(posInvLoc));
           break;
@@ -140,21 +138,20 @@ public class CFA2ReachedSetTransformer {
           // No invariant is found, hence the node is added with true;
           returnSet.add(
               Pair.of(
-                  getAbstrStateForInv(node, initale, view, pathFormulaManager, regionmngr, bfmgr),
+                  getAbstrStateForInv(node, view, pathFormulaManager, regionmngr, bfmgr),
                   precision));
         }
 
       }
     }
 
-    System.out.println(nodeToInv.toString());
+    pLogger.log(Level.FINER, nodeToInv.toString());
     solver.close();
     return returnSet;
   }
 
   private AbstractState getAbstrStateForInv(
       CFANode pNode,
-      PredicateAbstractState pInitale,
       FormulaManagerView view,
       PathFormulaManager pathFormulaManager,
       SymbolicRegionManager pRegionmngr,
@@ -185,11 +182,15 @@ public class CFA2ReachedSetTransformer {
 
   }
 
-  private Map<Pair<Integer, String>, String> parseInvFile(Path pPathToInvFile) {
+  @SuppressWarnings("resource")
+  private Map<Pair<Integer, String>, String> parseInvFile() {
     BufferedReader reader = null;
     Map<Pair<Integer, String>, String> invs = new HashMap<>();
     try {
-      reader = new BufferedReader(new FileReader("/home/cppp/Documents/seahorn/invars_in_c.txt"));
+      reader =
+          Files.newBufferedReader(
+              Paths.get("/home/cppp/Documents/seahorn/invars_in_c.txt"),
+              Charset.defaultCharset());
       String line = reader.readLine();
       // Skip the first line
 
@@ -204,11 +205,12 @@ public class CFA2ReachedSetTransformer {
         // +1 to ignore the ','
         String code = line.substring(line.indexOf(",") + 1);
         String inv = reader.readLine();
-        invs.put(Pair.of(lineNumber, ""), inv);
+        invs.put(Pair.of(lineNumber, code), inv);
       }
       reader.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      // TODO: Enhance logging
+      throw new IllegalArgumentException(e);
     }
 
     return invs;
