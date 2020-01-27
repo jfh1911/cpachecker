@@ -94,6 +94,8 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
 
   private static final String TRUE = "true";
   private static final String FALSE = "false";
+
+  private static final Level LOG_LEVEL = Level.INFO;
   private int nodeNameCounter;
   private final String PATH_TO_CPA_DIR;
 
@@ -128,6 +130,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       File sourceFile = sourceFiles.get(0).toFile();
       Multimap<Integer, Pair<String, String>> genINvs =
           generateInvariantsAndLoad(sourceFiles.get(0), pCfa);
+      pLogger.log(LOG_LEVEL, "Generated %d many invariants via seahorn", genINvs.entries().size());
 
       // Next, create an xml file and put the header to it
 
@@ -254,6 +257,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
               tempFile.toPath());
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
       pLogger.log(Level.FINER, "The invariants imported are" + candidates.toString());
+      pLogger.log(LOG_LEVEL, "The invariants imported are" + candidates.toString());
       return candidates;
     } catch (TransformerException | ParserConfigurationException | IOException
         | InvalidConfigurationException | InterruptedException e) {
