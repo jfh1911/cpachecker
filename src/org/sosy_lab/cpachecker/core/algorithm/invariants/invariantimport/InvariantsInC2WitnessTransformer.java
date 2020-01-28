@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import javax.xml.parsers.DocumentBuilder;
@@ -44,6 +45,7 @@ import javax.xml.transform.stream.StreamResult;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.ast.FileLocation;
+import org.sosy_lab.cpachecker.cfa.model.AssumeEdge;
 import org.sosy_lab.cpachecker.cfa.model.BlankEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
@@ -119,11 +121,7 @@ public class InvariantsInC2WitnessTransformer {
 
     Map<Integer, Set<CFAEdge>> lineToEdgesOfMain = new HashMap<>();
     lineNumberOfMain =
-        getMappingLinesToEdgesOfFunction(
-            pCfa,
-            lineNumberOfMain,
-            lineToEdgesOfMain,
-            MAIN_FUNCTION);
+        getMappingLinesToEdgesOfFunction(pCfa, lineNumberOfMain, lineToEdgesOfMain, MAIN_FUNCTION);
 
     CFANode mainEntryNode = getEntryNodeForFunction(pCfa, MAIN_FUNCTION);
     if (mainEntryNode == null || lineNumberOfMain == -1) {
@@ -158,42 +156,15 @@ public class InvariantsInC2WitnessTransformer {
 
       // Determine the minimal Start and maximal end offset for a given line (if there are more
       // statements present
-      int minStartOffset = Integer.MAX_VALUE;
-      int maxEndOffset = Integer.MIN_VALUE;
-      boolean isLoopStart = true;
 
-      for (CFAEdge e : lineToEdgesOfMain.get(lineNumber)) {
-
-        Set<FileLocation> fileLocs =
-            AutomatonGraphmlCommon.getFileLocationsFromCfaEdge(e, pCfa.getMainFunction());
-        for (FileLocation loc : fileLocs) {
-          // TODO: Add handling for edges with different starting and finishing line
-          minStartOffset = Math.min(minStartOffset, loc.getNodeOffset());
-          maxEndOffset = Math.max(maxEndOffset, loc.getNodeOffset() + loc.getNodeLength());
-        }
-        // Check if the flag "enterLoopHead" is true, meaning that the edge is one into a loop
-        // head. If one is not a loop head don't set the flag
-        if (!e.getSuccessor().isLoopStart()) {
-          isLoopStart = false;
-        }
-      }
-      Pair<String, String> sourceAndInv = inv.getValue();
-      Element invElement =
-          createNodeWithInvariant(doc, sourceAndInv.getSecond(), getNewNameForNode());
-      graph.appendChild(invElement);
-
-      // Create a edge in the witness from mainEntryElement to the invElement node
-      Element edge =
-          getEdge(
-              doc,
-              mainEntryElement,
-              invElement,
-              isLoopStart,
-              lineNumber,
-              lineNumber,
-              minStartOffset,
-              maxEndOffset);
-      graph.appendChild(edge);
+      computeAllEdgesForLineNumber(
+          pCfa,
+          doc,
+          graph,
+          lineToEdgesOfMain,
+          mainEntryElement,
+          inv,
+          lineNumber);
 
     }
 
@@ -207,6 +178,125 @@ public class InvariantsInC2WitnessTransformer {
 
     StreamResult result = new StreamResult(fileToStoreInvTo);
     transformer.transform(source, result);
+  }
+
+  private void computeAllEdgesForLineNumber(
+      CFA pCfa,
+      Document doc,
+      Element graph,
+      Map<Integer, Set<CFAEdge>> lineToEdgesOfMain,
+      Element mainEntryElement,
+      Entry<Integer, Pair<String, String>> inv,
+      int lineNumber) {
+    for (CFAEdge e : lineToEdgesOfMain.get(lineNumber)) {
+      int minStartOffset = Integer.MAX_VALUE;
+      int maxEndOffset = Integer.MIN_VALUE;
+
+      Set<FileLocation> fileLocs =
+          AutomatonGraphmlCommon.getFileLocationsFromCfaEdge(e, pCfa.getMainFunction());
+      if (fileLocs.isEmpty()) {
+        if (e.getFileLocation() != null && e instanceof BlankEdge) {
+          // Determine the predrecesor location (only if unique and add an edge in the witness for
+          // that location
+          // (Since the location is a blank one and hence associated to the previous spot
+          if (e.getPredecessor().getNumEnteringEdges() == 1) {
+            int prevLine = e.getPredecessor().getEnteringEdge(0).getLineNumber();
+            computeOneEdgeForLineNumber(
+                pCfa,
+                doc,
+                graph,
+                lineToEdgesOfMain,
+                mainEntryElement,
+                inv,
+                prevLine,
+                e.getSuccessor().isLoopStart());
+          }
+        }
+      } else {
+
+        for (FileLocation loc : fileLocs) {
+          // TODO: Add handling for edges with different starting and finishing line
+          minStartOffset = Math.min(minStartOffset, loc.getNodeOffset());
+          maxEndOffset = Math.max(maxEndOffset, loc.getNodeOffset() + loc.getNodeLength());
+        }
+
+        Pair<String, String> sourceAndInv = inv.getValue();
+
+        Element invElement =
+            createNodeWithInvariant(doc, sourceAndInv.getSecond(), getNewNameForNode());
+        graph.appendChild(invElement);
+        Optional<Boolean> isControlEdge = Optional.empty();
+
+        // Check if a controledge (assume edge) is present
+        if (e instanceof AssumeEdge) {
+          isControlEdge = Optional.of(((AssumeEdge) e).getTruthAssumption());
+        }
+
+        // Check if the flag "enterLoopHead" is true, meaning that the edge is one into a loop
+        // head
+        // Create a edge in the witness from mainEntryElement to the invElement node
+        Element edge =
+            getEdge(
+                doc,
+                mainEntryElement,
+                invElement,
+                e.getSuccessor().isLoopStart(),
+                lineNumber,
+                lineNumber,
+                minStartOffset,
+                maxEndOffset,
+                isControlEdge);
+        graph.appendChild(edge);
+      }
+    }
+  }
+
+  private void computeOneEdgeForLineNumber(
+      CFA pCfa,
+      Document doc,
+      Element graph,
+      Map<Integer, Set<CFAEdge>> lineToEdgesOfMain,
+      Element mainEntryElement,
+      Entry<Integer, Pair<String, String>> inv,
+      int lineNumber,
+      boolean isLoopStart) {
+
+    int minStartOffset = Integer.MAX_VALUE;
+    int maxEndOffset = Integer.MIN_VALUE;
+    for (CFAEdge e : lineToEdgesOfMain.get(lineNumber)) {
+
+      Set<FileLocation> fileLocs =
+          AutomatonGraphmlCommon.getFileLocationsFromCfaEdge(e, pCfa.getMainFunction());
+      if (!fileLocs.isEmpty()) {
+        for (FileLocation loc : fileLocs) {
+          // TODO: Add handling for edges with different starting and finishing line
+          minStartOffset = Math.min(minStartOffset, loc.getNodeOffset());
+          maxEndOffset = Math.max(maxEndOffset, loc.getNodeOffset() + loc.getNodeLength());
+        }
+      }
+
+    }
+    Pair<String, String> sourceAndInv = inv.getValue();
+    Element invElement =
+        createNodeWithInvariant(doc, sourceAndInv.getSecond(), getNewNameForNode());
+    graph.appendChild(invElement);
+
+    // Check if the flag "enterLoopHead" is true, meaning that the edge is one into a loop
+    // head
+    // Create a edge in the witness from mainEntryElement to the invElement node
+    Element edge =
+        getEdge(
+            doc,
+            mainEntryElement,
+            invElement,
+            isLoopStart,
+            lineNumber,
+            lineNumber,
+            minStartOffset,
+            maxEndOffset,
+            Optional.empty());
+    graph.appendChild(edge);
+
   }
 
   private Element addPredefinedGraphElements(
@@ -260,13 +350,23 @@ public class InvariantsInC2WitnessTransformer {
       int pLineNumberStart,
       int pLineNumberEnd,
       int pStartOffset,
-      int pEndOffset) {
+      int pEndOffset,
+      Optional<Boolean> cfgAssumeEdge) {
     Element edge = pDoc.createElement("edge");
     edge.setAttributeNode(createAttrForDoc(pDoc, "source", pSource.getAttribute("id")));
     edge.setAttributeNode(createAttrForDoc(pDoc, "target", pTarget.getAttribute("id")));
 
     if (pIsLoopStart) {
       edge = createAndAppandDataNode(edge, pDoc, "enterLoopHead", "true");
+    }
+    if (cfgAssumeEdge.isPresent()) {
+      if (cfgAssumeEdge.get()) {
+        // Create <data key="control">condition-true</data>
+        edge = createAndAppandDataNode(edge, pDoc, "control", "condition-true");
+      } else {
+        // Create <data key="control">condition-false</data>
+        edge = createAndAppandDataNode(edge, pDoc, "control", "condition-false");
+      }
     }
     edge = createAndAppandDataNode(edge, pDoc, "startline", String.valueOf(pLineNumberStart));
     edge = createAndAppandDataNode(edge, pDoc, "endline", String.valueOf(pLineNumberEnd));
