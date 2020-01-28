@@ -82,14 +82,14 @@ public class InvariantsInC2WitnessTransformer {
    * @param mapping a multimap, where the first parameter is the line number, the second one a
    *        string of the source code and the third a string with the c invariant
    * @param fileToStoreInvTo the file, where the witness should be stored to
-   * @param pCfa
-   * @param pSpecification
-   * @param sourceFile
-   * @param pLogger
-   * @throws ParserConfigurationException
-   * @throws IOException
-   * @throws CPAException
-   * @throws TransformerException
+   * @param pCfa TODO log
+   * @param pSpecification TODO log
+   * @param sourceFile TODO log
+   * @param pLogger TODO log
+   * @throws ParserConfigurationException TODO log
+   * @throws IOException TODO log
+   * @throws CPAException TODO log
+   * @throws TransformerException TODO log
    *
    *
    */
