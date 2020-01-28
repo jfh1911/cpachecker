@@ -46,7 +46,10 @@ import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
+import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.ExpressionTreeLocationInvariant;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerators;
 import org.sosy_lab.cpachecker.core.interfaces.Statistics;
 import org.sosy_lab.cpachecker.core.interfaces.StatisticsProvider;
 import org.sosy_lab.cpachecker.cpa.automaton.AutomatonGraphmlParser;
@@ -162,6 +165,32 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
     if (checkBlockFeasibility) {
       result = result
           .addGlobalPredicates(Collections.singleton(abstractionManager.makeFalsePredicate()));
+    }
+
+    // FIXME: Move to different location
+    if (predicatesFiles.isEmpty()) {
+      ExternalInvariantGenerator gen =
+          ExternalInvariantGenerator.getInstance(ExternalInvariantGenerators.SEAHORN, config);
+      try {
+        Set<CandidateInvariant> ret =
+            gen.generateInvariant(
+                cfa,
+                new ArrayList<CFANode>(),
+                specification,
+                logger,
+                shutdownNotifier,
+                config);
+        String path =
+            PredicatePrecisionBootstrapper.class.getProtectionDomain()
+                .getCodeSource()
+                .getLocation()
+                .getPath() + "../" + "output/proofWitness_Seahorn.graphml";
+        predicatesFiles = new ArrayList<>();
+        predicatesFiles.add(Path.of(path));
+      } catch (CPAException e) {
+        logger.log(Level.WARNING, "The invariant generation via seahorn failed");
+      }
+
     }
 
     if (!predicatesFiles.isEmpty()) {
