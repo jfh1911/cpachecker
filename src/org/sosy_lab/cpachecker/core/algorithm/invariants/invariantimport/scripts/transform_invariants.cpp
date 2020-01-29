@@ -20,7 +20,6 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-#include <boost/algorithm/string/predicate.hpp>
 #include <typeinfo>
 #include "Converter.h"
 #include <set>
@@ -75,7 +74,7 @@ llvm::Instruction* getFirstNonPhiAndNonTailCall(llvm::BasicBlock &BB) {
 		//Check if the statement is an variable assignment (needed to parse the variables of the invariant)
 		if (auto phi = llvm::dyn_cast<llvm::PHINode>(&I)) {
 			continue;
-		} else if (boost::contains(lineStr, "tail call void")) {
+		} else if (lineStr.find("tail call void") != string::npos) {
 			continue;
 		} else {
 			return &I;
@@ -138,10 +137,10 @@ int main(int argc, char **argv) {
 
 			std::string sourceStr = psr::llvmInstructionToSrc(&I, false);
 			//Check if the statement is an variable assignment (needed to parse the variables of the invariant)
-			if (boost::starts_with(sourceStr, "Var") || (&I)->getName() != "") {
+			if (sourceStr.find( "Var")==0 || (&I)->getName() != "") {
 				std::string llvmVarName = getLlvmName(&I);
 
-				if (boost::starts_with(sourceStr, "Var")) {
+				if (sourceStr.find("Var")==0) {
 					std::string cVarName = getNameForSourceVar(sourceStr);
 					foundVars[llvmVarName] = cVarName;
 				} else if (llvm::PHINode *phi = llvm::dyn_cast<llvm::PHINode>(
@@ -208,9 +207,9 @@ int main(int argc, char **argv) {
 
 	while (!infile.eof()) {
 		//Currently only look at invariants for the main method
-		if (boost::starts_with(line, "Function: main")) {
+		if (line.find("Function: main")==0) {
 			isMainFunc = true;
-		} else if (boost::starts_with(line, "Function:")) {
+		} else if (line.find("Function:")==0) {
 			isMainFunc = false;
 		} else if (isMainFunc) {
 			//Firstly, load the invariant for that location
@@ -220,7 +219,7 @@ int main(int argc, char **argv) {
 			line.erase(0, line.find_first_not_of(" \t"));
 			//Check, if the next line contains  a new  invariant, denoted by a location staring with main and a ":" to denote the location
 			while (std::getline(infile, line)) {
-				if (!(boost::starts_with(line, "main")
+				if (!(line.find("main")==0
 						&& line.find(':') != string::npos)) {
 					currentInv = currentInv.append(line);
 				} else {
