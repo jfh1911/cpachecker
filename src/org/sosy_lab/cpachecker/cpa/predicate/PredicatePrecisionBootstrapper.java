@@ -28,6 +28,7 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -185,7 +186,14 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
                 .getPath() + "../" + "output/proofWitness_Seahorn.graphml";
         predicatesFiles = new ArrayList<>();
         predicatesFiles.add(Path.of(path));
-      } catch (CPAException e) {
+        logger.log(
+            Level.INFO,
+            "Printing the generated invarinat from \'" + path + "\' for debugging:\n");
+        Files.newBufferedReader(Path.of(path))
+            .lines()
+            .forEachOrdered(l -> logger.log(Level.INFO, l));
+
+      } catch (CPAException | IOException e) {
         logger.log(Level.WARNING, "The invariant generation via seahorn failed");
       }
 
