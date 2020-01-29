@@ -27,6 +27,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -172,27 +173,24 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
       ExternalInvariantGenerator gen =
           ExternalInvariantGenerator.getInstance(ExternalInvariantGenerators.SEAHORN, config);
       try {
-        gen.generateInvariant(
+       File witness= gen.generateInvariant(
                 cfa,
                 new ArrayList<CFANode>(),
                 specification,
                 logger,
                 shutdownNotifier,
                 config);
-        String path =
-            PredicatePrecisionBootstrapper.class.getProtectionDomain()
-                .getCodeSource()
-                .getLocation()
-                .getPath() + "../" + "output/proofWitness_Seahorn.graphml";
+
         predicatesFiles = new ArrayList<>();
-        predicatesFiles.add(Path.of(path));
+        predicatesFiles.add(witness.toPath());
         logger.log(
             Level.INFO,
-            "Printing the generated invarinat from \'" + path + "\' for debugging:\n");
-        Files.newBufferedReader(Path.of(path))
+            "Printing the generated invarinat from \'" + witness.toPath() + "\' for debugging:\n");
+        StringBuilder sb = new StringBuilder();
+        Files.newBufferedReader(witness.toPath())
             .lines()
-            .forEachOrdered(l -> logger.log(Level.INFO, l));
-
+            .forEachOrdered(l -> sb.append(l));
+        logger.log(Level.INFO, sb.toString());
       } catch (CPAException | IOException e) {
         logger.log(Level.WARNING, "The invariant generation via seahorn failed");
       }

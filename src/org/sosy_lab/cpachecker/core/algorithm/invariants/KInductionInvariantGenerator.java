@@ -539,7 +539,7 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
       ExternalInvariantGenerator gen =
           ExternalInvariantGenerator.getInstance(pOptions.extInvGens, pConfig);
       Set<CandidateInvariant> ret =
-          gen.generateInvariant(
+          gen.generateInvariantAndLoad(
           pCFA,
           new ArrayList<CFANode>(),
           pSpecification,

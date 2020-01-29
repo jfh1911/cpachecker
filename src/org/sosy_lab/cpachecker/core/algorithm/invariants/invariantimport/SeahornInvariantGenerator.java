@@ -79,7 +79,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   @Override
-  public Set<CandidateInvariant> generateInvariant(
+  public File generateInvariant(
       CFA pCfa,
       @Nullable List<CFANode> pTargetNodesToGenerateFor,
       Specification pSpecification,
@@ -99,17 +99,37 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
           generateInvariantsAndLoad(sourceFiles.get(0), pCfa);
       pLogger.log(LOG_LEVEL, "Generated %d many invariants via seahorn", genINvs.entries().size());
 
-
       File tempFile = new File(PATH_TO_CPA_DIR + pathToOutDir, "proofWitness_Seahorn.graphml");
       tempFile.createNewFile();
-
 
       InvariantsInC2WitnessTransformer transformer = new InvariantsInC2WitnessTransformer();
       transformer
           .transform(genINvs, tempFile, pCfa, pSpecification, sourceFiles.get(0).toFile(), pLogger);
+      return tempFile;
+    } catch (TransformerException | ParserConfigurationException | IOException
+        | InterruptedException e) {
+      throw new CPAException(getMessage() + System.lineSeparator() + e.toString(), e);
+    }
+  }
 
-
-
+  @Override
+  public Set<CandidateInvariant> generateInvariantAndLoad(
+      CFA pCfa,
+      @Nullable List<CFANode> pTargetNodesToGenerateFor,
+      Specification pSpecification,
+      LogManager pLogger,
+      ShutdownNotifier pShutdownNotifier,
+      Configuration pConfig)
+      throws CPAException {
+    try {
+      File tempFile =
+          generateInvariant(
+              pCfa,
+              pTargetNodesToGenerateFor,
+              pSpecification,
+              pLogger,
+              pShutdownNotifier,
+              pConfig);
 
       final Set<CandidateInvariant> candidates = new LinkedHashSet<>();
 
@@ -127,13 +147,10 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       pLogger.log(Level.FINER, "The invariants imported are" + candidates.toString());
       pLogger.log(LOG_LEVEL, "The invariants imported are" + candidates.toString());
       return candidates;
-    } catch (TransformerException | ParserConfigurationException | IOException
-        | InvalidConfigurationException | InterruptedException e) {
+    } catch (InvalidConfigurationException | InterruptedException e) {
       throw new CPAException(getMessage() + System.lineSeparator() + e.toString(), e);
     }
   }
-
-
 
   private Multimap<Integer, Pair<String, String>> generateInvariantsAndLoad(Path pPath, CFA pCfa)
       throws IOException, InterruptedException {
@@ -158,7 +175,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   /**
    *
    * computes mapping from seahorn invariants to c code lines
-   * 
+   *
    *
    * @param pPathToInvFile the path to the invariant file
    * @param pCfa the cfa of the program
@@ -185,31 +202,31 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
 
         // out.println(pCfa.getFileNames().get(0) + ":");
 
-      while ((line = reader.readLine()) != null) {
-        if (line.indexOf(",") == -1) {
+        while ((line = reader.readLine()) != null) {
+          if (line.indexOf(",") == -1) {
             if (line.startsWith("main@entry")
                 || line.startsWith("main@verifier.error.split")
                 || line.startsWith("main@")) {
-            // Cannot parse these invariants (true or false, hence ignore it)
-            reader.readLine();
+              // Cannot parse these invariants (true or false, hence ignore it)
+              reader.readLine();
+            } else {
+              throw new IllegalArgumentException(
+                  "The file was not parsed as expected, the line "
+                      + line
+                      + "does nto have the format 'Linenumber , sourcecode");
+            }
           } else {
-            throw new IllegalArgumentException(
-                "The file was not parsed as expected, the line "
-                    + line
-                    + "does nto have the format 'Linenumber , sourcecode");
-          }
-        } else {
-          int lineNumber = Integer.parseInt(line.substring(0, line.indexOf(",")));
-          // +1 to ignore the ','
-          String code = line.substring(line.indexOf(",") + 1);
-          String inv = reader.readLine();
-          invs.put(lineNumber - OFFSET, Pair.of(code, inv));
+            int lineNumber = Integer.parseInt(line.substring(0, line.indexOf(",")));
+            // +1 to ignore the ','
+            String code = line.substring(line.indexOf(",") + 1);
+            String inv = reader.readLine();
+            invs.put(lineNumber - OFFSET, Pair.of(code, inv));
 
             // out.println(code + " <-->" + inv);
 
+          }
         }
-      }
-      reader.close();
+        reader.close();
         // Store the generated invariant for later evaluations
 
         // out.flush();
@@ -226,12 +243,6 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     return invs;
   }
 
-
-
-
-
-
-
   private String getMessage() {
     return "During computation, an interla error occured. The added exception provides a more detailed explanation"
         + System.lineSeparator()
@@ -246,6 +257,5 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
         + " * @throws InterruptedException, InvalidConfigurationException  in case of problems loading the generated invariant"
         + System.lineSeparator();
   }
-
 
 }
