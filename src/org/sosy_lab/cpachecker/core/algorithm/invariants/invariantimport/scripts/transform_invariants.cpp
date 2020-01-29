@@ -24,6 +24,7 @@
 #include "Converter.h"
 #include <set>
 
+
 using namespace llvm;
 using namespace std;
 
@@ -83,64 +84,31 @@ llvm::Instruction* getFirstNonPhiAndNonTailCall(llvm::BasicBlock &BB) {
 	return BB.getFirstNonPHI();
 }
 
-int main(int argc, char **argv) {
-	if (argc != 4) {
-		std::cout
-				<< "usage: <prog> <IR file> <OutPut Seahorn> <Dir to output files>\n";
-		return 1;
-	}
-	// parse an IR file into an LLVM module
-	llvm::SMDiagnostic Diag;
-	std::unique_ptr<llvm::LLVMContext> C(new llvm::LLVMContext);
-	std::unique_ptr<llvm::Module> M = llvm::parseIRFile(argv[1], Diag, *C);
-	// check if the module is alright
-	bool broken_debug_info = false;
-	if (llvm::verifyModule(*M, &llvm::errs(), &broken_debug_info)) {
-		llvm::errs() << "error: module not valid\n";
-		return 1;
-	}
-	if (broken_debug_info) {
-		llvm::errs() << "caution: debug info is broken\n";
-	}
-	auto F = M->getFunction("main");
-	if (!F) {
-		llvm::errs() << "error: could not find function 'main'\n";
-		return 1;
-	}
-	llvm::outs() << "iterate instructions of function: '" << F->getName()
-			<< "'\n";
-	llvm::outs() << "of file " << M->getSourceFileName() << "\n";
-
-	map<string, string> foundVars;
-	map<string, set<string>> blocksToScrLines;
-
+void computeVarMapping(map<string, string> &foundVars,
+		map<string, set<string> > &blocksToScrLines, Function *F) {
 	for (BasicBlock &BB : *F) {
 		string srcLineOfBasicBlock = "";
 		bool isLast = false;
 		for (llvm::Instruction &I : BB) {
-
 			//Check if the current statement is the last of the block and a branch instance.
 			if (auto branch = llvm::dyn_cast<llvm::BranchInst>(&I)) {
 				isLast = true;
-//				cout << BB.getName().str() << ":  \n";
-//				TODO: Test if this leads to better performance (ignoring, where the last branch is going to
-//				for (unsigned i = 0; i < branch->getNumSuccessors(); i++) {
-//					if (branch->getSuccessor(i) == &BB) {
-						srcLineOfBasicBlock =
-								psr::llvmInstructionToOnlySrcCodeLine(&I);
-//					}
-//				}
-//				cout << "line to that is: " <<srcLineOfBasicBlock << "\n";
+				//				cout << BB.getName().str() << ":  \n";
+				//				TODO: Test if this leads to better performance (ignoring, where the last branch is going to
+				//				for (unsigned i = 0; i < branch->getNumSuccessors(); i++) {
+				//					if (branch->getSuccessor(i) == &BB) {
+				srcLineOfBasicBlock = psr::llvmInstructionToOnlySrcCodeLine(&I);
+				//					}
+				//				}
+				//				cout << "line to that is: " <<srcLineOfBasicBlock << "\n";
 			} else {
 				isLast = false;
 			}
-
 			std::string sourceStr = psr::llvmInstructionToSrc(&I, false);
 			//Check if the statement is an variable assignment (needed to parse the variables of the invariant)
-			if (sourceStr.find( "Var")==0 || (&I)->getName() != "") {
+			if (sourceStr.find("Var") == 0 || (&I)->getName() != "") {
 				std::string llvmVarName = getLlvmName(&I);
-
-				if (sourceStr.find("Var")==0) {
+				if (sourceStr.find("Var") == 0) {
 					std::string cVarName = getNameForSourceVar(sourceStr);
 					foundVars[llvmVarName] = cVarName;
 				} else if (llvm::PHINode *phi = llvm::dyn_cast<llvm::PHINode>(
@@ -154,7 +122,7 @@ int main(int argc, char **argv) {
 							string opVarName = getNameForSourceVar(sourceStrOp);
 							//Check if the source var is used in a previous def:
 							bool defUsed = false;
-							for (auto const &e : foundVars)
+							for (const auto &e : foundVars)
 								if (e.second.compare(opVarName) == 0) {
 									defUsed = true;
 								}
@@ -165,12 +133,11 @@ int main(int argc, char **argv) {
 								//the Var is having two definitions, cannot decide (maybe with more complex logic ) --> Hence abort
 								cout
 										<< "An error occurred! There are more than one valid variable assignments for a variable.";
-								return 1;
+								//return 1;
 							}
 						}
 					}
 				}
-
 			}
 		}
 		//check if the block is a loop body.
@@ -181,19 +148,60 @@ int main(int argc, char **argv) {
 			lines.insert(
 					psr::llvmInstructionToOnlySrcCodeLine(
 							getFirstNonPhiAndNonTailCall(BB)));
-
 			blocksToScrLines[PREFIX + BB.getName().str()] = lines;
 		} else {
 			//If no loop structure, just use the first non phi nod of the block
 			set<string> lines;
-
 			lines.insert(
 					psr::llvmInstructionToOnlySrcCodeLine(
 							getFirstNonPhiAndNonTailCall(BB)));
 			blocksToScrLines[PREFIX + BB.getName().str()] = lines;
 		}
-
 	}
+}
+
+string replaceAllOccurences(string expression, const string &toReplace, const string &replacement) {
+	size_t start_pos = 0;
+	while ((start_pos = expression.find(toReplace, start_pos))
+			!= std::string::npos) {
+		expression.replace(start_pos, toReplace.size(), replacement);
+		start_pos += replacement.size();
+	}
+	return expression;
+}
+
+int main(int argc, char **argv) {
+	if (argc != 4) {
+		std::cout
+				<< "usage: <prog> <IR file> <OutPut Seahorn> <Dir to output files>\n";
+		return 1;
+	}
+	// parse an IR file into an LLVM module
+	llvm::SMDiagnostic Diag;
+	unique_ptr<LLVMContext> C(new LLVMContext);
+	unique_ptr<Module> M = parseIRFile(argv[1], Diag, *C);
+	// check if the module is alright
+	bool broken_debug_info = false;
+	if (llvm::verifyModule(*M, &llvm::errs(), &broken_debug_info)) {
+		llvm::errs() << "error: module not valid\n";
+		return 1;
+	}
+	if (broken_debug_info) {
+		llvm::errs() << "caution: debug info is broken\n";
+	}
+	Function *F = M->getFunction("main");
+	if (!F) {
+		llvm::errs() << "error: could not find function 'main'\n";
+		return 1;
+	}
+	llvm::outs() << "iterate instructions of function: '" << F->getName()
+			<< "'\n";
+	llvm::outs() << "of file " << M->getSourceFileName() << "\n";
+
+	map<string, string> foundVars;
+	map<string, set<string>> blocksToScrLines;
+
+	computeVarMapping(foundVars, blocksToScrLines, F);
 
 //Next, identify the location, where the invariants belong to:
 
@@ -207,9 +215,9 @@ int main(int argc, char **argv) {
 
 	while (!infile.eof()) {
 		//Currently only look at invariants for the main method
-		if (line.find("Function: main")==0) {
+		if (line.find("Function: main") == 0) {
 			isMainFunc = true;
-		} else if (line.find("Function:")==0) {
+		} else if (line.find("Function:") == 0) {
 			isMainFunc = false;
 		} else if (isMainFunc) {
 			//Firstly, load the invariant for that location
@@ -219,8 +227,7 @@ int main(int argc, char **argv) {
 			line.erase(0, line.find_first_not_of(" \t"));
 			//Check, if the next line contains  a new  invariant, denoted by a location staring with main and a ":" to denote the location
 			while (std::getline(infile, line)) {
-				if (!(line.find("main")==0
-						&& line.find(':') != string::npos)) {
+				if (!(line.find("main") == 0 && line.find(':') != string::npos)) {
 					currentInv = currentInv.append(line);
 				} else {
 					break;
@@ -236,6 +243,13 @@ int main(int argc, char **argv) {
 	}
 	map<string, string> locToInv;
 
+	//TODO for logging;
+	cout << "found invars are:\n";
+	for (string e : invariants) {
+		cout << e << "\n";
+	}
+	cout << "\n\n";
+
 	for (string e : invariants) {
 
 		//Now, parse the invariants:
@@ -245,31 +259,61 @@ int main(int argc, char **argv) {
 		//1: find the invariants, each clause is put in "( ... )"
 		if (e.find('(') != string::npos) {
 			string conjunction = "";
-			while (e.find_first_of('(') != string::npos) {
-				//check, if [] are present, than split the expression at () and []
 
-				auto expr = e.substr(e.find_first_of('('),
-						e.find_first_of(')'));
-				e = e.erase(e.find_first_of('('), e.find_first_of(')'));
-				if (expr.find_first_of('[') != string::npos) {
-					//LHS = expr without []
-					auto lhs = expr.substr(expr.find_first_of('[') + 1,
-							expr.find_first_of(']') - 2); // -2, since -1 for pos of ] and -1 to remove them
-					auto lhsInInfix = converter::preToInfix(lhs);
+			//Parse the expression by finding all outer-most  "(...)(...)",.
+			int outMostOpeningBracketAt = -1;
+			int countOpeningBrackets = 0;
+			string expression;
 
-					expr.replace(expr.find_first_of('['),
-							expr.find_first_of(']') - expr.find_first_of('[')
-									+ 1, lhsInInfix);
+			for (string::size_type i = 0; i < e.size(); i++) {
+				char c = e[i];
+				if (c == '(') {
+					//Increase counter for opening brackets and mark outermost opening bracket if not set
+					if (outMostOpeningBracketAt == -1) {
+						outMostOpeningBracketAt = i;
+					}
+					countOpeningBrackets++;
+				} else if (c == ')') {
+					//Decrease counter for opening brackets
+					countOpeningBrackets--;
+					if (countOpeningBrackets == 0) {
+						//Check if outermost closing bracket is found, than construct subexpression and check for inner '[' or ']'
+						//the subexpression is: start from position of outermost opening bracket and has i - outMostOpeningBracket
+						//many chars (since last not inculdet +1)
+						expression = e.substr(outMostOpeningBracketAt,
+								i - outMostOpeningBracketAt + 1);
 
+						//Check, if "-" is present and replace it by -
+						expression = replaceAllOccurences(expression, "-1*", "-");
+						//check, if [] are present; if so replace the prefix notation by infix notation
+						if (expression.find_first_of('[') != string::npos) {
+							//LHS = expr without []
+							auto lhs = expression.substr(
+									expression.find_first_of('[') + 1,
+									expression.find_first_of(']') - 2); // -2, since -1 for pos of ] and -1 to remove them
+							auto lhsInInfix = converter::preToInfix(lhs);
+
+							expression.replace(expression.find_first_of('['),
+									expression.find_first_of(']')
+											- expression.find_first_of('[') + 1,
+									lhsInInfix);
+						}
+
+						conjunction = conjunction.append(expression);
+						if (i < e.size() - 1) {
+							conjunction += " && ";
+						}
+						outMostOpeningBracketAt = -1;
+
+					}
 				}
-				conjunction = conjunction.append(expr);
-				conjunction += "&&";
 			}
 
-			locToInv[invLoc] = conjunction.substr(0, conjunction.size() - 2);
+			locToInv[invLoc] = conjunction.substr(0, conjunction.size());
+
 		} else {
 			//To remove the leading ":"
-			locToInv[invLoc] = e.substr(1,e.length());
+			locToInv[invLoc] = e.substr(1, e.length());
 		}
 	}
 
@@ -330,7 +374,7 @@ int main(int argc, char **argv) {
 				}
 			}
 		} else {
-			myfile << en.first << DELIMITOR<< en.second << "\n";
+			myfile << en.first << DELIMITOR << en.second << "\n";
 		}
 	}
 
