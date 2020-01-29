@@ -59,8 +59,9 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   @Option(
     secure = true,
     description = "Path to the directory where the generated files should be stored. by default we use the /output dir")
-  private String pathToOutDir = "output/";
+  private String pathToOutDir = "./output/";
   private static final int OFFSET = 0;
+  private File witnessFile;
 
   private static final Level LOG_LEVEL = Level.INFO;
 
@@ -70,12 +71,11 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       throws InvalidConfigurationException {
     // set the output directory to the directory used by the cpa checker
     pConfiguration.inject(this);
+    witnessFile = new File(pathToOutDir, "proofWitness_Seahorn.graphml");
+    String witPath = witnessFile.getAbsolutePath();
+    witPath = witPath.substring(0, witPath.lastIndexOf('/'));
+    PATH_TO_CPA_DIR = witPath.substring(0, witPath.lastIndexOf('/') + 1);
 
-    PATH_TO_CPA_DIR =
-        SeahornInvariantGenerator.class.getProtectionDomain()
-            .getCodeSource()
-            .getLocation()
-            .getPath() + "../";
   }
 
   @Override
@@ -88,24 +88,28 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       Configuration pConfig)
       throws CPAException {
     try {
-
+      witnessFile.createNewFile();
       // Start Seahorn:
       List<Path> sourceFiles = pCfa.getFileNames();
       if (sourceFiles.size() != 1) {
         throw new CPAException("Can onyl handle CFAs, where one source file is contained");
       }
-
       Multimap<Integer, Pair<String, String>> genINvs =
-          generateInvariantsAndLoad(sourceFiles.get(0), pCfa);
+          genInvsAndLoad(sourceFiles.get(0), pCfa);
       pLogger.log(LOG_LEVEL, "Generated %d many invariants via seahorn", genINvs.entries().size());
 
-      File tempFile = new File(PATH_TO_CPA_DIR + pathToOutDir, "proofWitness_Seahorn.graphml");
-      tempFile.createNewFile();
+
 
       InvariantsInC2WitnessTransformer transformer = new InvariantsInC2WitnessTransformer();
       transformer
-          .transform(genINvs, tempFile, pCfa, pSpecification, sourceFiles.get(0).toFile(), pLogger);
-      return tempFile;
+          .transform(
+              genINvs,
+              witnessFile,
+              pCfa,
+              pSpecification,
+              sourceFiles.get(0).toFile(),
+              pLogger);
+      return witnessFile;
     } catch (TransformerException | ParserConfigurationException | IOException
         | InterruptedException e) {
       throw new CPAException(getMessage() + System.lineSeparator() + e.toString(), e);
@@ -152,7 +156,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     }
   }
 
-  private Multimap<Integer, Pair<String, String>> generateInvariantsAndLoad(Path pPath, CFA pCfa)
+  private Multimap<Integer, Pair<String, String>> genInvsAndLoad(Path pPath, CFA pCfa)
       throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
