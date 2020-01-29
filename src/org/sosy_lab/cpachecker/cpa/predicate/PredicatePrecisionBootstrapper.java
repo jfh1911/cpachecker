@@ -185,14 +185,18 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
         predicatesFiles.add(witness.toPath());
         logger.log(
             Level.INFO,
-            "Printing the generated invarinat from \'" + witness.toPath() + "\' for debugging:\n");
+            "Printing the generated invarinat from \'"
+                + witness.getAbsolutePath()
+                + "\' for debugging:\n");
         StringBuilder sb = new StringBuilder();
         Files.newBufferedReader(witness.toPath())
             .lines()
-            .forEachOrdered(l -> sb.append(l));
+            .forEachOrdered(l -> sb.append(l + "\n"));
         logger.log(Level.INFO, sb.toString());
       } catch (CPAException | IOException e) {
-        logger.log(Level.WARNING, "The invariant generation via seahorn failed");
+        logger.log(
+            Level.WARNING,
+            "The invariant generation via seahorn failed, due to " + e.toString());
       }
 
     }

@@ -59,7 +59,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   @Option(
     secure = true,
     description = "Path to the directory where the generated files should be stored. by default we use the /output dir")
-  private String pathToOutDir = "./output/";
+  private String pathToOutDir = "output/";
   private static final int OFFSET = 0;
   private File witnessFile;
 
@@ -71,10 +71,12 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       throws InvalidConfigurationException {
     // set the output directory to the directory used by the cpa checker
     pConfiguration.inject(this);
-    witnessFile = new File(pathToOutDir, "proofWitness_Seahorn.graphml");
-    String witPath = witnessFile.getAbsolutePath();
-    witPath = witPath.substring(0, witPath.lastIndexOf('/'));
-    PATH_TO_CPA_DIR = witPath.substring(0, witPath.lastIndexOf('/') + 1);
+    witnessFile = new File("proofWitness_Seahorn.graphml");
+    PATH_TO_CPA_DIR =
+        SeahornInvariantGenerator.class.getProtectionDomain()
+            .getCodeSource()
+            .getLocation()
+            .getPath() + "../";
 
   }
 
@@ -95,7 +97,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
         throw new CPAException("Can onyl handle CFAs, where one source file is contained");
       }
       Multimap<Integer, Pair<String, String>> genINvs =
-          genInvsAndLoad(sourceFiles.get(0), pCfa);
+          genInvsAndLoad(sourceFiles.get(0), pCfa, pLogger);
       pLogger.log(LOG_LEVEL, "Generated %d many invariants via seahorn", genINvs.entries().size());
 
 
@@ -156,13 +158,20 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     }
   }
 
-  private Multimap<Integer, Pair<String, String>> genInvsAndLoad(Path pPath, CFA pCfa)
+  private Multimap<Integer, Pair<String, String>>
+      genInvsAndLoad(Path pPath, CFA pCfa, LogManager pLogger)
       throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
 
     String absolutePathToInvFile = PATH_TO_CPA_DIR + pathToOutDir;
+    pLogger.log(LOG_LEVEL, "Storing generated inv file at files at " + absolutePathToInvFile);
 
+    /**
+     * # Usage of the script:: # $1 = path to the file to generate invariant for # $2 = path to the
+     * output directory to store generated invariants to # $3 = path to the dir where the scripts
+     * are located
+     */
     builder.command(
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS + "compute_invariants_with_seahorn.sh",
         pPath.toFile().getAbsolutePath(),
