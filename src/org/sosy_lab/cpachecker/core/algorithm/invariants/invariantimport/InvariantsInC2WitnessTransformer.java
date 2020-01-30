@@ -138,7 +138,14 @@ public class InvariantsInC2WitnessTransformer {
 
     // Get the edge containing the line number of the invariant, the starting node of the edge is
     // the desired one
+
+    // FIXME: Since we only want to evaluate the cases where the invariant is in fact helpfull,
+    // meaning that at least one invariant is non-trivial and hence unequal to "true/false", we can
+    // save computation time (for the first evaluation and abort, if only non-trivial invariants are
+    // generated:
+    boolean nonTrivialInvariantGenerated = false;
     for (Entry<Integer, Pair<String, String>> inv : mapping.entries()) {
+
       if (inv.getValue().getSecond().strip().equalsIgnoreCase(TRUE)
           || inv.getValue().getSecond().strip().equalsIgnoreCase(FALSE)) {
         // No need to add true or false
@@ -153,7 +160,7 @@ public class InvariantsInC2WitnessTransformer {
                 + inv.toString());
         continue;
       }
-
+      nonTrivialInvariantGenerated = true;
       // Determine the minimal Start and maximal end offset for a given line (if there are more
       // statements present
 
@@ -178,6 +185,11 @@ public class InvariantsInC2WitnessTransformer {
 
     StreamResult result = new StreamResult(fileToStoreInvTo);
     transformer.transform(source, result);
+    if (!nonTrivialInvariantGenerated) {
+      throw new IllegalStateException(
+          "The invariant generation via [SEAHORN] does only generate trivial invariants, hence abort the computation!");
+    }
+
   }
 
   private void computeAllEdgesForLineNumber(

@@ -163,7 +163,6 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
-
     String absolutePathToInvFile = PATH_TO_CPA_DIR + pathToOutDir;
     pLogger.log(LOG_LEVEL, "Storing generated inv file at files at " + absolutePathToInvFile);
 

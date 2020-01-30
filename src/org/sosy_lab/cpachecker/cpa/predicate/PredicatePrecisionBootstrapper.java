@@ -194,12 +194,13 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
             .forEachOrdered(l -> sb.append(l + "\n"));
         logger.log(Level.INFO, sb.toString());
       } catch (CPAException | IOException e) {
-        logger.log(
-            Level.WARNING,
+        // FIXME: This is only for the first evaluation!!
+        throw new IllegalStateException(
             "The invariant generation via seahorn failed, due to " + e.toString());
       }
 
     }
+
 
     if (!predicatesFiles.isEmpty()) {
       PredicateMapParser parser =
