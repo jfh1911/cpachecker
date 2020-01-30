@@ -114,7 +114,8 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       return witnessFile;
     } catch (TransformerException | ParserConfigurationException | IOException
         | InterruptedException e) {
-      throw new CPAException(getMessage() + System.lineSeparator() + e.toString(), e);
+      // throw new CPAException(getMessage() + System.lineSeparator() + e.toString(), e);
+      throw new IllegalArgumentException(e);
     }
   }
 

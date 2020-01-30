@@ -24,7 +24,6 @@
 #include "Converter.h"
 #include <set>
 
-
 using namespace llvm;
 using namespace std;
 
@@ -45,11 +44,17 @@ std::string getNameForSourceVar(std::string str) {
 	return str.substr(str.find("Var : ") + 6, str.find("\nLine:") - 6);
 }
 
+int isOperator(char &c) {
+	const char *matches = "()[]{}|&+-*/<>=! \n\t";
+	return (strchr(matches, c) != NULL);
+}
+
 //Taken from https://stackoverflow.com/questions/1494399/how-do-i-search-find-and-replace-in-a-standard-string
 void replace(std::string &str, const std::string &oldStr,
 		const std::string &newStr) {
-	std::string::size_type pos = 0u;
-	while ((pos = str.find(oldStr, pos)) != std::string::npos) {
+	std::string::size_type pos = 0;
+	while ((pos = str.find(oldStr, pos)) != std::string::npos
+			&& isOperator(str[pos + oldStr.length() ])) {
 		str.replace(pos, oldStr.length(), newStr);
 		pos += newStr.length();
 	}
@@ -114,29 +119,48 @@ void computeVarMapping(map<string, string> &foundVars,
 				} else if (llvm::PHINode *phi = llvm::dyn_cast<llvm::PHINode>(
 						&I)) {
 					bool alreadyDef = false;
+					bool allPhiVarsHaveSameValue = true;
+					//To tackle the case where all ohi nodes point to the same variable, use varDefOfPhiNodes
+					string varDefOfPhiNodes = "";
 					for (auto &Operand : (&I)->operands()) {
 						std::string llvmOpname = getLlvmName(Operand);
 						std::string sourceStrOp = psr::llvmValueToSrc(Operand,
 								true);
+
 						if (sourceStrOp != "No source information available!") {
 							string opVarName = getNameForSourceVar(sourceStrOp);
+
 							//Check if the source var is used in a previous def:
 							bool defUsed = false;
-							for (const auto &e : foundVars)
+							for (const auto &e : foundVars) {
 								if (e.second.compare(opVarName) == 0) {
 									defUsed = true;
 								}
+							}
 							if (!defUsed && !alreadyDef) {
 								alreadyDef = true;
 								foundVars[llvmVarName] = opVarName;
+								break;
 							} else if (!defUsed && alreadyDef) {
 								//the Var is having two definitions, cannot decide (maybe with more complex logic ) --> Hence abort
 								cout
 										<< "An error occurred! There are more than one valid variable assignments for a variable.";
 								//return 1;
+							} else if (!alreadyDef && defUsed) {
+								//CHeck if all phi vars are equal
+								if (varDefOfPhiNodes.size() == 0) {
+									//Is first phi var
+									varDefOfPhiNodes = opVarName;
+								} else {
+									//Check if this phi var is not equal to first one, than abort
+									if (varDefOfPhiNodes != opVarName) {
+										allPhiVarsHaveSameValue = false;
+									}
+								}
 							}
 						}
 					}
+					foundVars[llvmVarName] = varDefOfPhiNodes;
 				}
 			}
 		}
@@ -160,7 +184,8 @@ void computeVarMapping(map<string, string> &foundVars,
 	}
 }
 
-string replaceAllOccurences(string expression, const string &toReplace, const string &replacement) {
+string replaceAllOccurences(string expression, const string &toReplace,
+		const string &replacement) {
 	size_t start_pos = 0;
 	while ((start_pos = expression.find(toReplace, start_pos))
 			!= std::string::npos) {
@@ -168,6 +193,12 @@ string replaceAllOccurences(string expression, const string &toReplace, const st
 		start_pos += replacement.size();
 	}
 	return expression;
+}
+
+string trimEnd(string expression) {
+	if(expression.find_last_of(' ') == expression.size()-1){
+		return trimEnd(expression.substr(0, expression.size()-1));
+	} return expression;
 }
 
 int main(int argc, char **argv) {
@@ -194,14 +225,17 @@ int main(int argc, char **argv) {
 		llvm::errs() << "error: could not find function 'main'\n";
 		return 1;
 	}
-	llvm::outs() << "iterate instructions of function: '" << F->getName()
-			<< "'\n";
-	llvm::outs() << "of file " << M->getSourceFileName() << "\n";
+//	llvm::outs() << "iterate instructions of function: '" << F->getName()
+//			<< "'\n";
+//	llvm::outs() << "of file " << M->getSourceFileName() << "\n";
 
 	map<string, string> foundVars;
 	map<string, set<string>> blocksToScrLines;
-
 	computeVarMapping(foundVars, blocksToScrLines, F);
+
+//	for (pair<string, string> e : foundVars) {
+//		cout << e.first << " <-> " << e.second << "\n";
+//	}
 
 //Next, identify the location, where the invariants belong to:
 
@@ -241,20 +275,14 @@ int main(int argc, char **argv) {
 		}
 		std::getline(infile, line);
 	}
+
 	map<string, string> locToInv;
-
-	//TODO for logging;
-	cout << "found invars are:\n";
-	for (string e : invariants) {
-		cout << e << "\n";
-	}
-	cout << "\n\n";
-
-	for (string e : invariants) {
+	for( string e : invariants){
 
 		//Now, parse the invariants:
-		//Location --> Everythin between 0 and the first colon include
+		//Location --> Everything between 0 and the first colon include
 		string invLoc = e.substr(0, e.find_first_of(':'));
+
 		e = e.erase(0, e.find_first_of(':'));
 		//1: find the invariants, each clause is put in "( ... )"
 		if (e.find('(') != string::npos) {
@@ -284,15 +312,20 @@ int main(int argc, char **argv) {
 								i - outMostOpeningBracketAt + 1);
 
 						//Check, if "-" is present and replace it by -
-						expression = replaceAllOccurences(expression, "-1*", "-");
+						expression = replaceAllOccurences(expression, "-1*",
+								"-");
 						//check, if [] are present; if so replace the prefix notation by infix notation
 						if (expression.find_first_of('[') != string::npos) {
 							//LHS = expr without []
-							auto lhs = expression.substr(
-									expression.find_first_of('[') + 1,
-									expression.find_first_of(']') - 2); // -2, since -1 for pos of ] and -1 to remove them
-							auto lhsInInfix = converter::preToInfix(lhs);
+//							cout << " Expression is: " << expression << "\n";
+							auto lhs = expression.substr(		expression.find_first_of('[') + 1);
+							lhs = lhs.substr(0,lhs.find_first_of(']') ); // -2, since -1 for pos of ] and -1 to remove them
+//							cout << lhs << "\n";
 
+							//To avoid problems with whitespaces in the end, remove them
+							lhs = trimEnd(lhs);
+
+							auto lhsInInfix = converter::preToInfix(lhs);
 							expression.replace(expression.find_first_of('['),
 									expression.find_first_of(']')
 											- expression.find_first_of('[') + 1,
@@ -316,7 +349,6 @@ int main(int argc, char **argv) {
 			locToInv[invLoc] = e.substr(1, e.length());
 		}
 	}
-
 //prefix the variables with "main@"
 	map<string, string> prefixedVars;
 	for (auto const &e : foundVars) {
@@ -324,18 +356,18 @@ int main(int argc, char **argv) {
 		string temp = PREFIX + e.first.substr(2, e.first.size() - 3);
 		prefixedVars[temp] = e.second;
 	}
-//	cout << "The mapping of llvm blocks to C surce code lines  is:\n";
-//	for (auto const &e : blocksToScrLines) {
-//		cout << e.first << "<-->" << e.second << "\n";
-//	}
 
-////	//NEXT, REPLACE THE LLVM VAR NAMES WITH THE C VAR NAMES
+
+	//NEXT, REPLACE THE LLVM VAR NAMES WITH THE C VAR NAMES
 
 	map<string, string> updatedInvs;
 	for (auto const &en : locToInv) {
 		string replacedinv = en.second;
+//		cout << "Replacing:   " << en.second << "\n";
 		for (auto const &foundvar : prefixedVars) {
+
 			replace(replacedinv, foundvar.first, foundvar.second);
+//			cout << "replaced to :" << replacedinv <<" using "  <<foundvar.first << " ++ "<< foundvar.second<< " \n";
 		}
 		updatedInvs[en.first] = replacedinv;
 	}

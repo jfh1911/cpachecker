@@ -64,7 +64,6 @@ public class InvariantsInC2WitnessTransformer {
 
   private static final String KEY_STRING = "key";
   private static final String DATA_STRING = "data";
-  private static final String TEXT_ENTERING_EDGE = "Function start dummy edge";
   private static final String NAME_OF_TOOL = "CoInVerify";
 
   private static final String TRUE = "true";
@@ -123,7 +122,7 @@ public class InvariantsInC2WitnessTransformer {
     lineNumberOfMain =
         getMappingLinesToEdgesOfFunction(pCfa, lineNumberOfMain, lineToEdgesOfMain, MAIN_FUNCTION);
 
-    CFANode mainEntryNode = getEntryNodeForFunction(pCfa, MAIN_FUNCTION);
+    CFANode mainEntryNode = pCfa.getAllFunctions().get(MAIN_FUNCTION);
     if (mainEntryNode == null || lineNumberOfMain == -1) {
       throw new CPAException(
           "Could not find main function, hence aborted computation of invariants");
@@ -580,23 +579,6 @@ public class InvariantsInC2WitnessTransformer {
     return sha256hex;
   }
 
-  private CFANode getEntryNodeForFunction(CFA pCfa, String pnameOfFunction) {
-    CFANode mainEntryNode = null;
-    // find the dummy entering edge:
-    for (CFANode n : pCfa.getAllNodes()) {
-      if (n.getFunctionName().equals(pnameOfFunction)) {
-        for (int i = 0; i < n.getNumEnteringEdges(); i++) {
-          if (n.getEnteringEdge(i) instanceof BlankEdge
-              && n.getEnteringEdge(i).getDescription().equals(TEXT_ENTERING_EDGE)) {
-            mainEntryNode = n;
-            break;
-          }
-        }
-      }
-    }
-    return mainEntryNode;
-  }
-
   /**
    *
    * Computes for each source code line the edges associated to that line
@@ -627,7 +609,7 @@ public class InvariantsInC2WitnessTransformer {
             lineToEdgesOfMain.put(enteringEdge.getLineNumber(), edges);
           }
           if (enteringEdge instanceof CDeclarationEdge
-              && enteringEdge.getRawStatement().equals("int main()")) {
+              && enteringEdge.getRawStatement().contains("int main(")) {
             lineNumberOfMain = enteringEdge.getLineNumber();
           }
         }

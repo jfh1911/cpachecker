@@ -195,8 +195,10 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
         logger.log(Level.INFO, sb.toString());
       } catch (CPAException | IOException e) {
         // FIXME: This is only for the first evaluation!!
-        throw new IllegalStateException(
-            "The invariant generation via seahorn failed, due to " + e.toString());
+        // throw new IllegalStateException(
+        // "The invariant generation via seahorn failed, due to " + e,
+        // e);
+        throw new IllegalArgumentException(e);
       }
 
     }
