@@ -322,7 +322,6 @@ public class InvariantsInC2WitnessTransformer {
     graph.setAttributeNode(createAttrForDoc(doc, "edgedefault", "directed"));
 
     graph = createAndAppandDataNode(graph, doc, "witness-type", "correctness_witness");
-    graph = createAndAppandDataNode(graph, doc, "witness-type", "correctness_witness");
     graph = createAndAppandDataNode(graph, doc, "sourcecodelang", "C");
     graph = createAndAppandDataNode(graph, doc, "producer", NAME_OF_TOOL);
     graph = createAndAppandDataNode(graph, doc, "specification", getSpecification(pSpecification));

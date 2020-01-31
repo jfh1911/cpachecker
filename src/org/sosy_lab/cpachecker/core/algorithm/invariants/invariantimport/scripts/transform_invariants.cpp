@@ -1,6 +1,7 @@
 #include <cxxabi.h>
 #include <iostream>
 #include <llvm/IR/CallSite.h>
+#include <llvm/IR/CFG.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DebugLoc.h>
 #include <llvm/IR/Function.h>
@@ -15,6 +16,7 @@
 #include <llvm/Support/SMLoc.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
+
 #include <memory>
 #include "LLVMIRToSrc.h"
 #include <fstream>
@@ -54,7 +56,7 @@ void replace(std::string &str, const std::string &oldStr,
 		const std::string &newStr) {
 	std::string::size_type pos = 0;
 	while ((pos = str.find(oldStr, pos)) != std::string::npos
-			&& isOperator(str[pos + oldStr.length() ])) {
+			&& isOperator(str[pos + oldStr.length()])) {
 		str.replace(pos, oldStr.length(), newStr);
 		pos += newStr.length();
 	}
@@ -77,7 +79,7 @@ llvm::Instruction* getFirstNonPhiAndNonTailCall(llvm::BasicBlock &BB) {
 		std::string lineStr = "";
 		llvm::raw_string_ostream rso(lineStr);
 		I.print(rso);
-		//Check if the statement is an variable assignment (needed to parse the variables of the invariant)
+		//Check if the statement is an variabpredecessorsle assignment (needed to parse the variables of the invariant)
 		if (auto phi = llvm::dyn_cast<llvm::PHINode>(&I)) {
 			continue;
 		} else if (lineStr.find("tail call void") != string::npos) {
@@ -89,10 +91,41 @@ llvm::Instruction* getFirstNonPhiAndNonTailCall(llvm::BasicBlock &BB) {
 	return BB.getFirstNonPHI();
 }
 
-void computeVarMapping(map<string, string> &foundVars,
+void computeVarMappingAndSrcCodeMapping(map<string, string> &foundVars,
 		map<string, set<string> > &blocksToScrLines, Function *F) {
 	for (BasicBlock &BB : *F) {
 		string srcLineOfBasicBlock = "";
+
+		//Now, this is a workatound. I assume that if a basic block has more than one predecessor and the last statement of
+		//all predecessors points to the same source code location, and the source code location contains the keyword "for"
+		//or while" indicating looop, than we can additionally add this srcCodLoc to the block
+		string srcCodeLine = "";
+		int i = 0;
+		for (BasicBlock *Pred : llvm::predecessors(&BB)) {
+			i++;
+			//Find the last statement of the block
+			Instruction *last;
+			for (Instruction &I : *Pred) {
+				last = &I;
+			}
+			if (srcCodeLine == "") {
+				srcCodeLine = psr::llvmInstructionToOnlySrcCodeLine(last);
+
+			} else if (srcCodeLine
+					!= psr::llvmInstructionToOnlySrcCodeLine(last)) {
+
+				srcCodeLine = "";
+				break;
+			}
+		}
+		bool isLoopHead = srcCodeLine.find("while") != string::npos		|| srcCodeLine.find("for") != string::npos;
+		if (srcCodeLine != "" && i > 1 && isLoopHead) {
+			//All predecessors associate the jump statement to same location, hence add the sourcecodeline to this location
+			set<string> values;
+			values.insert(srcCodeLine);
+			blocksToScrLines[PREFIX + BB.getName().str()] = values;
+		}
+
 		bool isLast = false;
 		for (llvm::Instruction &I : BB) {
 			//Check if the current statement is the last of the block and a branch instance.
@@ -166,19 +199,27 @@ void computeVarMapping(map<string, string> &foundVars,
 		}
 		//check if the block is a loop body.
 		//THerefore, check if the last statement is a jump containing the block as one target
+		set<string> lines;
+
+		if (blocksToScrLines.find(PREFIX + BB.getName().str())
+				!= blocksToScrLines.end()) {
+			lines = blocksToScrLines[PREFIX + BB.getName().str()];
+		}
+		std::__cxx11::string loc = psr::llvmInstructionToOnlySrcCodeLine(
+				getFirstNonPhiAndNonTailCall(BB));
 		if (isLast && srcLineOfBasicBlock != "") {
-			set<string> lines;
-			lines.insert(srcLineOfBasicBlock);
-			lines.insert(
-					psr::llvmInstructionToOnlySrcCodeLine(
-							getFirstNonPhiAndNonTailCall(BB)));
+			if (lines.find(srcLineOfBasicBlock) == lines.end())
+				lines.insert(srcLineOfBasicBlock);
+			if (lines.find(loc) == lines.end()) {
+				lines.insert(loc);
+			}
 			blocksToScrLines[PREFIX + BB.getName().str()] = lines;
 		} else {
+
 			//If no loop structure, just use the first non phi nod of the block
-			set<string> lines;
-			lines.insert(
-					psr::llvmInstructionToOnlySrcCodeLine(
-							getFirstNonPhiAndNonTailCall(BB)));
+			if (lines.find(loc) == lines.end()) {
+				lines.insert(loc);
+			}
 			blocksToScrLines[PREFIX + BB.getName().str()] = lines;
 		}
 	}
@@ -196,9 +237,10 @@ string replaceAllOccurences(string expression, const string &toReplace,
 }
 
 string trimEnd(string expression) {
-	if(expression.find_last_of(' ') == expression.size()-1){
-		return trimEnd(expression.substr(0, expression.size()-1));
-	} return expression;
+	if (expression.find_last_of(' ') == expression.size() - 1) {
+		return trimEnd(expression.substr(0, expression.size() - 1));
+	}
+	return expression;
 }
 
 int main(int argc, char **argv) {
@@ -231,7 +273,7 @@ int main(int argc, char **argv) {
 
 	map<string, string> foundVars;
 	map<string, set<string>> blocksToScrLines;
-	computeVarMapping(foundVars, blocksToScrLines, F);
+	computeVarMappingAndSrcCodeMapping(foundVars, blocksToScrLines, F);
 
 //	for (pair<string, string> e : foundVars) {
 //		cout << e.first << " <-> " << e.second << "\n";
@@ -277,7 +319,7 @@ int main(int argc, char **argv) {
 	}
 
 	map<string, string> locToInv;
-	for( string e : invariants){
+	for (string e : invariants) {
 
 		//Now, parse the invariants:
 		//Location --> Everything between 0 and the first colon include
@@ -318,8 +360,9 @@ int main(int argc, char **argv) {
 						if (expression.find_first_of('[') != string::npos) {
 							//LHS = expr without []
 //							cout << " Expression is: " << expression << "\n";
-							auto lhs = expression.substr(		expression.find_first_of('[') + 1);
-							lhs = lhs.substr(0,lhs.find_first_of(']') ); // -2, since -1 for pos of ] and -1 to remove them
+							auto lhs = expression.substr(
+									expression.find_first_of('[') + 1);
+							lhs = lhs.substr(0, lhs.find_first_of(']')); // -2, since -1 for pos of ] and -1 to remove them
 //							cout << lhs << "\n";
 
 							//To avoid problems with whitespaces in the end, remove them
@@ -356,7 +399,6 @@ int main(int argc, char **argv) {
 		string temp = PREFIX + e.first.substr(2, e.first.size() - 3);
 		prefixedVars[temp] = e.second;
 	}
-
 
 	//NEXT, REPLACE THE LLVM VAR NAMES WITH THE C VAR NAMES
 
