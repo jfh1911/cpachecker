@@ -233,6 +233,10 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
             // +1 to ignore the ','
             String code = line.substring(line.indexOf(",") + 1);
             String inv = reader.readLine();
+            // FIXME: Find elegant solution:
+            if (inv.contains("(n>=0) && ")) {
+              inv = inv.replace("(n>=0) && ", "");
+            }
             invs.put(lineNumber - OFFSET, Pair.of(code, inv));
 
             // out.println(code + " <-->" + inv);
