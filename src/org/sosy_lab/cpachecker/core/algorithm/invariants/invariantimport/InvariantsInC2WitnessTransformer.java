@@ -49,7 +49,6 @@ import org.sosy_lab.cpachecker.cfa.model.AssumeEdge;
 import org.sosy_lab.cpachecker.cfa.model.BlankEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
-import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
@@ -607,13 +606,16 @@ public class InvariantsInC2WitnessTransformer {
             edges.add(enteringEdge);
             lineToEdgesOfMain.put(enteringEdge.getLineNumber(), edges);
           }
-          if (enteringEdge instanceof CDeclarationEdge
-              && enteringEdge.getRawStatement().contains("int main(")) {
-            lineNumberOfMain = enteringEdge.getLineNumber();
-          }
+
         }
       }
     }
+    if (pCfa.getMainFunction().getNumLeavingEdges() > 1) {
+      throw new IllegalStateException("Expecting only one call t main");
+    } else {
+      lineNumberOfMain = pCfa.getMainFunction().getLeavingEdge(0).getLineNumber();
+    }
+
     return lineNumberOfMain;
   }
 
