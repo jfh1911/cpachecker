@@ -234,7 +234,15 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
         }
       }
     }
-
+    if (result.getLocalPredicates()
+        .values()
+        .parallelStream()
+        .allMatch(
+            pred -> pred.getSymbolicAtom().toString().equals("`true`")
+                && pred.getAbstractVariable().toString().equals("`true`"))) {
+      throw new IllegalArgumentException(
+          "The witness is not read / parsed correctly, only true present");
+    }
     return result;
   }
 
