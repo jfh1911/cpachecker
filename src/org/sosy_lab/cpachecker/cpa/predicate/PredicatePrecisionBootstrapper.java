@@ -242,6 +242,12 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
                 && pred.getAbstractVariable().toString().equals("`true`"))) {
       throw new IllegalArgumentException(
           "The witness is not read / parsed correctly, only true present");
+    } else {
+      logger.log(Level.WARNING, "generated invarinats are:");
+      result.getLocalPredicates()
+          .values()
+          .parallelStream()
+          .forEach(pred -> logger.log(Level.WARNING, pred.toString()));
     }
     return result;
   }
