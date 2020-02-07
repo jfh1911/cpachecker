@@ -47,7 +47,7 @@ std::string getNameForSourceVar(std::string str) {
 }
 
 int isOperator(char &c) {
-	const char *matches = "()[]{}|&+-*/<>=! \n\t";
+	const char *matches = "()[]{}|&+-*/<>=!% \n\t";
 	return (strchr(matches, c) != NULL);
 }
 
@@ -243,6 +243,48 @@ string trimEnd(string expression) {
 	return expression;
 }
 
+set<string> collectInvats(char **argv) {
+	//	for (pair<string, string> e : foundVars) {
+	//		cout << e.first << " <-> " << e.second << "\n";
+	//	}
+	//Next, identify the location, where the invariants belong to:
+	//Next, read and parse the generated invariant
+	std::ifstream infile(argv[2]);
+	std::string line;
+	bool isMainFunc = false;
+	set<string> invariants;
+	while (!infile.eof()) {
+		//Currently only look at invariants for the main method
+		if (line.find("Function: main") == 0) {
+			isMainFunc = true;
+		} else if (line.find("Function:") == 0) {
+			isMainFunc = false;
+		} else if (isMainFunc) {
+			//Firstly, load the invariant for that location
+			string currentInv = "";
+			currentInv = currentInv.append(line);
+			//remove lading whitespace and tabs
+			line.erase(0, line.find_first_not_of(" \t"));
+			//Check, if the next line contains  a new  invariant, denoted by a location staring with main and a ":" to denote the location
+			while (std::getline(infile, line)) {
+				if (!(line.find("main") == 0 && line.find(':') != string::npos)) {
+					currentInv = currentInv.append(line);
+				} else {
+					break;
+				}
+			}
+			currentInv.erase(
+					std::remove(currentInv.begin(), currentInv.end(), '\t'),
+					currentInv.end());
+			invariants.insert(currentInv);
+			continue;
+		}
+
+		std::getline(infile, line);
+	}
+	return invariants;
+}
+
 int main(int argc, char **argv) {
 	if (argc != 4) {
 		std::cout
@@ -283,43 +325,27 @@ int main(int argc, char **argv) {
 
 //Next, read and parse the generated invariant
 
-	std::ifstream infile(argv[2]);
-
-	std::string line;
-	bool isMainFunc = false;
-	set<string> invariants;
-
-	while (!infile.eof()) {
-		//Currently only look at invariants for the main method
-		if (line.find("Function: main") == 0) {
-			isMainFunc = true;
-		} else if (line.find("Function:") == 0) {
-			isMainFunc = false;
-		} else if (isMainFunc) {
-			//Firstly, load the invariant for that location
-			string currentInv = "";
-			currentInv = currentInv.append(line);
-			//remove lading whitespace and tabs
-			line.erase(0, line.find_first_not_of(" \t"));
-			//Check, if the next line contains  a new  invariant, denoted by a location staring with main and a ":" to denote the location
-			while (std::getline(infile, line)) {
-				if (!(line.find("main") == 0 && line.find(':') != string::npos)) {
-					currentInv = currentInv.append(line);
-				} else {
-					break;
-				}
-			}
-			currentInv.erase(
-					std::remove(currentInv.begin(), currentInv.end(), '\t'),
-					currentInv.end());
-			invariants.insert(currentInv);
-			continue;
+	set<string> invariants = collectInvats(argv);
+	set<string> replacedInv ;
+	//next, replace all occurences of "mod2" and "mod3"
+	//TODO:
+	for(string invar : invariants){
+		if(invar.find("mod2") != string::npos){
+			invar = replaceAllOccurences(invar, "mod2", "%2 ");
+		}if (invar.find("mod3") != string::npos){
+			invar = replaceAllOccurences(invar, "mod3", "%3 ");
 		}
-		std::getline(infile, line);
+		replacedInv.insert(invar);
 	}
 
+	 for(string e : replacedInv){
+		 cout << e << "\n";
+	 }
+
+
+	//Now, parse the invariants
 	map<string, string> locToInv;
-	for (string e : invariants) {
+	for (string e : replacedInv) {
 
 		//Now, parse the invariants:
 		//Location --> Everything between 0 and the first colon include
@@ -354,8 +380,7 @@ int main(int argc, char **argv) {
 								i - outMostOpeningBracketAt + 1);
 
 						//Check, if "-" is present and replace it by -
-						expression = replaceAllOccurences(expression, "-1*",
-								"-");
+						expression = replaceAllOccurences(expression, "-1*","-");
 						//check, if [] are present; if so replace the prefix notation by infix notation
 						if (expression.find_first_of('[') != string::npos) {
 							//LHS = expr without []
