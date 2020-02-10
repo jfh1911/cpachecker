@@ -450,6 +450,32 @@ public class PredicateAbstractionManager {
                                         stats.abstractionEnumTime.getLengthOfLastOuterInterval())
                                    .asMillis();
     logger.log(Level.FINEST, "Computing abstraction took", abstractionTime, "ms");
+    logger.log(
+        Level.ALL,
+        "Time spend to compute the full abstraction enumeration is",
+        stats.abstractionEnumTime.getLengthOfLastTotalInterval().asMillis(),
+        "ms");
+    logger.log(
+        Level.ALL,
+        "Time spend to compute inner is",
+        stats.abstractionEnumTime.getLengthOfLastTotalInterval().asMillis()
+            - stats.abstractionEnumTime.getLengthOfLastOuterInterval().asMillis(),
+        "ms");
+    logger.log(
+        Level.ALL,
+        "Total time spend for abstraction enumeration so far is",
+        stats.abstractionEnumTime.getTotalSumTime().asMillis(),
+        "ms");
+    logger.log(
+        Level.ALL,
+        "Total max",
+        stats.abstractionEnumTime.getTotalMaxTime().asMillis(),
+        "ms");
+    logger
+        .log(Level.ALL, "Max inner", stats.abstractionEnumTime.getInnerMaxTime().asMillis(), "ms");
+    logger.log(Level.ALL, "Max outer",
+        stats.abstractionEnumTime.getOuterMaxTime(),
+        "ms");
     logger.log(Level.ALL, "Abstraction result is", result.asFormula());
 
     if (dumpHardAbstractions && abstractionTime > 10000) {
