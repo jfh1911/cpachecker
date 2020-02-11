@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.time.LocalTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -1049,8 +1050,15 @@ public class PredicateAbstractionManager {
     // the formula is (abstractionFormula & pathFormula & predDef)
     thmProver.push(predDef);
     AllSatCallbackImpl callback = new AllSatCallbackImpl();
+    logger.log(
+        Level.INFO,
+        "Starting predicate abstraction by computing allSat, current time is ",
+        LocalTime.now().toString());
     Region result = thmProver.allSat(callback, predVars);
-
+    logger.log(
+        Level.INFO,
+        "Finished predicate abstraction by computing allSat, current time is ",
+        LocalTime.now().toString());
     // pop() is actually costly sometimes, and we delete the environment anyway
     // thmProver.pop();
 
@@ -1085,6 +1093,11 @@ public class PredicateAbstractionManager {
 
     @Override
     public void apply(List<BooleanFormula> model) {
+      logger.log(
+          Level.INFO,
+          "Starting 'apply' (constructing region for model) after computing the model, current time is ",
+          LocalTime.now().toString());
+      logger.log(Level.INFO, "The model is ", model.toString());
       if (count == 0) {
         stats.abstractionSolveTime.stop();
         stats.abstractionEnumTime.startOuter();
@@ -1112,7 +1125,10 @@ public class PredicateAbstractionManager {
       count++;
 
       regionTime.stop();
-
+      logger.log(
+          Level.INFO,
+          "Finished 'apply' (constructing region for model) after computing the model, current time is ",
+          LocalTime.now().toString());
     }
 
     @Override
