@@ -38,6 +38,7 @@ import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -1053,12 +1054,12 @@ public class PredicateAbstractionManager {
     logger.log(
         Level.INFO,
         "Starting predicate abstraction by computing allSat, current time is ",
-        LocalTime.now().toString());
+        LocalTime.now(ZoneId.of("ECT")).toString());
     Region result = thmProver.allSat(callback, predVars);
     logger.log(
         Level.INFO,
         "Finished predicate abstraction by computing allSat, current time is ",
-        LocalTime.now().toString());
+        LocalTime.now(ZoneId.of("ECT")).toString());
     // pop() is actually costly sometimes, and we delete the environment anyway
     // thmProver.pop();
 
@@ -1096,7 +1097,7 @@ public class PredicateAbstractionManager {
       logger.log(
           Level.INFO,
           "Starting 'apply' (constructing region for model) after computing the model, current time is ",
-          LocalTime.now().toString());
+          LocalTime.now(ZoneId.of("ECT")).toString());
       logger.log(Level.INFO, "The model is ", model.toString());
       if (count == 0) {
         stats.abstractionSolveTime.stop();
@@ -1128,7 +1129,7 @@ public class PredicateAbstractionManager {
       logger.log(
           Level.INFO,
           "Finished 'apply' (constructing region for model) after computing the model, current time is ",
-          LocalTime.now().toString());
+          LocalTime.now(ZoneId.of("ECT")).toString());
     }
 
     @Override
