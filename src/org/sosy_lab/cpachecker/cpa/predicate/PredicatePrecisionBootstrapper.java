@@ -234,21 +234,22 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
         }
       }
     }
-    if (result.getLocalPredicates()
-        .values()
-        .parallelStream()
-        .allMatch(
-            pred -> pred.getSymbolicAtom().toString().equals("`true`")
-                && pred.getAbstractVariable().toString().equals("`true`"))) {
-      throw new IllegalArgumentException(
-          "The witness is not read / parsed correctly, only true present");
-    } else {
+    // TODO: Find a more efficient way / only for test
+    // if (result.getLocalPredicates()
+    // .values()
+    // .parallelStream()
+    // .allMatch(
+    // pred -> pred.getSymbolicAtom().toString().equals("`true`")
+    // && pred.getAbstractVariable().toString().equals("`true`"))) {
+    // throw new IllegalArgumentException(
+    // "The witness is not read / parsed correctly, only true present");
+    // } else {
       logger.log(Level.WARNING, "generated invarinats are:");
       result.getLocalPredicates()
           .values()
           .parallelStream()
           .forEach(pred -> logger.log(Level.WARNING, pred.toString()));
-    }
+    // }
     return result;
   }
 
