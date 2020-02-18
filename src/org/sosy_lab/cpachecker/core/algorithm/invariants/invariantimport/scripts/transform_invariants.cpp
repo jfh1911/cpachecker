@@ -7,6 +7,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/InstrTypes.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
@@ -31,6 +32,17 @@ using namespace std;
 
 std::string PREFIX = "main@";
 std::string DELIMITOR = "\n";
+
+bool debug = true;
+//taken from : https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c
+bool is_number(const std::string& s)
+{
+    std::string::const_iterator it = s.begin();
+    while (it != s.end() && std::isdigit(*it)) ++it;
+    return !s.empty() && it == s.end();
+}
+
+
 
 std::string cxx_demangle(const std::string &mangled_name) {
 	int status = 0;
@@ -110,15 +122,14 @@ void computeVarMappingAndSrcCodeMapping(map<string, string> &foundVars,
 			}
 			if (srcCodeLine == "") {
 				srcCodeLine = psr::llvmInstructionToOnlySrcCodeLine(last);
-
 			} else if (srcCodeLine
 					!= psr::llvmInstructionToOnlySrcCodeLine(last)) {
-
 				srcCodeLine = "";
 				break;
 			}
 		}
-		bool isLoopHead = srcCodeLine.find("while") != string::npos		|| srcCodeLine.find("for") != string::npos;
+		bool isLoopHead = srcCodeLine.find("while") != string::npos
+				|| srcCodeLine.find("for") != string::npos;
 		if (srcCodeLine != "" && i > 1 && isLoopHead) {
 			//All predecessors associate the jump statement to same location, hence add the sourcecodeline to this location
 			set<string> values;
@@ -153,7 +164,7 @@ void computeVarMappingAndSrcCodeMapping(map<string, string> &foundVars,
 						&I)) {
 					bool alreadyDef = false;
 					bool allPhiVarsHaveSameValue = true;
-					//To tackle the case where all ohi nodes point to the same variable, use varDefOfPhiNodes
+					//To tackle the case where all phi nodes point to the same variable, use varDefOfPhiNodes
 					string varDefOfPhiNodes = "";
 					for (auto &Operand : (&I)->operands()) {
 						std::string llvmOpname = getLlvmName(Operand);
@@ -194,7 +205,47 @@ void computeVarMappingAndSrcCodeMapping(map<string, string> &foundVars,
 						}
 					}
 					foundVars[llvmVarName] = varDefOfPhiNodes;
+				} else {
+					//The variable is probalby an intermediate variable.
+					//Hence, check if it is arithmetic operation of two variables that are known
+
+					//TODO: Extend to -,*,/
+
+					if (llvm::BinaryOperator *bin = llvm::dyn_cast<
+							llvm::BinaryOperator>(&I)) {
+
+						I.print(outs());
+						outs() << "-" << I.getOpcode() <<"--"<< bin->getNumOperands()<< "\n";
+						if (bin->getNumOperands() == 2) {
+							llvm::Value *lhs = bin->getOperand(0);
+							std::string lhsVarName = getLlvmName(lhs);
+							llvm::Value *rhs = bin->getOperand(1);
+							std::string rhsVarName = getLlvmName(rhs);
+							std::string varName = getLlvmName(&I);
+
+//							lhs->print(outs());
+//							outs() << "--->" << lhsVarName << "\n";
+//							rhs->print(outs());
+//							outs() << "--->" << rhsVarName << "\n";
+//							outs() << "--------------------------------------\n";
+							string opSymbol;
+							if (I.getOpcode() == 11) {
+								opSymbol = "+";
+							} else if (I.getOpcode() == 15) {
+								opSymbol = "+";
+							} else {
+								break;
+							}
+
+							if (foundVars.count(lhsVarName) >= 1
+									&& foundVars.count(rhsVarName) >= 1) {
+								foundVars[varName] = foundVars[lhsVarName]
+										+ opSymbol + foundVars[rhsVarName];
+							}
+						}
+					}
 				}
+
 			}
 		}
 		//check if the block is a loop body.
@@ -203,25 +254,25 @@ void computeVarMappingAndSrcCodeMapping(map<string, string> &foundVars,
 
 		if (blocksToScrLines.find(PREFIX + BB.getName().str())
 				!= blocksToScrLines.end()) {
-			lines = blocksToScrLines[PREFIX + BB.getName().str()];
-		}
+			lines = blocksToScrLines[PREFIX + BB.getName().str()]; //TODO: Comment out /remove
+		} //else {
 		std::__cxx11::string loc = psr::llvmInstructionToOnlySrcCodeLine(
 				getFirstNonPhiAndNonTailCall(BB));
 		if (isLast && srcLineOfBasicBlock != "") {
 			if (lines.find(srcLineOfBasicBlock) == lines.end())
 				lines.insert(srcLineOfBasicBlock);
-			if (lines.find(loc) == lines.end()) {
+			if (lines.find(loc) == lines.end()) { //TODO Prob. better as else-if
 				lines.insert(loc);
 			}
 			blocksToScrLines[PREFIX + BB.getName().str()] = lines;
 		} else {
-
-			//If no loop structure, just use the first non phi nod of the block
+			//If no loop structure, just use the first non phi node of the block
 			if (lines.find(loc) == lines.end()) {
 				lines.insert(loc);
 			}
 			blocksToScrLines[PREFIX + BB.getName().str()] = lines;
 		}
+		//}
 	}
 }
 
@@ -244,11 +295,11 @@ string trimEnd(string expression) {
 }
 
 set<string> collectInvats(char **argv) {
-	//	for (pair<string, string> e : foundVars) {
-	//		cout << e.first << " <-> " << e.second << "\n";
-	//	}
-	//Next, identify the location, where the invariants belong to:
-	//Next, read and parse the generated invariant
+//	for (pair<string, string> e : foundVars) {
+//		cout << e.first << " <-> " << e.second << "\n";
+//	}
+//Next, identify the location, where the invariants belong to:
+//Next, read and parse the generated invariant
 	std::ifstream infile(argv[2]);
 	std::string line;
 	bool isMainFunc = false;
@@ -291,11 +342,11 @@ int main(int argc, char **argv) {
 				<< "usage: <prog> <IR file> <OutPut Seahorn> <Dir to output files>\n";
 		return 1;
 	}
-	// parse an IR file into an LLVM module
+// parse an IR file into an LLVM module
 	llvm::SMDiagnostic Diag;
 	unique_ptr<LLVMContext> C(new LLVMContext);
 	unique_ptr<Module> M = parseIRFile(argv[1], Diag, *C);
-	// check if the module is alright
+// check if the module is alright
 	bool broken_debug_info = false;
 	if (llvm::verifyModule(*M, &llvm::errs(), &broken_debug_info)) {
 		llvm::errs() << "error: module not valid\n";
@@ -326,24 +377,23 @@ int main(int argc, char **argv) {
 //Next, read and parse the generated invariant
 
 	set<string> invariants = collectInvats(argv);
-	set<string> replacedInv ;
-	//next, replace all occurences of "mod2" and "mod3"
-	//TODO:
-	for(string invar : invariants){
-		if(invar.find("mod2") != string::npos){
+	set<string> replacedInv;
+//next, replace all occurences of "mod2" and "mod3"
+	for (string invar : invariants) {
+		if (invar.find("mod2") != string::npos) {
 			invar = replaceAllOccurences(invar, "mod2", "%2 ");
-		}if (invar.find("mod3") != string::npos){
+		}
+		if (invar.find("mod3") != string::npos) {
 			invar = replaceAllOccurences(invar, "mod3", "%3 ");
 		}
 		replacedInv.insert(invar);
 	}
 
-	 for(string e : replacedInv){
-		 cout << e << "\n";
-	 }
+//	for (string e : replacedInv) {
+//		cout << e << "\n";
+//	}
 
-
-	//Now, parse the invariants
+//Now, parse the invariants
 	map<string, string> locToInv;
 	for (string e : replacedInv) {
 
@@ -380,7 +430,8 @@ int main(int argc, char **argv) {
 								i - outMostOpeningBracketAt + 1);
 
 						//Check, if "-" is present and replace it by -
-						expression = replaceAllOccurences(expression, "-1*","-");
+						expression = replaceAllOccurences(expression, "-1*",
+								"-");
 						//check, if [] are present; if so replace the prefix notation by infix notation
 						if (expression.find_first_of('[') != string::npos) {
 							//LHS = expr without []
@@ -402,7 +453,7 @@ int main(int argc, char **argv) {
 
 						conjunction = conjunction.append(expression);
 						if (i < e.size() - 1) {
-							conjunction += " && ";
+							conjunction += " & ";
 						}
 						outMostOpeningBracketAt = -1;
 
@@ -425,7 +476,7 @@ int main(int argc, char **argv) {
 		prefixedVars[temp] = e.second;
 	}
 
-	//NEXT, REPLACE THE LLVM VAR NAMES WITH THE C VAR NAMES
+//NEXT, REPLACE THE LLVM VAR NAMES WITH THE C VAR NAMES
 
 	map<string, string> updatedInvs;
 	for (auto const &en : locToInv) {

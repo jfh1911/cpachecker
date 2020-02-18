@@ -57,7 +57,6 @@ import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import scala.NotImplementedError;
 
 public class InvariantsInC2WitnessTransformer {
 
@@ -593,7 +592,7 @@ public class InvariantsInC2WitnessTransformer {
       Map<Integer, Set<CFAEdge>> lineToEdgesOfMain,
       String pNameOfFunction) {
     if (!pNameOfFunction.equals(MAIN_FUNCTION)) {
-      throw new NotImplementedError("Only main methods are supported");
+      throw new IllegalStateException("Not implemented now! Only main methods are supported");
     }
     for (CFANode n : pCfa.getAllNodes()) {
       if (n.getFunctionName().equals(pNameOfFunction)) {
