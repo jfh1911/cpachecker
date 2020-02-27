@@ -141,6 +141,10 @@ public class InvariantsInC2WitnessTransformer {
     // save computation time (for the first evaluation and abort, if only non-trivial invariants are
     // generated:
     boolean nonTrivialInvariantGenerated = false;
+
+    Set<Pair<CFAEdge, Element>> nodesWithOutInvToAdd = new HashSet<>();
+    Map<CFANode, Element> nodesInvGeneratedFor = new HashMap<>();
+
     for (Entry<Integer, Pair<String, String>> inv : mapping.entries()) {
 
       if (inv.getValue().getSecond().strip().equalsIgnoreCase(TRUE)
@@ -168,8 +172,65 @@ public class InvariantsInC2WitnessTransformer {
           lineToEdgesOfMain,
           mainEntryElement,
           inv,
-          lineNumber);
+          lineNumber,
+          nodesWithOutInvToAdd,
+          nodesInvGeneratedFor);
 
+    }
+    // To ensure that the witness is parsed correctly, we need to add all successors of the nodes
+    // associated with an invariant, to the graph to denote that the invariant holds only for the
+    // correct locations (and not for all successors). Only needed, if the succors itself do not
+    // contain any invariant.
+
+    for (Pair<CFAEdge, Element> p : nodesWithOutInvToAdd) {
+      CFANode n = p.getFirst().getSuccessor();
+
+      // Create an edge and and blank node for all successors of n, if the successor is not
+      // present with invariant
+      for (int i = 0; i < n.getNumLeavingEdges(); i++) {
+        CFAEdge e = n.getLeavingEdge(i);
+        if (!nodesInvGeneratedFor.containsKey(e.getSuccessor())) {
+          // Now, add the node and the invariant
+          Set<FileLocation> fileLocs =
+              AutomatonGraphmlCommon.getFileLocationsFromCfaEdge(e, pCfa.getMainFunction());
+          if (!fileLocs.isEmpty()) {
+
+            int minStartOffset = Integer.MAX_VALUE, maxEndOffset = Integer.MIN_VALUE;
+            for (FileLocation loc : fileLocs) {
+              // TODO: Add handling for edges with different starting and finishing line
+              minStartOffset = Math.min(minStartOffset, loc.getNodeOffset());
+              maxEndOffset = Math.max(maxEndOffset, loc.getNodeOffset() + loc.getNodeLength());
+            }
+
+            Element newNode = createBlankNode(graph, doc, getNewNameForNode());
+
+            Optional<Boolean> isControlEdge = Optional.empty();
+
+            // Check if a controledge (assume edge) is present
+            if (e instanceof AssumeEdge) {
+              isControlEdge = Optional.of(((AssumeEdge) e).getTruthAssumption());
+            }
+
+            // Check if the flag "enterLoopHead" is true, meaning that the edge is one into a loop
+            // head
+            // Create a edge in the witness from mainEntryElement to the invElement node
+            Element edge =
+                getEdge(
+                    doc,
+                    p.getSecond(),
+                    newNode,
+                    e.getSuccessor().isLoopStart(),
+                    e.getLineNumber(),
+                    e.getLineNumber(),
+                    minStartOffset,
+                    maxEndOffset,
+                    isControlEdge);
+            graph.appendChild(edge);
+
+          }
+        }
+
+      }
     }
 
     // write the content into xml file
@@ -196,7 +257,9 @@ public class InvariantsInC2WitnessTransformer {
       Map<Integer, Set<CFAEdge>> lineToEdgesOfMain,
       Element mainEntryElement,
       Entry<Integer, Pair<String, String>> inv,
-      int lineNumber) {
+      int lineNumber,
+      Set<Pair<CFAEdge, Element>> pNodesWithOutInvToAdd,
+      Map<CFANode, Element> pNodesInvGeneratedFor) {
     for (CFAEdge e : lineToEdgesOfMain.get(lineNumber)) {
       int minStartOffset = Integer.MAX_VALUE;
       int maxEndOffset = Integer.MIN_VALUE;
@@ -234,6 +297,9 @@ public class InvariantsInC2WitnessTransformer {
         Element invElement =
             createNodeWithInvariant(doc, sourceAndInv.getSecond(), getNewNameForNode());
         graph.appendChild(invElement);
+        // FIXME:we could check if the location is used once to avoid duplicates
+        pNodesInvGeneratedFor.put(e.getSuccessor(), invElement);
+
         Optional<Boolean> isControlEdge = Optional.empty();
 
         // Check if a controledge (assume edge) is present
@@ -256,6 +322,10 @@ public class InvariantsInC2WitnessTransformer {
                 maxEndOffset,
                 isControlEdge);
         graph.appendChild(edge);
+
+        // Finally, add the successors of the added note to a list to add them later to the witness
+        // (as empty nodes)
+        pNodesWithOutInvToAdd.add(Pair.of(e, invElement));
       }
     }
   }
