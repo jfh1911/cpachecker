@@ -27,9 +27,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -49,8 +47,6 @@ import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.ExpressionTreeLocationInvariant;
-import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
-import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerators;
 import org.sosy_lab.cpachecker.core.interfaces.Statistics;
 import org.sosy_lab.cpachecker.core.interfaces.StatisticsProvider;
 import org.sosy_lab.cpachecker.cpa.automaton.AutomatonGraphmlParser;
@@ -169,39 +165,39 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
     }
 
     // FIXME: Move to different location
-    if (predicatesFiles.isEmpty()) {
-      ExternalInvariantGenerator gen =
-          ExternalInvariantGenerator.getInstance(ExternalInvariantGenerators.SEAHORN, config);
-      try {
-       File witness= gen.generateInvariant(
-                cfa,
-                new ArrayList<CFANode>(),
-                specification,
-                logger,
-                shutdownNotifier,
-                config);
-
-        predicatesFiles = new ArrayList<>();
-        predicatesFiles.add(witness.toPath());
-        logger.log(
-            Level.INFO,
-            "Printing the generated invarinat from \'"
-                + witness.getAbsolutePath()
-                + "\' for debugging:\n");
-        StringBuilder sb = new StringBuilder();
-        Files.newBufferedReader(witness.toPath())
-            .lines()
-            .forEachOrdered(l -> sb.append(l + "\n"));
-        logger.log(Level.INFO, sb.toString());
-      } catch (CPAException | IOException e) {
-        // FIXME: This is only for the first evaluation!!
-        // throw new IllegalStateException(
-        // "The invariant generation via seahorn failed, due to " + e,
-        // e);
-        throw new IllegalArgumentException(e);
-      }
-
-    }
+    // if (predicatesFiles.isEmpty()) {
+    // ExternalInvariantGenerator gen =
+    // ExternalInvariantGenerator.getInstance(ExternalInvariantGenerators.SEAHORN, config);
+    // try {
+    // File witness= gen.generateInvariant(
+    // cfa,
+    // new ArrayList<CFANode>(),
+    // specification,
+    // logger,
+    // shutdownNotifier,
+    // config);
+    //
+    // predicatesFiles = new ArrayList<>();
+    // predicatesFiles.add(witness.toPath());
+    // logger.log(
+    // Level.INFO,
+    // "Printing the generated invarinat from \'"
+    // + witness.getAbsolutePath()
+    // + "\' for debugging:\n");
+    // StringBuilder sb = new StringBuilder();
+    // Files.newBufferedReader(witness.toPath())
+    // .lines()
+    // .forEachOrdered(l -> sb.append(l + "\n"));
+    // logger.log(Level.INFO, sb.toString());
+    // } catch (CPAException | IOException e) {
+    // // FIXME: This is only for the first evaluation!!
+    // // throw new IllegalStateException(
+    // // "The invariant generation via seahorn failed, due to " + e,
+    // // e);
+    // throw new IllegalArgumentException(e);
+    // }
+    //
+    // }
 
 
     if (!predicatesFiles.isEmpty()) {
