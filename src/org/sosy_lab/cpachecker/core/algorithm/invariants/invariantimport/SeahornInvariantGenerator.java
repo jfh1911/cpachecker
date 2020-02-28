@@ -24,6 +24,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -32,6 +33,7 @@ import java.nio.file.Paths;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import javax.annotation.Nullable;
 import javax.xml.parsers.ParserConfigurationException;
@@ -63,7 +65,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   private static final int OFFSET = 0;
   private File witnessFile;
 
-  private static final Level LOG_LEVEL = Level.INFO;
+  static final Level LOG_LEVEL = Level.ALL;
 
   private final String PATH_TO_CPA_DIR;
 
@@ -142,6 +144,19 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
 
       final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
 
+      BufferedReader br;
+      try {
+        br = new BufferedReader(new FileReader(tempFile));
+        String line;
+        while ((line = br.readLine()) != null) {
+          System.out.println(line);
+        }
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+
+      System.out.println();
       WitnessInvariantsExtractor extractor =
           new WitnessInvariantsExtractor(
               pConfig,
@@ -151,7 +166,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
               pShutdownNotifier,
               tempFile.toPath());
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
-      pLogger.log(Level.FINER, "The invariants imported are" + candidates.toString());
+      pLogger.log(LOG_LEVEL, "The invariants imported are" + candidates.toString());
       pLogger.log(LOG_LEVEL, "The invariants imported are" + candidates.toString());
       return candidates;
     } catch (InvalidConfigurationException | InterruptedException e) {
@@ -273,6 +288,35 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
         + System.lineSeparator()
         + " * @throws InterruptedException, InvalidConfigurationException  in case of problems loading the generated invariant"
         + System.lineSeparator();
+  }
+
+  @Override
+  public Supplier<Path> getSupplierGeneratingInvarian(
+      CFA pCfa,
+      List<CFANode> pTargetNodesToGenerateFor,
+      Specification pSpecification,
+      LogManager pLogger,
+      ShutdownNotifier pShutdownManager,
+      Configuration pConfig)
+      throws CPAException {
+    return new Supplier<>() {
+
+      @Override
+      public Path get() {
+        try {
+          return
+              generateInvariant(
+                  pCfa,
+                  pTargetNodesToGenerateFor,
+                  pSpecification,
+                  pLogger,
+                  pShutdownManager,
+              pConfig).toPath();
+        } catch (CPAException e) {
+          throw new RuntimeException(e.toString());
+        }
+      }
+    };
   }
 
 }
