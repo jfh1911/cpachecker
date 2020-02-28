@@ -49,6 +49,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
 import org.sosy_lab.common.Classes.UnexpectedCheckedException;
 import org.sosy_lab.common.LazyFutureTask;
 import org.sosy_lab.common.ShutdownManager;
@@ -506,8 +507,27 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
         pOptions.guessCandidatesFromCFA.create(
             pCFA, pSpecification, pTargetLocationProvider, pLogger));
 
+    // Check if the external invariant generation needs to be called
+    Path invariantsAutomatonFile = pOptions.invariantsAutomatonFile;
+    String msg = invariantsAutomatonFile == null ? "IsNull" : "IsNoNull";
+    pLogger.log(Level.ALL, msg);
+    if (pOptions.extInvGens != null && invariantsAutomatonFile == null) {
+      ExternalInvariantGenerator gen =
+          ExternalInvariantGenerator.getInstance(pOptions.extInvGens, pConfig);
+      invariantsAutomatonFile =
+          gen.generateInvariant(
+              pCFA,
+              new ArrayList<CFANode>(),
+              pSpecification,
+              pLogger,
+              pShutdownManager.getNotifier(),
+              pConfig).toPath();
+
+
+    }
+
     final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
-    if (pOptions.invariantsAutomatonFile != null) {
+    if (invariantsAutomatonFile != null) {
       WitnessInvariantsExtractor extractor =
           new WitnessInvariantsExtractor(
               pConfig,
@@ -515,25 +535,11 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
               pLogger,
               pCFA,
               pShutdownManager.getNotifier(),
-              pOptions.invariantsAutomatonFile);
+              invariantsAutomatonFile);
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
     }
     candidates.add(TargetLocationCandidateInvariant.INSTANCE);
-    // Check if the external invariant generation needs to be called
-    if (pOptions.extInvGens != null) {
-      ExternalInvariantGenerator gen =
-          ExternalInvariantGenerator.getInstance(pOptions.extInvGens, pConfig);
-      Set<CandidateInvariant> ret =
-          gen.generateInvariant(
-          pCFA,
-          new ArrayList<CFANode>(),
-          pSpecification,
-          pLogger,
-          pShutdownManager.getNotifier(),
-          pConfig);
-      candidates.addAll(ret);
 
-    }
 
     if (pOptions.terminateOnCounterexample) {
       return new StaticCandidateProvider(candidates) {

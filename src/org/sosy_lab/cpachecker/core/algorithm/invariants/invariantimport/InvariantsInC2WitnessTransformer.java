@@ -49,7 +49,6 @@ import org.sosy_lab.cpachecker.cfa.model.AssumeEdge;
 import org.sosy_lab.cpachecker.cfa.model.BlankEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
-import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
@@ -58,13 +57,11 @@ import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import scala.NotImplementedError;
 
 public class InvariantsInC2WitnessTransformer {
 
   private static final String KEY_STRING = "key";
   private static final String DATA_STRING = "data";
-  private static final String TEXT_ENTERING_EDGE = "Function start dummy edge";
   private static final String NAME_OF_TOOL = "CoInVerify";
 
   private static final String TRUE = "true";
@@ -82,14 +79,14 @@ public class InvariantsInC2WitnessTransformer {
    * @param mapping a multimap, where the first parameter is the line number, the second one a
    *        string of the source code and the third a string with the c invariant
    * @param fileToStoreInvTo the file, where the witness should be stored to
-   * @param pCfa
-   * @param pSpecification
-   * @param sourceFile
-   * @param pLogger
-   * @throws ParserConfigurationException
-   * @throws IOException
-   * @throws CPAException
-   * @throws TransformerException
+   * @param pCfa TODO log
+   * @param pSpecification TODO log
+   * @param sourceFile TODO log
+   * @param pLogger TODO log
+   * @throws ParserConfigurationException TODO log
+   * @throws IOException TODO log
+   * @throws CPAException TODO log
+   * @throws TransformerException TODO log
    *
    *
    */
@@ -123,7 +120,7 @@ public class InvariantsInC2WitnessTransformer {
     lineNumberOfMain =
         getMappingLinesToEdgesOfFunction(pCfa, lineNumberOfMain, lineToEdgesOfMain, MAIN_FUNCTION);
 
-    CFANode mainEntryNode = getEntryNodeForFunction(pCfa, MAIN_FUNCTION);
+    CFANode mainEntryNode = pCfa.getAllFunctions().get(MAIN_FUNCTION);
     if (mainEntryNode == null || lineNumberOfMain == -1) {
       throw new CPAException(
           "Could not find main function, hence aborted computation of invariants");
@@ -138,7 +135,18 @@ public class InvariantsInC2WitnessTransformer {
 
     // Get the edge containing the line number of the invariant, the starting node of the edge is
     // the desired one
+
+    // FIXME: Since we only want to evaluate the cases where the invariant is in fact helpfull,
+    // meaning that at least one invariant is non-trivial and hence unequal to "true/false", we can
+    // save computation time (for the first evaluation and abort, if only non-trivial invariants are
+    // generated:
+    boolean nonTrivialInvariantGenerated = false;
+
+    Set<Pair<CFAEdge, Element>> nodesWithOutInvToAdd = new HashSet<>();
+    Map<CFANode, Element> nodesInvGeneratedFor = new HashMap<>();
+
     for (Entry<Integer, Pair<String, String>> inv : mapping.entries()) {
+
       if (inv.getValue().getSecond().strip().equalsIgnoreCase(TRUE)
           || inv.getValue().getSecond().strip().equalsIgnoreCase(FALSE)) {
         // No need to add true or false
@@ -153,7 +161,7 @@ public class InvariantsInC2WitnessTransformer {
                 + inv.toString());
         continue;
       }
-
+      nonTrivialInvariantGenerated = true;
       // Determine the minimal Start and maximal end offset for a given line (if there are more
       // statements present
 
@@ -164,8 +172,65 @@ public class InvariantsInC2WitnessTransformer {
           lineToEdgesOfMain,
           mainEntryElement,
           inv,
-          lineNumber);
+          lineNumber,
+          nodesWithOutInvToAdd,
+          nodesInvGeneratedFor);
 
+    }
+    // To ensure that the witness is parsed correctly, we need to add all successors of the nodes
+    // associated with an invariant, to the graph to denote that the invariant holds only for the
+    // correct locations (and not for all successors). Only needed, if the succors itself do not
+    // contain any invariant.
+
+    for (Pair<CFAEdge, Element> p : nodesWithOutInvToAdd) {
+      CFANode n = p.getFirst().getSuccessor();
+
+      // Create an edge and and blank node for all successors of n, if the successor is not
+      // present with invariant
+      for (int i = 0; i < n.getNumLeavingEdges(); i++) {
+        CFAEdge e = n.getLeavingEdge(i);
+        if (!nodesInvGeneratedFor.containsKey(e.getSuccessor())) {
+          // Now, add the node and the invariant
+          Set<FileLocation> fileLocs =
+              AutomatonGraphmlCommon.getFileLocationsFromCfaEdge(e, pCfa.getMainFunction());
+          if (!fileLocs.isEmpty()) {
+
+            int minStartOffset = Integer.MAX_VALUE, maxEndOffset = Integer.MIN_VALUE;
+            for (FileLocation loc : fileLocs) {
+              // TODO: Add handling for edges with different starting and finishing line
+              minStartOffset = Math.min(minStartOffset, loc.getNodeOffset());
+              maxEndOffset = Math.max(maxEndOffset, loc.getNodeOffset() + loc.getNodeLength());
+            }
+
+            Element newNode = createBlankNode(graph, doc, getNewNameForNode());
+
+            Optional<Boolean> isControlEdge = Optional.empty();
+
+            // Check if a controledge (assume edge) is present
+            if (e instanceof AssumeEdge) {
+              isControlEdge = Optional.of(((AssumeEdge) e).getTruthAssumption());
+            }
+
+            // Check if the flag "enterLoopHead" is true, meaning that the edge is one into a loop
+            // head
+            // Create a edge in the witness from mainEntryElement to the invElement node
+            Element edge =
+                getEdge(
+                    doc,
+                    p.getSecond(),
+                    newNode,
+                    e.getSuccessor().isLoopStart(),
+                    e.getLineNumber(),
+                    e.getLineNumber(),
+                    minStartOffset,
+                    maxEndOffset,
+                    isControlEdge);
+            graph.appendChild(edge);
+
+          }
+        }
+
+      }
     }
 
     // write the content into xml file
@@ -178,6 +243,11 @@ public class InvariantsInC2WitnessTransformer {
 
     StreamResult result = new StreamResult(fileToStoreInvTo);
     transformer.transform(source, result);
+    if (!nonTrivialInvariantGenerated) {
+      throw new IllegalStateException(
+          "The invariant generation via [SEAHORN] does only generate trivial invariants, hence abort the computation!");
+    }
+
   }
 
   private void computeAllEdgesForLineNumber(
@@ -187,7 +257,9 @@ public class InvariantsInC2WitnessTransformer {
       Map<Integer, Set<CFAEdge>> lineToEdgesOfMain,
       Element mainEntryElement,
       Entry<Integer, Pair<String, String>> inv,
-      int lineNumber) {
+      int lineNumber,
+      Set<Pair<CFAEdge, Element>> pNodesWithOutInvToAdd,
+      Map<CFANode, Element> pNodesInvGeneratedFor) {
     for (CFAEdge e : lineToEdgesOfMain.get(lineNumber)) {
       int minStartOffset = Integer.MAX_VALUE;
       int maxEndOffset = Integer.MIN_VALUE;
@@ -225,6 +297,9 @@ public class InvariantsInC2WitnessTransformer {
         Element invElement =
             createNodeWithInvariant(doc, sourceAndInv.getSecond(), getNewNameForNode());
         graph.appendChild(invElement);
+        // FIXME:we could check if the location is used once to avoid duplicates
+        pNodesInvGeneratedFor.put(e.getSuccessor(), invElement);
+
         Optional<Boolean> isControlEdge = Optional.empty();
 
         // Check if a controledge (assume edge) is present
@@ -247,6 +322,10 @@ public class InvariantsInC2WitnessTransformer {
                 maxEndOffset,
                 isControlEdge);
         graph.appendChild(edge);
+
+        // Finally, add the successors of the added note to a list to add them later to the witness
+        // (as empty nodes)
+        pNodesWithOutInvToAdd.add(Pair.of(e, invElement));
       }
     }
   }
@@ -310,7 +389,6 @@ public class InvariantsInC2WitnessTransformer {
     graphml.appendChild(graph);
     graph.setAttributeNode(createAttrForDoc(doc, "edgedefault", "directed"));
 
-    graph = createAndAppandDataNode(graph, doc, "witness-type", "correctness_witness");
     graph = createAndAppandDataNode(graph, doc, "witness-type", "correctness_witness");
     graph = createAndAppandDataNode(graph, doc, "sourcecodelang", "C");
     graph = createAndAppandDataNode(graph, doc, "producer", NAME_OF_TOOL);
@@ -568,23 +646,6 @@ public class InvariantsInC2WitnessTransformer {
     return sha256hex;
   }
 
-  private CFANode getEntryNodeForFunction(CFA pCfa, String pnameOfFunction) {
-    CFANode mainEntryNode = null;
-    // find the dummy entering edge:
-    for (CFANode n : pCfa.getAllNodes()) {
-      if (n.getFunctionName().equals(pnameOfFunction)) {
-        for (int i = 0; i < n.getNumEnteringEdges(); i++) {
-          if (n.getEnteringEdge(i) instanceof BlankEdge
-              && n.getEnteringEdge(i).getDescription().equals(TEXT_ENTERING_EDGE)) {
-            mainEntryNode = n;
-            break;
-          }
-        }
-      }
-    }
-    return mainEntryNode;
-  }
-
   /**
    *
    * Computes for each source code line the edges associated to that line
@@ -601,7 +662,7 @@ public class InvariantsInC2WitnessTransformer {
       Map<Integer, Set<CFAEdge>> lineToEdgesOfMain,
       String pNameOfFunction) {
     if (!pNameOfFunction.equals(MAIN_FUNCTION)) {
-      throw new NotImplementedError("Only main methods are supported");
+      throw new IllegalStateException("Not implemented now! Only main methods are supported");
     }
     for (CFANode n : pCfa.getAllNodes()) {
       if (n.getFunctionName().equals(pNameOfFunction)) {
@@ -614,13 +675,16 @@ public class InvariantsInC2WitnessTransformer {
             edges.add(enteringEdge);
             lineToEdgesOfMain.put(enteringEdge.getLineNumber(), edges);
           }
-          if (enteringEdge instanceof CDeclarationEdge
-              && enteringEdge.getRawStatement().equals("int main()")) {
-            lineNumberOfMain = enteringEdge.getLineNumber();
-          }
+
         }
       }
     }
+    if (pCfa.getMainFunction().getNumLeavingEdges() > 1) {
+      throw new IllegalStateException("Expecting only one call t main");
+    } else {
+      lineNumberOfMain = pCfa.getMainFunction().getLeavingEdge(0).getLineNumber();
+    }
+
     return lineNumberOfMain;
   }
 

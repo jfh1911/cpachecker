@@ -30,11 +30,9 @@ import org.sosy_lab.common.io.IO;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
-import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.Specification;
+import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.ExpressionTreeLocationInvariant;
-import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
-import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerators;
 import org.sosy_lab.cpachecker.core.interfaces.Statistics;
 import org.sosy_lab.cpachecker.core.interfaces.StatisticsProvider;
 import org.sosy_lab.cpachecker.core.specification.Specification;
@@ -154,30 +152,40 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
     }
 
     // FIXME: Move to different location
-    if (predicatesFiles.isEmpty()) {
-      ExternalInvariantGenerator gen =
-          ExternalInvariantGenerator.getInstance(ExternalInvariantGenerators.SEAHORN, config);
-      try {
-        Set<CandidateInvariant> ret =
-            gen.generateInvariant(
-                cfa,
-                new ArrayList<CFANode>(),
-                specification,
-                logger,
-                shutdownNotifier,
-                config);
-        String path =
-            PredicatePrecisionBootstrapper.class.getProtectionDomain()
-                .getCodeSource()
-                .getLocation()
-                .getPath() + "../" + "output/proofWitness_Seahorn.graphml";
-        predicatesFiles = new ArrayList<>();
-        predicatesFiles.add(Path.of(path));
-      } catch (CPAException e) {
-        logger.log(Level.WARNING, "The invariant generation via seahorn failed");
-      }
+    // if (predicatesFiles.isEmpty()) {
+    // ExternalInvariantGenerator gen =
+    // ExternalInvariantGenerator.getInstance(ExternalInvariantGenerators.SEAHORN, config);
+    // try {
+    // File witness= gen.generateInvariant(
+    // cfa,
+    // new ArrayList<CFANode>(),
+    // specification,
+    // logger,
+    // shutdownNotifier,
+    // config);
+    //
+    // predicatesFiles = new ArrayList<>();
+    // predicatesFiles.add(witness.toPath());
+    // logger.log(
+    // Level.INFO,
+    // "Printing the generated invarinat from \'"
+    // + witness.getAbsolutePath()
+    // + "\' for debugging:\n");
+    // StringBuilder sb = new StringBuilder();
+    // Files.newBufferedReader(witness.toPath())
+    // .lines()
+    // .forEachOrdered(l -> sb.append(l + "\n"));
+    // logger.log(Level.INFO, sb.toString());
+    // } catch (CPAException | IOException e) {
+    // // FIXME: This is only for the first evaluation!!
+    // // throw new IllegalStateException(
+    // // "The invariant generation via seahorn failed, due to " + e,
+    // // e);
+    // throw new IllegalArgumentException(e);
+    // }
+    //
+    // }
 
-    }
 
     if (!predicatesFiles.isEmpty()) {
       PredicateMapParser parser =
@@ -209,7 +217,22 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
         }
       }
     }
-
+    // TODO: Find a more efficient way / only for test
+    // if (result.getLocalPredicates()
+    // .values()
+    // .parallelStream()
+    // .allMatch(
+    // pred -> pred.getSymbolicAtom().toString().equals("`true`")
+    // && pred.getAbstractVariable().toString().equals("`true`"))) {
+    // throw new IllegalArgumentException(
+    // "The witness is not read / parsed correctly, only true present");
+    // } else {
+      logger.log(Level.WARNING, "generated invarinats are:");
+      result.getLocalPredicates()
+          .values()
+          .parallelStream()
+          .forEach(pred -> logger.log(Level.WARNING, pred.toString()));
+    // }
     return result;
   }
 

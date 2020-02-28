@@ -19,6 +19,7 @@
  */
 package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
+import java.io.File;
 import java.util.List;
 import java.util.Set;
 import org.sosy_lab.common.ShutdownNotifier;
@@ -40,7 +41,23 @@ public interface ExternalInvariantGenerator {
    * @throws CPAException If the CFA contains more than one source file or to wrap different
    *         exceptions
    */
-  Set<CandidateInvariant> generateInvariant(
+  Set<CandidateInvariant> generateInvariantAndLoad(
+      CFA pCfa,
+      List<CFANode> pTargetNodesToGenerateFor,
+      Specification pSpecification,
+      LogManager pLogger,
+      ShutdownNotifier pShutdownManager,
+      Configuration pConfig)
+      throws CPAException;
+
+  /**
+   *
+   * @param pCfa of the program
+   * @return the file containing the invariants
+   * @throws CPAException If the CFA contains more than one source file or to wrap different
+   *         exceptions
+   */
+  File generateInvariant(
       CFA pCfa,
       List<CFANode> pTargetNodesToGenerateFor,
       Specification pSpecification,
