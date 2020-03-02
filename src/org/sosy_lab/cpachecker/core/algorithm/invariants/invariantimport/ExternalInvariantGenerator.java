@@ -88,6 +88,8 @@ public interface ExternalInvariantGenerator {
       getInstance(ExternalInvariantGenerators instance, Configuration pConfiguration)
           throws InvalidConfigurationException {
     switch (instance) {
+      case VERIABS:
+        return new VeriAbsInvariantGenerator(pConfiguration);
       case SEAHORN:
       default:
         return new SeahornInvariantGenerator(pConfiguration);
