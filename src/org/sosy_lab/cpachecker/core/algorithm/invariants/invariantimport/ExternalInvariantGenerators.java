@@ -23,5 +23,6 @@ package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
  * This enumeration captures all external invariant generation tools that are present
  */
 public enum ExternalInvariantGenerators {
-  SEAHORN;
+  SEAHORN,
+  VERIABS;
 }
