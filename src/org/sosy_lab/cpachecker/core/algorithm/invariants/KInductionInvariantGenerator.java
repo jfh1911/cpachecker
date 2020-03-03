@@ -38,10 +38,11 @@ import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -178,11 +179,6 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
       description = "Check candidate invariants in a separate thread asynchronously.")
     private boolean async = true;
 
-    @Option(
-      secure = true,
-      description = "If there are more than one external invariant generation tool is specified, they can be "
-          + "executed in parallel")
-    private boolean parallelCompositionOfExtInvGenTools = false;
 
     @Option(secure = true, description = "Timeout for invariant generation in seconds")
     private int timeoutForInvariantExecution = -1;
@@ -605,7 +601,10 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
       //FIXME: just for tests: print the generated invariant
         BufferedReader reader;
         try {
-          reader = new BufferedReader(new FileReader(invariantsAutomatonFile.toFile()));
+          reader =
+              Files.newBufferedReader(
+                  invariantsAutomatonFile.toFile().toPath(),
+                  Charset.defaultCharset());
           String line;
           while ((line = reader.readLine()) != null) {
             pLogger.log(Level.INFO, line);
