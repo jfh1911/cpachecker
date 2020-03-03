@@ -304,14 +304,16 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       @Override
       public Path get() {
         try {
-          return
+          Path res =
               generateInvariant(
                   pCfa,
                   pTargetNodesToGenerateFor,
                   pSpecification,
                   pLogger,
                   pShutdownManager,
-              pConfig).toPath();
+                  pConfig).toPath();
+          pLogger.log(Level.WARNING, "Invariant generation finished for tool : SeaHorn");
+          return res;
         } catch (CPAException e) {
           throw new RuntimeException(e.toString());
         }

@@ -210,14 +210,16 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       @Override
       public Path get() {
         try {
-          return
+          Path res =
               generateInvariant(
                   pCfa,
                   pTargetNodesToGenerateFor,
                   pSpecification,
                   pLogger,
                   pShutdownManager,
-              pConfig).toPath();
+                  pConfig).toPath();
+          pLogger.log(Level.WARNING, "Invariant generation finished for tool : VeriAbs");
+          return res;
         } catch (CPAException e) {
           throw new RuntimeException(e.toString());
         }

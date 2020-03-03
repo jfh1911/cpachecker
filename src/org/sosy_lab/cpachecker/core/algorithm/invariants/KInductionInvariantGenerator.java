@@ -37,6 +37,9 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -598,6 +601,20 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
             "None of the tools generated an invariant in ",
             pOptions.timeoutForInvariantExecution,
             " seconds or an error occured. Hence continuing without invariant");
+    } else {
+      //FIXME: just for tests: print the generated invariant
+        BufferedReader reader;
+        try {
+          reader = new BufferedReader(new FileReader(invariantsAutomatonFile.toFile()));
+          String line;
+          while ((line = reader.readLine()) != null) {
+            pLogger.log(Level.INFO, line);
+          }
+          reader.close();
+        } catch (IOException e) {
+          pLogger.log(Level.WARNING, "Cannot print the file");
+        }
+
     }
 
     }
@@ -615,6 +632,11 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
               pShutdownManager.getNotifier(),
               invariantsAutomatonFile);
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
+      pLogger.log(Level.WARNING, "The following candidates are imported: ", candidates.toString());
+      pLogger.log(
+          Level.WARNING,
+          "The following candidateGroupLocations are found: ",
+          candidateGroupLocations.toString());
     }
     candidates.add(TargetLocationCandidateInvariant.INSTANCE);
 
