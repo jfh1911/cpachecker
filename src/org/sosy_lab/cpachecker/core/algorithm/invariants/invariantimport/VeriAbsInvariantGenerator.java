@@ -21,9 +21,7 @@ package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
@@ -121,21 +119,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
 
       final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
 
-      BufferedReader br;
-      try {
-        br = new BufferedReader(new FileReader(tempFile));
-        String line;
-        while ((line = br.readLine()) != null) {
-          System.out.println(line);
-        }
-        br.close();
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
 
-
-      System.out.println();
       WitnessInvariantsExtractor extractor =
           new WitnessInvariantsExtractor(
               pConfig,
