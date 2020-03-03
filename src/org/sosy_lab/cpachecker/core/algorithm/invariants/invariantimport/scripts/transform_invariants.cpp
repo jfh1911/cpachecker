@@ -35,14 +35,12 @@ std::string DELIMITOR = "\n";
 
 bool debug = true;
 //taken from : https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c
-bool is_number(const std::string& s)
-{
-    std::string::const_iterator it = s.begin();
-    while (it != s.end() && std::isdigit(*it)) ++it;
-    return !s.empty() && it == s.end();
+bool is_number(const std::string &s) {
+	std::string::const_iterator it = s.begin();
+	while (it != s.end() && std::isdigit(*it))
+		++it;
+	return !s.empty() && it == s.end();
 }
-
-
 
 std::string cxx_demangle(const std::string &mangled_name) {
 	int status = 0;
@@ -134,6 +132,8 @@ void computeVarMappingAndSrcCodeMapping(map<string, string> &foundVars,
 			//All predecessors associate the jump statement to same location, hence add the sourcecodeline to this location
 			set<string> values;
 			values.insert(srcCodeLine);
+			cout << "Adding at Pos 1:" << PREFIX + BB.getName().str() << "<~~>"
+					<< srcCodeLine << "\n";
 			blocksToScrLines[PREFIX + BB.getName().str()] = values;
 		}
 
@@ -215,7 +215,8 @@ void computeVarMappingAndSrcCodeMapping(map<string, string> &foundVars,
 							llvm::BinaryOperator>(&I)) {
 
 						I.print(outs());
-						outs() << "-" << I.getOpcode() <<"--"<< bin->getNumOperands()<< "\n";
+						outs() << "-" << I.getOpcode() << "--"
+								<< bin->getNumOperands() << "\n";
 						if (bin->getNumOperands() == 2) {
 							llvm::Value *lhs = bin->getOperand(0);
 							std::string lhsVarName = getLlvmName(lhs);
@@ -253,26 +254,33 @@ void computeVarMappingAndSrcCodeMapping(map<string, string> &foundVars,
 		set<string> lines;
 
 		if (blocksToScrLines.find(PREFIX + BB.getName().str())
-				!= blocksToScrLines.end()) {
-			lines = blocksToScrLines[PREFIX + BB.getName().str()]; //TODO: Comment out /remove
-		} //else {
-		std::__cxx11::string loc = psr::llvmInstructionToOnlySrcCodeLine(
-				getFirstNonPhiAndNonTailCall(BB));
-		if (isLast && srcLineOfBasicBlock != "") {
-			if (lines.find(srcLineOfBasicBlock) == lines.end())
-				lines.insert(srcLineOfBasicBlock);
-			if (lines.find(loc) == lines.end()) { //TODO Prob. better as else-if
-				lines.insert(loc);
+				== blocksToScrLines.end()) {
+//			lines = blocksToScrLines[PREFIX + BB.getName().str()]; //TODO: Comment out /remove
+//		} //else {
+			std::__cxx11::string loc = psr::llvmInstructionToOnlySrcCodeLine(
+					getFirstNonPhiAndNonTailCall(BB));
+			if (isLast && srcLineOfBasicBlock != "") {
+				if (lines.find(srcLineOfBasicBlock) == lines.end()) {
+					cout << "Adding at Pos 2:" << PREFIX + BB.getName().str()
+							<< "<~~>" << srcCodeLine << "\n";
+					lines.insert(srcLineOfBasicBlock);
+				} else if (lines.find(loc) == lines.end()) { //TODO Prob. better as else-if
+					lines.insert(loc);
+					cout << "Adding at Pos 3:" << PREFIX + BB.getName().str()
+							<< "<~~>" << loc << "\n";
+				}
+				blocksToScrLines[PREFIX + BB.getName().str()] = lines;
+			} else {
+				//If no loop structure, just use the first non phi node of the block
+				if (lines.find(loc) == lines.end()) {
+					lines.insert(loc);
+					cout << "Adding at Pos 4:" << PREFIX + BB.getName().str()
+							<< "<~~>" << loc << "\n";
+				}
+				blocksToScrLines[PREFIX + BB.getName().str()] = lines;
 			}
-			blocksToScrLines[PREFIX + BB.getName().str()] = lines;
-		} else {
-			//If no loop structure, just use the first non phi node of the block
-			if (lines.find(loc) == lines.end()) {
-				lines.insert(loc);
-			}
-			blocksToScrLines[PREFIX + BB.getName().str()] = lines;
+			//}
 		}
-		//}
 	}
 }
 
@@ -438,7 +446,7 @@ int main(int argc, char **argv) {
 //							cout << " Expression is: " << expression << "\n";
 							auto lhs = expression.substr(
 									expression.find_first_of('[') + 1);
-							lhs = lhs.substr(0, lhs.find_first_of(']')); // -2, since -1 for pos of ] and -1 to remove them
+							lhs = lhs.substr(0, lhs.find_first_of(']'));// -2, since -1 for pos of ] and -1 to remove them
 //							cout << lhs << "\n";
 
 							//To avoid problems with whitespaces in the end, remove them

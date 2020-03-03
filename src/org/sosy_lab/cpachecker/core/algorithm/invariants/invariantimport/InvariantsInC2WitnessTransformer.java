@@ -20,6 +20,7 @@
 package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 import java.io.File;
 import java.io.IOException;
 import java.time.ZoneId;
@@ -28,11 +29,13 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -273,7 +276,8 @@ public class InvariantsInC2WitnessTransformer {
           // (Since the location is a blank one and hence associated to the previous spot
           if (e.getPredecessor().getNumEnteringEdges() == 1) {
             int prevLine = e.getPredecessor().getEnteringEdge(0).getLineNumber();
-            computeOneEdgeForLineNumber(
+            Element invElement =
+                computeOneEdgeForLineNumber(
                 pCfa,
                 doc,
                 graph,
@@ -282,6 +286,12 @@ public class InvariantsInC2WitnessTransformer {
                 inv,
                 prevLine,
                 e.getSuccessor().isLoopStart());
+            // FIXME:we could check if the location is used once to avoid duplicates
+            pNodesInvGeneratedFor.put(e.getSuccessor(), invElement);
+            // Finally, add the successors of the added note to a list to add them later to the
+            // witness
+            // (as empty nodes)
+            pNodesWithOutInvToAdd.add(Pair.of(e, invElement));
           }
         }
       } else {
@@ -330,7 +340,7 @@ public class InvariantsInC2WitnessTransformer {
     }
   }
 
-  private void computeOneEdgeForLineNumber(
+  private Element computeOneEdgeForLineNumber(
       CFA pCfa,
       Document doc,
       Element graph,
@@ -375,7 +385,7 @@ public class InvariantsInC2WitnessTransformer {
             maxEndOffset,
             Optional.empty());
     graph.appendChild(edge);
-
+    return invElement;
   }
 
   private Element addPredefinedGraphElements(
@@ -685,7 +695,25 @@ public class InvariantsInC2WitnessTransformer {
       lineNumberOfMain = pCfa.getMainFunction().getLeavingEdge(0).getLineNumber();
     }
 
+    // Cleanup due to performance reasons
+    cleanup(lineToEdgesOfMain);
+
     return lineNumberOfMain;
+  }
+
+  private void cleanup(Map<Integer, Set<CFAEdge>> pLineToEdgesOfMain) {
+    // IF any location has an edge, that is an loop enter head, remove the other locations
+    for (Entry<Integer, Set<CFAEdge>> entry : pLineToEdgesOfMain.entrySet()) {
+      List<CFAEdge> loopHeads =
+          entry.getValue()
+          .parallelStream()
+          .filter(edge -> edge instanceof BlankEdge && edge.getSuccessor().isLoopStart())
+          .collect(Collectors.toList());
+      if (loopHeads.size() > 0) {
+        pLineToEdgesOfMain.replace(entry.getKey(), Sets.newHashSet(loopHeads.get(0)));
+      }
+    }
+
   }
 
   private String getNewNameForNode() {
