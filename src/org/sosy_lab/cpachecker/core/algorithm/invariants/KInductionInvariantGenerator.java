@@ -547,6 +547,10 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
 
       List<Supplier<Path>> suppliers = new ArrayList<>();
       if (pOptions.timeoutForInvariantExecution > 0) {
+        pLogger.log(
+            Level.INFO,
+            "Setting up a timmer with timeout of seconds:",
+            pOptions.timeoutForInvariantExecution);
         // The timeout supplier waits for the specified timeout and return an empty optional
         Supplier<Path> timeoutSupplier = new Supplier<>() {
 

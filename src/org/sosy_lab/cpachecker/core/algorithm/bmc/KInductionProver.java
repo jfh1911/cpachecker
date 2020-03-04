@@ -637,6 +637,7 @@ class KInductionProver implements AutoCloseable {
     prover.pop(); // Pop end states
 
     stats.inductionCheck.stop();
+    logger.log(Level.INFO, "Soundness after induction check:", result.isSuccessful());
     // logger.log(
     // LogLevel,
     // "Inductino check took : ",
