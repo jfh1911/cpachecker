@@ -601,15 +601,18 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
       //FIXME: just for tests: print the generated invariant
         BufferedReader reader;
         try {
+          String fileContent = "";
           reader =
               Files.newBufferedReader(
                   invariantsAutomatonFile.toFile().toPath(),
                   Charset.defaultCharset());
           String line;
           while ((line = reader.readLine()) != null) {
-            pLogger.log(Level.INFO, line);
+            fileContent = fileContent.concat(line);
           }
           reader.close();
+
+          pLogger.log(Level.WARNING, fileContent);
         } catch (IOException e) {
           pLogger.log(Level.WARNING, "Cannot print the file");
         }
