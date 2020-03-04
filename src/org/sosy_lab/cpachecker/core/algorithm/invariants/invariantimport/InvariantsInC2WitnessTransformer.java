@@ -185,56 +185,57 @@ public class InvariantsInC2WitnessTransformer {
     // correct locations (and not for all successors). Only needed, if the succors itself do not
     // contain any invariant.
 
-    for (Pair<CFAEdge, Element> p : nodesWithOutInvToAdd) {
-      CFANode n = p.getFirst().getSuccessor();
-
-      // Create an edge and and blank node for all successors of n, if the successor is not
-      // present with invariant
-      for (int i = 0; i < n.getNumLeavingEdges(); i++) {
-        CFAEdge e = n.getLeavingEdge(i);
-        if (!nodesInvGeneratedFor.containsKey(e.getSuccessor())) {
-          // Now, add the node and the invariant
-          Set<FileLocation> fileLocs =
-              AutomatonGraphmlCommon.getFileLocationsFromCfaEdge(e, pCfa.getMainFunction());
-          if (!fileLocs.isEmpty()) {
-
-            int minStartOffset = Integer.MAX_VALUE, maxEndOffset = Integer.MIN_VALUE;
-            for (FileLocation loc : fileLocs) {
-              // TODO: Add handling for edges with different starting and finishing line
-              minStartOffset = Math.min(minStartOffset, loc.getNodeOffset());
-              maxEndOffset = Math.max(maxEndOffset, loc.getNodeOffset() + loc.getNodeLength());
-            }
-
-            Element newNode = createBlankNode(graph, doc, getNewNameForNode());
-
-            Optional<Boolean> isControlEdge = Optional.empty();
-
-            // Check if a controledge (assume edge) is present
-            if (e instanceof AssumeEdge) {
-              isControlEdge = Optional.of(((AssumeEdge) e).getTruthAssumption());
-            }
-
-            // Check if the flag "enterLoopHead" is true, meaning that the edge is one into a loop
-            // head
-            // Create a edge in the witness from mainEntryElement to the invElement node
-            Element edge =
-                getEdge(
-                    doc,
-                    p.getSecond(),
-                    newNode,
-                    e.getSuccessor().isLoopStart(),
-                    e.getLineNumber(),
-                    e.getLineNumber(),
-                    minStartOffset,
-                    maxEndOffset,
-                    isControlEdge);
-            graph.appendChild(edge);
-
-          }
-        }
-
-      }
-    }
+    // FIXME: Just for test and evaluation
+    // for (Pair<CFAEdge, Element> p : nodesWithOutInvToAdd) {
+    // CFANode n = p.getFirst().getSuccessor();
+    //
+    // // Create an edge and and blank node for all successors of n, if the successor is not
+    // // present with invariant
+    // for (int i = 0; i < n.getNumLeavingEdges(); i++) {
+    // CFAEdge e = n.getLeavingEdge(i);
+    // if (!nodesInvGeneratedFor.containsKey(e.getSuccessor())) {
+    // // Now, add the node and the invariant
+    // Set<FileLocation> fileLocs =
+    // AutomatonGraphmlCommon.getFileLocationsFromCfaEdge(e, pCfa.getMainFunction());
+    // if (!fileLocs.isEmpty()) {
+    //
+    // int minStartOffset = Integer.MAX_VALUE, maxEndOffset = Integer.MIN_VALUE;
+    // for (FileLocation loc : fileLocs) {
+    // // TODO: Add handling for edges with different starting and finishing line
+    // minStartOffset = Math.min(minStartOffset, loc.getNodeOffset());
+    // maxEndOffset = Math.max(maxEndOffset, loc.getNodeOffset() + loc.getNodeLength());
+    // }
+    //
+    // Element newNode = createBlankNode(graph, doc, getNewNameForNode());
+    //
+    // Optional<Boolean> isControlEdge = Optional.empty();
+    //
+    // // Check if a controledge (assume edge) is present
+    // if (e instanceof AssumeEdge) {
+    // isControlEdge = Optional.of(((AssumeEdge) e).getTruthAssumption());
+    // }
+    //
+    // // Check if the flag "enterLoopHead" is true, meaning that the edge is one into a loop
+    // // head
+    // // Create a edge in the witness from mainEntryElement to the invElement node
+    // Element edge =
+    // getEdge(
+    // doc,
+    // p.getSecond(),
+    // newNode,
+    // e.getSuccessor().isLoopStart(),
+    // e.getLineNumber(),
+    // e.getLineNumber(),
+    // minStartOffset,
+    // maxEndOffset,
+    // isControlEdge);
+    // graph.appendChild(edge);
+    //
+    // }
+    // }
+    //
+    // }
+    // }
 
     // write the content into xml file
     TransformerFactory transformerFactory = TransformerFactory.newInstance();
