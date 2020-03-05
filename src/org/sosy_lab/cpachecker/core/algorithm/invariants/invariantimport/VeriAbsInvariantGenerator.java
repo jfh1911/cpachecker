@@ -23,6 +23,8 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -56,8 +58,6 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
 
 
   static final Level LOG_LEVEL = Level.ALL;
-
-  private static final String PATH_TO_VERIABS = "/home/cppp/Documents/VeriAbs/scripts/";
 
   private final String PATH_TO_CPA_DIR;
 
@@ -153,14 +153,23 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS + "VeriAbsInvariantGeneration.sh",
         pPath.toFile().getAbsolutePath(),
         absolutePathToInvFile,
-        PATH_TO_CPA_DIR + PATH_TO_SCRIPTS,
-        PATH_TO_VERIABS);
+        PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
     Process process = builder.start();
 
     int exitCode = process.waitFor();
     // After finishing the invariant generation script ensure that everything worked out as planned!
     assert exitCode == 0;
+
+    // Since the cpachecker input does not like "-1*", replace them by a simple "-"
+    Path pathToWitness = Path.of(absolutePathToInvFile + "witness.graphml");
+    String content = new String(Files.readAllBytes(pathToWitness), StandardCharsets.UTF_8);
+    while (content.contains("-1 * ")) {
+      content = content.replace("-1 * ", "-");
+    }
+    Files.write(pathToWitness, content.getBytes(StandardCharsets.UTF_8));
+
     return new File(absolutePathToInvFile + "witness.graphml");
+
   }
 
 
