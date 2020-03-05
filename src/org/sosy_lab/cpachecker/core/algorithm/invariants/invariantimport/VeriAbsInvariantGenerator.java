@@ -190,7 +190,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   @Override
-  public Supplier<Path> getSupplierGeneratingInvarian(
+  public Supplier<Path> getSupplierGeneratingInvariants(
       CFA pCfa,
       List<CFANode> pTargetNodesToGenerateFor,
       Specification pSpecification,
