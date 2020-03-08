@@ -22,8 +22,12 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -160,11 +164,6 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
       description = "Check candidate invariants in a separate thread asynchronously.")
     private boolean async = true;
 
-    @Option(
-      secure = true,
-      description = "If there are more than one external invariant generation tool is specified, they can be "
-          + "executed in parallel")
-    private boolean parallelCompositionOfExtInvGenTools = false;
 
     @Option(secure = true, description = "Timeout for invariant generation in seconds")
     private int timeoutForInvariantExecution = -1;
@@ -533,6 +532,10 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
 
       List<Supplier<Path>> suppliers = new ArrayList<>();
       if (pOptions.timeoutForInvariantExecution > 0) {
+        pLogger.log(
+            Level.INFO,
+            "Setting up a timmer with timeout of seconds:",
+            pOptions.timeoutForInvariantExecution);
         // The timeout supplier waits for the specified timeout and return an empty optional
         Supplier<Path> timeoutSupplier = new Supplier<>() {
 
@@ -551,7 +554,7 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
         ExternalInvariantGenerator gen =
             ExternalInvariantGenerator.getInstance(invGenTool, pConfig);
         suppliers.add(
-            gen.getSupplierGeneratingInvarian(
+            gen.getSupplierGeneratingInvariants(
                 pCFA,
                 new ArrayList<CFANode>(),
                 pSpecification,
@@ -583,6 +586,26 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
             "None of the tools generated an invariant in ",
             pOptions.timeoutForInvariantExecution,
             " seconds or an error occured. Hence continuing without invariant");
+    } else {
+      //FIXME: just for tests: print the generated invariant
+        BufferedReader reader;
+        try {
+          String fileContent = "";
+          reader =
+              Files.newBufferedReader(
+                  invariantsAutomatonFile.toFile().toPath(),
+                  Charset.defaultCharset());
+          String line;
+          while ((line = reader.readLine()) != null) {
+            fileContent = fileContent.concat(line);
+          }
+          reader.close();
+
+          pLogger.log(Level.WARNING, fileContent);
+        } catch (IOException e) {
+          pLogger.log(Level.WARNING, "Cannot print the file");
+        }
+
     }
 
     }
@@ -600,6 +623,11 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
               pShutdownManager.getNotifier(),
               invariantsAutomatonFile);
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
+      pLogger.log(Level.WARNING, "The following candidates are imported: ", candidates.toString());
+      pLogger.log(
+          Level.WARNING,
+          "The following candidateGroupLocations are found: ",
+          candidateGroupLocations.toString());
     }
     candidates.add(TargetLocationCandidateInvariant.INSTANCE);
 

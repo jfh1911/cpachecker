@@ -12,14 +12,23 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.FileOption;
@@ -33,6 +42,8 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.ExpressionTreeLocationInvariant;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerators;
 import org.sosy_lab.cpachecker.core.interfaces.Statistics;
 import org.sosy_lab.cpachecker.core.interfaces.StatisticsProvider;
 import org.sosy_lab.cpachecker.core.specification.Specification;
@@ -48,35 +59,37 @@ import org.sosy_lab.cpachecker.util.predicates.precisionConverter.Converter.Prec
 import org.sosy_lab.cpachecker.util.predicates.smt.FormulaManagerView;
 import org.sosy_lab.cpachecker.util.statistics.KeyValueStatistics;
 
-@Options(prefix="cpa.predicate")
+@Options(prefix = "cpa.predicate")
 public class PredicatePrecisionBootstrapper implements StatisticsProvider {
 
-  @Option(secure=true, name="abstraction.initialPredicates",
-      description="get an initial map of predicates from a list of files (see source doc/examples/predmap.txt for an example)")
+  @Option(
+    secure = true,
+    name = "abstraction.initialPredicates",
+    description = "get an initial map of predicates from a list of files (see source doc/examples/predmap.txt for an example)")
   @FileOption(FileOption.Type.OPTIONAL_INPUT_FILE)
   private List<Path> predicatesFiles = ImmutableList.of();
 
-  @Option(secure=true, description="always check satisfiability at end of block, even if precision is empty")
+  @Option(
+    secure = true,
+    description = "always check satisfiability at end of block, even if precision is empty")
   private boolean checkBlockFeasibility = false;
 
   @Options(prefix = "cpa.predicate.abstraction.initialPredicates")
   public static class InitialPredicatesOptions {
 
     @Option(
-        secure = true,
-        description = "Apply location-specific predicates to all locations in their function")
+      secure = true,
+      description = "Apply location-specific predicates to all locations in their function")
     private boolean applyFunctionWide = false;
 
     @Option(
-        secure = true,
-        description =
-            "Apply location- and function-specific predicates globally (to all locations in the program)")
+      secure = true,
+      description = "Apply location- and function-specific predicates globally (to all locations in the program)")
     private boolean applyGlobally = false;
 
     @Option(
-        secure = true,
-        description =
-            "when reading predicates from file, convert them from Integer- to BV-theory or reverse.")
+      secure = true,
+      description = "when reading predicates from file, convert them from Integer- to BV-theory or reverse.")
     private PrecisionConverter encodePredicates = PrecisionConverter.DISABLE;
 
     @Option(secure = true, description = "initial predicates are added as atomic predicates")
@@ -147,45 +160,70 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
     PredicatePrecision result = PredicatePrecision.empty();
 
     if (checkBlockFeasibility) {
-      result = result
-          .addGlobalPredicates(Collections.singleton(abstractionManager.makeFalsePredicate()));
+      result =
+          result
+              .addGlobalPredicates(Collections.singleton(abstractionManager.makeFalsePredicate()));
     }
 
     // FIXME: Move to different location
-    // if (predicatesFiles.isEmpty()) {
-    // ExternalInvariantGenerator gen =
-    // ExternalInvariantGenerator.getInstance(ExternalInvariantGenerators.SEAHORN, config);
-    // try {
-    // File witness= gen.generateInvariant(
-    // cfa,
-    // new ArrayList<CFANode>(),
-    // specification,
-    // logger,
-    // shutdownNotifier,
-    // config);
-    //
-    // predicatesFiles = new ArrayList<>();
-    // predicatesFiles.add(witness.toPath());
-    // logger.log(
-    // Level.INFO,
-    // "Printing the generated invarinat from \'"
-    // + witness.getAbsolutePath()
-    // + "\' for debugging:\n");
-    // StringBuilder sb = new StringBuilder();
-    // Files.newBufferedReader(witness.toPath())
-    // .lines()
-    // .forEachOrdered(l -> sb.append(l + "\n"));
-    // logger.log(Level.INFO, sb.toString());
-    // } catch (CPAException | IOException e) {
-    // // FIXME: This is only for the first evaluation!!
-    // // throw new IllegalStateException(
-    // // "The invariant generation via seahorn failed, due to " + e,
-    // // e);
-    // throw new IllegalArgumentException(e);
-    // }
-    //
-    // }
+    if (predicatesFiles.isEmpty()) {
+      List<Path> preds = new ArrayList<>();
+      predicatesFiles = preds;
+      try {
+        List<Supplier<Path>> suppliers = new ArrayList<>();
 
+        // Add all specified invariant generation tools
+
+        ExternalInvariantGenerator gen =
+            ExternalInvariantGenerator.getInstance(ExternalInvariantGenerators.VERIABS, config);
+        suppliers.add(
+            gen.getSupplierGeneratingInvariants(
+                cfa,
+                new ArrayList<CFANode>(),
+                specification,
+                logger,
+                shutdownNotifier,
+                config));
+
+        // Start the computation
+        List<CompletableFuture<Path>> generatedInvariants =
+            suppliers.parallelStream()
+                .map(s -> CompletableFuture.supplyAsync(s))
+                .collect(Collectors.toList());
+        CompletableFuture<Path> c = anyOf(generatedInvariants);
+
+        try {
+          predicatesFiles.add(c.get());
+        } catch (InterruptedException | ExecutionException e) {
+          logger.log(
+              Level.WARNING,
+              "The invariant generation was interruped. Continue without additional invariant.");
+          e.printStackTrace();
+        }
+        // FIXME: just for tests: print the generated invariant
+        BufferedReader reader;
+        try {
+          String fileContent = "";
+          reader = Files.newBufferedReader(predicatesFiles.get(0), Charset.defaultCharset());
+          String line;
+          while ((line = reader.readLine()) != null) {
+            fileContent = fileContent.concat(line);
+          }
+          reader.close();
+
+          logger.log(Level.WARNING, fileContent);
+        } catch (IOException e) {
+          logger.log(Level.WARNING, "Cannot print the file");
+        }
+
+      } catch (CPAException e) {
+        // FIXME: This is only for the first evaluation!!
+        // throw new IllegalStateException(
+        // "The invariant generation via seahorn failed, due to " + e,
+        // e);
+        throw new IllegalArgumentException(e);
+      }
+    }
 
     if (!predicatesFiles.isEmpty()) {
       PredicateMapParser parser =
@@ -227,11 +265,11 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
     // throw new IllegalArgumentException(
     // "The witness is not read / parsed correctly, only true present");
     // } else {
-      logger.log(Level.WARNING, "generated invarinats are:");
-      result.getLocalPredicates()
-          .values()
-          .parallelStream()
-          .forEach(pred -> logger.log(Level.WARNING, pred.toString()));
+    logger.log(Level.WARNING, "generated invarinats are:");
+    result.getLocalPredicates()
+        .values()
+        .parallelStream()
+        .forEach(pred -> logger.log(Level.WARNING, pred.toString()));
     // }
     return result;
   }
@@ -242,7 +280,12 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
       final Set<ExpressionTreeLocationInvariant> invariants = Sets.newLinkedHashSet();
       WitnessInvariantsExtractor extractor =
           new WitnessInvariantsExtractor(
-              config, specification, logger, cfa, shutdownNotifier, pWitnessFile);
+              config,
+              specification,
+              logger,
+              cfa,
+              shutdownNotifier,
+              pWitnessFile);
       extractor.extractInvariantsFromReachedSet(invariants);
 
       for (ExpressionTreeLocationInvariant invariant : invariants) {
@@ -289,7 +332,9 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
       }
     } catch (CPAException | InterruptedException | InvalidConfigurationException e) {
       logger.logUserException(
-          Level.WARNING, e, "Predicate from correctness witness invariants could not be computed");
+          Level.WARNING,
+          e,
+          "Predicate from correctness witness invariants could not be computed");
     }
     return result;
   }
@@ -300,8 +345,10 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
     PredicatePrecision result = internalPrepareInitialPredicates();
 
     statistics.addKeyValueStatistic("Init. global predicates", result.getGlobalPredicates().size());
-    statistics.addKeyValueStatistic("Init. location predicates", result.getLocalPredicates().size());
-    statistics.addKeyValueStatistic("Init. function predicates", result.getFunctionPredicates().size());
+    statistics
+        .addKeyValueStatistic("Init. location predicates", result.getLocalPredicates().size());
+    statistics
+        .addKeyValueStatistic("Init. function predicates", result.getFunctionPredicates().size());
 
     return result;
   }
@@ -309,6 +356,21 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
   @Override
   public void collectStatistics(Collection<Statistics> pStatsCollection) {
     pStatsCollection.add(statistics);
+  }
+
+  public static <T> CompletableFuture<T> anyOf(List<? extends CompletionStage<? extends T>> l) {
+
+    // Code is taken from
+    // https://stackoverflow.com/questions/33913193/completablefuture-waiting-for-first-one-normally-return
+    CompletableFuture<T> f = new CompletableFuture<>();
+    Consumer<T> complete = f::complete;
+    CompletableFuture
+        .allOf(l.stream().map(s -> s.thenAccept(complete)).toArray(CompletableFuture<?>[]::new))
+        .exceptionally(ex -> {
+          f.completeExceptionally(ex);
+          return null;
+        });
+    return f;
   }
 
 }

@@ -24,6 +24,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -340,28 +342,35 @@ class KInductionProver implements AutoCloseable {
 
     // Proving program safety with induction consists of two parts:
     // 1) Prove all paths safe that go only one iteration through the loop.
-    //    This is part of the classic bounded model checking done in BMCAlgorithm,
-    //    so we don't care about this here.
+    // This is part of the classic bounded model checking done in BMCAlgorithm,
+    // so we don't care about this here.
     // 2) Assume that one loop iteration is safe and prove that the next one is safe, too.
-    // For k-induction, assume that k loop iterations are safe and prove that the next one is safe, too.
+    // For k-induction, assume that k loop iterations are safe and prove that the next one is safe,
+    // too.
 
     // Create initial reached set:
     // Run algorithm in order to create formula (A & B)
     logger.log(Level.INFO, "Running algorithm to create induction hypothesis");
-
     // Ensure the reached set is prepared
     reachedSet.setDesiredK(pK + 1);
     reachedSet.ensureK();
     ReachedSet reached = reachedSet.getReachedSet();
 
+    // File toSolve = new File("toSolve" + pK + ".sm2lib");
+    // BufferedWriter writer;
+    // try {
+    // writer = new BufferedWriter(new FileWriter(toSolve));
+    // } catch (IOException e4) {
+    // throw new IllegalStateException(e4);
+    // }
+
     /*
-     * For every induction problem we want so solve, create a formula asserting
-     * it for k iterations.
+     * For every induction problem we want so solve, create a formula asserting it for k iterations.
      */
     Map<CandidateInvariant, BooleanFormula> assertions = new HashMap<>();
 
-    for (CandidateInvariant candidateInvariant :
-        CandidateInvariantCombination.getConjunctiveParts(pPredecessorAssumptions)) {
+    for (CandidateInvariant candidateInvariant : CandidateInvariantCombination
+        .getConjunctiveParts(pPredecessorAssumptions)) {
       shutdownNotifier.shutdownIfNecessary();
 
       final BooleanFormula predecessorAssertion;
@@ -384,8 +393,8 @@ class KInductionProver implements AutoCloseable {
           // Build the formula
           predecessorAssertion =
               candidateInvariant.getAssertion(
-                  BMCHelper.filterBmcChecked(
-                      filterIterationsUpTo(reached, pK, loopHeads), pCheckedKeys),
+                  BMCHelper
+                      .filterBmcChecked(filterIterationsUpTo(reached, pK, loopHeads), pCheckedKeys),
                   fmgr,
                   pfmgr);
         }
@@ -417,10 +426,11 @@ class KInductionProver implements AutoCloseable {
     // Obtain the predecessor assertion created earlier
     final BooleanFormula predecessorAssertion =
         bfmgr.and(
-            from(CandidateInvariantCombination.getConjunctiveParts(
+            from(
+                CandidateInvariantCombination.getConjunctiveParts(
                     CandidateInvariantCombination.conjunction(pPredecessorAssumptions)))
-                .transform(conjunctivePart -> assertions.get(conjunctivePart))
-                .toList());
+                        .transform(conjunctivePart -> assertions.get(conjunctivePart))
+                        .toList());
     // Create the successor violation formula
     Multimap<BooleanFormula, BooleanFormula> successorViolationAssertions =
         getSuccessorViolationAssertions(pCandidateInvariant, pK + 1);
@@ -430,30 +440,75 @@ class KInductionProver implements AutoCloseable {
         BMCHelper.disjoinStateViolationAssertions(bfmgr, successorViolationAssertions);
     violationFormulas.put(pCandidateInvariant, successorViolation);
 
+
+
     logger.log(Level.INFO, "Starting induction check...");
 
     stats.inductionCheck.start();
 
     // Try to prove the invariance of the assertion
     Object successorExistsAssertionId = prover.push(successorExistsAssertion);
-    Object predecessorAssertionId =
-        prover.push(
-            predecessorAssertion); // Assert the formula we want to prove at the predecessors
+    // logger.log(LogLevel, "\t Pushed ...", successorExistsAssertion.toString());
+    // try {
+    // writer.newLine();
+    // writer.write(successorExistsAssertion.toString());
+    //
+    // } catch (IOException e3) {
+    // // TODO Auto-generated catch block
+    // e3.printStackTrace();
+    // }
+    Object predecessorAssertionId = prover.push(predecessorAssertion); // Assert the formula we want
+                                                                       // to prove at the
+                                                                       // predecessors
+    // logger.log(LogLevel, "\t Pushed ...", predecessorAssertion.toString());
+    // try {
+    // writer.newLine();
+    // writer.write(predecessorAssertion.toString());
+    // } catch (IOException e2) {
+    // // TODO Auto-generated catch block
+    // e2.printStackTrace();
+    // }
+
     // Assert that the formula is violated at a successor
     prover.push(successorViolation);
+    // logger.log(LogLevel, "\t Pushed ...", successorViolation.toString());
+    // try {
+    // writer.newLine();
+    // writer.write(successorViolation.toString());
+    // } catch (IOException e1) {
+    // // TODO Auto-generated catch block
+    // e1.printStackTrace();
+    // }
 
     InductionResult<T> result = null;
     AssertCandidate assertPredecessor =
         (p -> assertAt(filterInductiveAssertionIteration(loopHeadStates), p, fmgr, pfmgr, true));
+
     while (result == null) {
+
       shutdownNotifier.shutdownIfNecessary();
 
       prover.push(loopHeadInv); // Assert the known loop-head invariants
+      // logger.log(LogLevel, "\t Pushed ...", loopHeadInv.toString());
+      // try {
+      // writer.newLine();
+      // writer.write(loopHeadInv.toString());
+      // } catch (IOException e) {
+      // // TODO Auto-generated catch block
+      // e.printStackTrace();
+      // }
+      Instant startUnsatCheck = Instant.now();
 
       // The formula is invariant if the assertions are contradicting
       boolean isInvariant = prover.isUnsat();
-
+      logger.log(
+          Level.INFO,
+          "Verifying unsat took:  ",
+          Duration.between(startUnsatCheck, Instant.now()).toSeconds(),
+          "seconds");
       if (!isInvariant) {
+
+
 
         // Re-attempt the proof immediately before returning to the caller
         // if new invariants are available
@@ -484,13 +539,13 @@ class KInductionProver implements AutoCloseable {
               BooleanFormula candidateAssertion =
                   assertCandidate(reached, pCandidateInvariant, pK + 1);
               Object candidateSuccessorAssertionId = prover.push(candidateAssertion);
-              Object invariantsAssertionId =
-                  prover.push(loopHeadInv); // Push the known loop-head invariants back on
+              Object invariantsAssertionId = prover.push(loopHeadInv); // Push the known loop-head
+                                                                       // invariants back on
 
               ImmutableSet.Builder<SymbolicCandiateInvariant> badStateBlockingClauseBuilder =
                   ImmutableSet.builder();
-              for (Map.Entry<CounterexampleToInductivity, BooleanFormula> ctiWithInput :
-                  detectedCtis.entrySet()) {
+              for (Map.Entry<CounterexampleToInductivity, BooleanFormula> ctiWithInput : detectedCtis
+                  .entrySet()) {
                 // Push the input assignments
                 Object inputAssertionId = prover.push(ctiWithInput.getValue());
                 final SymbolicCandiateInvariant blockedReducedCti =
@@ -520,25 +575,23 @@ class KInductionProver implements AutoCloseable {
           }
         }
       } else {
-        AssertCandidate assertSuccessorViolation =
-            (candidate) -> {
-              Multimap<BooleanFormula, BooleanFormula> succViolationAssertions =
-                  getSuccessorViolationAssertions(pCandidateInvariant, pK + 1);
-              // Record the successor violation formula to reuse its negation as an
-              // assertion in a future induction attempt
-              return BMCHelper.disjoinStateViolationAssertions(bfmgr, succViolationAssertions);
-            };
-        NextCti nextCti =
-            () -> {
-              List<ValueAssignment> modelAssignments = prover.getModelAssignments();
-              Iterable<CounterexampleToInductivity> detectedCtis =
-                  extractCTIs(reached, modelAssignments, pCheckedKeys, pCandidateInvariant, pK + 1)
-                      .keySet();
-              if (Iterables.isEmpty(detectedCtis)) {
-                return Optional.empty();
-              }
-              return Optional.of(detectedCtis.iterator().next());
-            };
+        AssertCandidate assertSuccessorViolation = (candidate) -> {
+          Multimap<BooleanFormula, BooleanFormula> succViolationAssertions =
+              getSuccessorViolationAssertions(pCandidateInvariant, pK + 1);
+          // Record the successor violation formula to reuse its negation as an
+          // assertion in a future induction attempt
+          return BMCHelper.disjoinStateViolationAssertions(bfmgr, succViolationAssertions);
+        };
+        NextCti nextCti = () -> {
+          List<ValueAssignment> modelAssignments = prover.getModelAssignments();
+          Iterable<CounterexampleToInductivity> detectedCtis =
+              extractCTIs(reached, modelAssignments, pCheckedKeys, pCandidateInvariant, pK + 1)
+                  .keySet();
+          if (Iterables.isEmpty(detectedCtis)) {
+            return Optional.empty();
+          }
+          return Optional.of(detectedCtis.iterator().next());
+        };
         T abstractedInvariant =
             pInvariantAbstraction.strengthenInvariant(
                 prover,
@@ -569,29 +622,38 @@ class KInductionProver implements AutoCloseable {
     prover.pop(); // Pop end states
 
     stats.inductionCheck.stop();
-
-    logger.log(Level.FINER, "Soundness after induction check:", result.isSuccessful());
-
+    logger.log(Level.INFO, "Soundness after induction check:", result.isSuccessful());
+    // logger.log(
+    // LogLevel,
+    // "Inductino check took : ",
+    // Duration.between(startInDuctionCheck, Instant.now()).toSeconds());
+    // logger.log(Level.INFO, "Soundness after induction check:", result.isSuccessful());
+    //
+    // try {
+    // writer.close();
+    // } catch (IOException e) {
+    // // TODO Auto-generated catch block
+    // e.printStackTrace();
+    // }
     return result;
   }
 
   private BooleanFormula assertCandidate(
-      Iterable<AbstractState> pReached, CandidateInvariant pCandidateInvariant, int pK)
+      Iterable<AbstractState> pReached,
+      CandidateInvariant pCandidateInvariant,
+      int pK)
       throws CPATransferException, InterruptedException {
     FluentIterable<AbstractState> states = filterIteration(pReached, pK, loopHeads);
     final List<BooleanFormula> assertions = new ArrayList<>();
-    for (CandidateInvariant component :
-        CandidateInvariantCombination.getConjunctiveParts(pCandidateInvariant)) {
+    for (CandidateInvariant component : CandidateInvariantCombination
+        .getConjunctiveParts(pCandidateInvariant)) {
       if (component instanceof TargetLocationCandidateInvariant) {
-        Iterable<AbstractState> candidateAssertionStates =
-            states.filter(
-                s -> {
-                  ARGState argState = AbstractStates.extractStateByType(s, ARGState.class);
-                  return !argState.isTarget()
-                      && (argState.getChildren().isEmpty()
-                          || from(AbstractStates.extractLocations(s))
-                              .anyMatch(loopHeads::contains));
-                });
+        Iterable<AbstractState> candidateAssertionStates = states.filter(s -> {
+          ARGState argState = AbstractStates.extractStateByType(s, ARGState.class);
+          return !argState.isTarget()
+              && (argState.getChildren().isEmpty()
+                  || from(AbstractStates.extractLocations(s)).anyMatch(loopHeads::contains));
+        });
         assertions.add(createFormulaFor(candidateAssertionStates, bfmgr));
       } else {
         Iterable<AbstractState> candidateAssertionStates =
@@ -604,23 +666,27 @@ class KInductionProver implements AutoCloseable {
     return bfmgr.and(assertions);
   }
 
-  private BooleanFormula inductiveLoopHeadInvariantAssertion(
-      Iterable<AbstractState> pLoopHeadStates) throws CPATransferException, InterruptedException {
+  private BooleanFormula
+      inductiveLoopHeadInvariantAssertion(Iterable<AbstractState> pLoopHeadStates)
+          throws CPATransferException, InterruptedException {
     Iterable<AbstractState> loopHeadStates = filterInductiveAssertionIteration(pLoopHeadStates);
     return assertAt(loopHeadStates, getCurrentLoopHeadInvariants(loopHeadStates), fmgr);
   }
 
-  private FluentIterable<AbstractState> filterInductiveAssertionIteration(
-      Iterable<AbstractState> pStates) {
+  private FluentIterable<AbstractState>
+      filterInductiveAssertionIteration(Iterable<AbstractState> pStates) {
     return filterIteration(pStates, 1, loopHeads);
   }
 
-  private AlgorithmStatus ensureK(
-      Algorithm pAlg, ConfigurableProgramAnalysis pCPA, ReachedSet pReached)
-      throws InterruptedException, CPAException {
+  private AlgorithmStatus
+      ensureK(Algorithm pAlg, ConfigurableProgramAnalysis pCPA, ReachedSet pReached)
+          throws InterruptedException, CPAException {
     if (pReached.size() <= 1 && cfa.getLoopStructure().isPresent()) {
       Stream<CFANode> relevantLoopHeads =
-          cfa.getLoopStructure().orElseThrow().getAllLoops().stream()
+          cfa.getLoopStructure()
+              .orElseThrow()
+              .getAllLoops()
+              .stream()
               .filter(loop -> !BMCHelper.isTrivialSelfLoop(loop))
               .map(Loop::getLoopHeads)
               .flatMap(Collection::stream)
@@ -642,7 +708,8 @@ class KInductionProver implements AutoCloseable {
     return unroll(logger, pReached, pAlg, pCPA);
   }
 
-  private Multimap<String, Integer> extractInputs(Iterable<AbstractState> pReached, Map<String, CType> types) {
+  private Multimap<String, Integer>
+      extractInputs(Iterable<AbstractState> pReached, Map<String, CType> types) {
     Multimap<String, Integer> inputs = LinkedHashMultimap.create();
     Set<AbstractState> visited = new HashSet<>();
     Deque<AbstractState> waitlist = new ArrayDeque<>();
@@ -704,7 +771,8 @@ class KInductionProver implements AutoCloseable {
       FluentIterable<AbstractState> loopHeadStates =
           filterIteration(
               AbstractStates.filterLocations(
-                  BMCHelper.filterBmcChecked(pReached, pCheckedKeys), ImmutableSet.of(loopHead)),
+                  BMCHelper.filterBmcChecked(pReached, pCheckedKeys),
+                  ImmutableSet.of(loopHead)),
               1,
               loopHeads);
 
@@ -712,13 +780,11 @@ class KInductionProver implements AutoCloseable {
         PredicateAbstractState pas =
             AbstractStates.extractStateByType(loopHeadState, PredicateAbstractState.class);
         SSAMap ssaMap = pas.getPathFormula().getSsa();
-        Supplier<Map<String, Formula>> variableFormulas =
-            Suppliers.memoize(
-                () -> {
-                  VariableMapper variableMapper = new VariableMapper();
-                  fmgr.visitRecursively(pas.getPathFormula().getFormula(), variableMapper);
-                  return variableMapper.variableFormulas;
-                });
+        Supplier<Map<String, Formula>> variableFormulas = Suppliers.memoize(() -> {
+          VariableMapper variableMapper = new VariableMapper();
+          fmgr.visitRecursively(pas.getPathFormula().getFormula(), variableMapper);
+          return variableMapper.variableFormulas;
+        });
 
         ImmutableMap.Builder<String, ModelValue> modelBuilder = ImmutableMap.builder();
         final List<BooleanFormula> input = new ArrayList<>();
@@ -741,7 +807,9 @@ class KInductionProver implements AutoCloseable {
               modelBuilder.put(
                   actualName,
                   new ModelValue(
-                      actualName, fmgr.dumpFormula(assignment).toString(), assignment::toString));
+                      actualName,
+                      fmgr.dumpFormula(assignment).toString(),
+                      assignment::toString));
             }
           }
         }
@@ -779,9 +847,9 @@ class KInductionProver implements AutoCloseable {
     return ctis;
   }
 
-  private Multimap<BooleanFormula, BooleanFormula> getSuccessorViolationAssertions(
-      CandidateInvariant pCandidateInvariant, int pK)
-      throws CPATransferException, InterruptedException {
+  private Multimap<BooleanFormula, BooleanFormula>
+      getSuccessorViolationAssertions(CandidateInvariant pCandidateInvariant, int pK)
+          throws CPATransferException, InterruptedException {
     ReachedSet reached = reachedSet.getReachedSet();
 
     ImmutableMultimap.Builder<BooleanFormula, BooleanFormula> stateViolationAssertionsBuilder =
@@ -794,13 +862,14 @@ class KInductionProver implements AutoCloseable {
       BooleanFormula stateFormula =
           BMCHelper.createFormulaFor(stateAsSet, bfmgr, Optional.of(shutdownNotifier));
       BooleanFormula invariantFormula = bfmgr.makeTrue();
-      for (CandidateInvariant component :
-          CandidateInvariantCombination.getConjunctiveParts(pCandidateInvariant)) {
+      for (CandidateInvariant component : CandidateInvariantCombination
+          .getConjunctiveParts(pCandidateInvariant)) {
         if (!Iterables.isEmpty(component.filterApplicable(stateAsSet))) {
           shutdownNotifier.shutdownIfNecessary();
           invariantFormula =
               bfmgr.and(
-                  invariantFormula, BMCHelper.assertAt(stateAsSet, component, fmgr, pfmgr, true));
+                  invariantFormula,
+                  BMCHelper.assertAt(stateAsSet, component, fmgr, pfmgr, true));
         }
       }
       stateViolationAssertionsBuilder.put(stateFormula, bfmgr.not(invariantFormula));
@@ -815,13 +884,16 @@ class KInductionProver implements AutoCloseable {
 
     @Override
     public TraversalProcess visitQuantifier(
-        BooleanFormula pArg0, Quantifier pArg1, List<Formula> pArg2, BooleanFormula pArg3) {
+        BooleanFormula pArg0,
+        Quantifier pArg1,
+        List<Formula> pArg2,
+        BooleanFormula pArg3) {
       return TraversalProcess.CONTINUE;
     }
 
     @Override
-    public TraversalProcess visitFunction(
-        Formula pArg0, List<Formula> pArg1, FunctionDeclaration<?> pArg2) {
+    public TraversalProcess
+        visitFunction(Formula pArg0, List<Formula> pArg1, FunctionDeclaration<?> pArg2) {
       return TraversalProcess.CONTINUE;
     }
 

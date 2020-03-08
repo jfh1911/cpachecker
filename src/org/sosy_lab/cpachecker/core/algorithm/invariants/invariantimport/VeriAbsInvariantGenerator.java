@@ -21,10 +21,10 @@ package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -58,8 +58,6 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
 
 
   static final Level LOG_LEVEL = Level.ALL;
-
-  private static final String PATH_TO_VERIABS = "/home/cppp/Documents/VeriAbs/scripts/";
 
   private final String PATH_TO_CPA_DIR;
 
@@ -121,21 +119,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
 
       final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
 
-      BufferedReader br;
-      try {
-        br = new BufferedReader(new FileReader(tempFile));
-        String line;
-        while ((line = br.readLine()) != null) {
-          System.out.println(line);
-        }
-        br.close();
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
 
-
-      System.out.println();
       WitnessInvariantsExtractor extractor =
           new WitnessInvariantsExtractor(
               pConfig,
@@ -169,14 +153,23 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS + "VeriAbsInvariantGeneration.sh",
         pPath.toFile().getAbsolutePath(),
         absolutePathToInvFile,
-        PATH_TO_CPA_DIR + PATH_TO_SCRIPTS,
-        PATH_TO_VERIABS);
+        PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
     Process process = builder.start();
 
     int exitCode = process.waitFor();
     // After finishing the invariant generation script ensure that everything worked out as planned!
     assert exitCode == 0;
+
+    // Since the cpachecker input does not like "-1*", replace them by a simple "-"
+    Path pathToWitness = Path.of(absolutePathToInvFile + "witness.graphml");
+    String content = new String(Files.readAllBytes(pathToWitness), StandardCharsets.UTF_8);
+    while (content.contains("-1 * ")) {
+      content = content.replace("-1 * ", "-");
+    }
+    Files.write(pathToWitness, content.getBytes(StandardCharsets.UTF_8));
+
     return new File(absolutePathToInvFile + "witness.graphml");
+
   }
 
 
@@ -197,7 +190,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   @Override
-  public Supplier<Path> getSupplierGeneratingInvarian(
+  public Supplier<Path> getSupplierGeneratingInvariants(
       CFA pCfa,
       List<CFANode> pTargetNodesToGenerateFor,
       Specification pSpecification,
@@ -210,14 +203,16 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       @Override
       public Path get() {
         try {
-          return
+          Path res =
               generateInvariant(
                   pCfa,
                   pTargetNodesToGenerateFor,
                   pSpecification,
                   pLogger,
                   pShutdownManager,
-              pConfig).toPath();
+                  pConfig).toPath();
+          pLogger.log(Level.WARNING, "Invariant generation finished for tool : VeriAbs");
+          return res;
         } catch (CPAException e) {
           throw new RuntimeException(e.toString());
         }

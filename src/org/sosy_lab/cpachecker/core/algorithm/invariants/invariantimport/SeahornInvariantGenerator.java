@@ -24,7 +24,6 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -144,19 +143,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
 
       final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
 
-      BufferedReader br;
-      try {
-        br = new BufferedReader(new FileReader(tempFile));
-        String line;
-        while ((line = br.readLine()) != null) {
-          System.out.println(line);
-        }
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
 
-      System.out.println();
       WitnessInvariantsExtractor extractor =
           new WitnessInvariantsExtractor(
               pConfig,
@@ -291,7 +278,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   @Override
-  public Supplier<Path> getSupplierGeneratingInvarian(
+  public Supplier<Path> getSupplierGeneratingInvariants(
       CFA pCfa,
       List<CFANode> pTargetNodesToGenerateFor,
       Specification pSpecification,
@@ -304,14 +291,16 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       @Override
       public Path get() {
         try {
-          return
+          Path res =
               generateInvariant(
                   pCfa,
                   pTargetNodesToGenerateFor,
                   pSpecification,
                   pLogger,
                   pShutdownManager,
-              pConfig).toPath();
+                  pConfig).toPath();
+          pLogger.log(Level.WARNING, "Invariant generation finished for tool : SeaHorn");
+          return res;
         } catch (CPAException e) {
           throw new RuntimeException(e.toString());
         }

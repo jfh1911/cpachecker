@@ -75,7 +75,7 @@ public interface ExternalInvariantGenerator {
    * @throws CPAException If the CFA contains more than one source file or to wrap different
    *         exceptions
    */
-  Supplier<Path> getSupplierGeneratingInvarian(
+  Supplier<Path> getSupplierGeneratingInvariants(
       CFA pCfa,
       List<CFANode> pTargetNodesToGenerateFor,
       Specification pSpecification,
