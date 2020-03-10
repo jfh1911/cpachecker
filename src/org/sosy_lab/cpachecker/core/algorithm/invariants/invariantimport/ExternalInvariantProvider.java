@@ -36,6 +36,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 import java.util.logging.Level;
 import org.sosy_lab.common.ShutdownManager;
@@ -94,19 +95,21 @@ public class ExternalInvariantProvider {
 
   }
 
-  public boolean start() {
+  public boolean start(AtomicBoolean pShouldTerminate) {
     isStared = true;
     if (startInvariantExecutionTimer > 0) {
       try {
-        TimeUnit.SECONDS.sleep(startInvariantExecutionTimer);
         logger.log(Level.INFO, "Sleeping for ", startInvariantExecutionTimer);
+        for (int i = 0; i < startInvariantExecutionTimer && !pShouldTerminate.get(); i++) {
+          TimeUnit.SECONDS.sleep(1);
+        }
+        if(pShouldTerminate.get()) {
+          hasFinished=true;
+          return hasFinished;
+        }
       } catch (InterruptedException e) {
         // IF an error occures, we dont do anything and dont generate invariants.
-        logger.log(
-            Level.WARNING,
-            "External invariant generation failed! Could not wait due to ",
-            e.toString());
-        hasFinished = true;
+        hasFinished = false;
         return hasFinished;
 
       }

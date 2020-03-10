@@ -40,9 +40,9 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.Classes.UnexpectedCheckedException;
@@ -192,7 +192,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
     ListeningExecutorService exec = listeningDecorator(newFixedThreadPool(NUM_OF_THREATS_NEEDED));
 
-    // AtomicBoolean terminated = new AtomicBoolean(false);
+    AtomicBoolean terminateInvGen = new AtomicBoolean(false);
 
     Callable<ParallelInvGenResult> masterRunner = new Callable<>() {
       @Override
@@ -226,7 +226,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
       @Override
       public ParallelInvGenResult call() throws Exception {
-        provider.start();
+        provider.start(terminateInvGen);
         if (provider.hasComputedInvariants()) {
           // terminated.set(true);
           logger.log(Level.WARNING, "The invariant generation finished successfully");
@@ -246,7 +246,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     exec.shutdown();
 
     try {
-      handleFutureResults(futures);
+      handleFutureResults(futures, terminateInvGen);
 
     } finally {
       // Wait some time so that all threads are shut down and we have a happens-before relation
@@ -278,13 +278,22 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
   }
 
-  private void handleFutureResults(List<ListenableFuture<ParallelInvGenResult>> futures)
+  private void handleFutureResults(
+      List<ListenableFuture<ParallelInvGenResult>> futures,
+      AtomicBoolean pTerminateInvGen)
       throws InterruptedException, Error {
 
     try {
       ListenableFuture<ParallelInvGenResult> f = Futures.inCompletionOrder(futures).get(0);
       ParallelInvGenResult result = f.get();
       if (result.isAnalysis) {
+        pTerminateInvGen.getAndSet(true);
+        // Wair for a second to let the analysis termiante if it is still sleeping
+        try {
+          TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException e) {
+          // Nothing to do here
+        }
         Futures.inCompletionOrder(futures).get(1).cancel(true);
         finalResult = ParallelAnalysisResult.of(result.reachedSet, result.getResult(), "");
       }
@@ -341,7 +350,6 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
         // InvalidConfigurationException, and InterruptedException here (#326)
         throw new UnexpectedCheckedException("analysis", cause);
       }
-    } catch (CancellationException e) {
       // do nothing, this is normal if we cancel other analyses
     }
   }
