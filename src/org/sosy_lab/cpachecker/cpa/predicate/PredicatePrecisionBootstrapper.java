@@ -27,10 +27,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,11 +36,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.FileOption;
@@ -56,8 +50,6 @@ import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.ExpressionTreeLocationInvariant;
-import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
-import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerators;
 import org.sosy_lab.cpachecker.core.interfaces.Statistics;
 import org.sosy_lab.cpachecker.core.interfaces.StatisticsProvider;
 import org.sosy_lab.cpachecker.cpa.automaton.AutomatonGraphmlParser;
@@ -179,64 +171,64 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
     }
 
     // FIXME: Move to different location
-    if (predicatesFiles.isEmpty()) {
-      List<Path> preds = new ArrayList<>();
-      predicatesFiles = preds;
-      try {
-        List<Supplier<Path>> suppliers = new ArrayList<>();
-
-        // Add all specified invariant generation tools
-
-        ExternalInvariantGenerator gen =
-            ExternalInvariantGenerator.getInstance(ExternalInvariantGenerators.VERIABS, config);
-        suppliers.add(
-            gen.getSupplierGeneratingInvariants(
-                cfa,
-                new ArrayList<CFANode>(),
-                specification,
-                logger,
-                shutdownNotifier,
-                config));
-
-        // Start the computation
-        List<CompletableFuture<Path>> generatedInvariants =
-            suppliers.parallelStream()
-                .map(s -> CompletableFuture.supplyAsync(s))
-                .collect(Collectors.toList());
-        CompletableFuture<Path> c = anyOf(generatedInvariants);
-
-        try {
-          predicatesFiles.add(c.get());
-        } catch (InterruptedException | ExecutionException e) {
-          logger.log(
-              Level.WARNING,
-              "The invariant generation was interruped. Continue without additional invariant.");
-          e.printStackTrace();
-        }
-        // FIXME: just for tests: print the generated invariant
-        BufferedReader reader;
-        try {
-          String fileContent = "";
-          reader = Files.newBufferedReader(predicatesFiles.get(0), Charset.defaultCharset());
-          String line;
-          while ((line = reader.readLine()) != null) {
-            fileContent = fileContent.concat(line);
-          }
-          reader.close();
-
-          logger.log(Level.WARNING, fileContent);
-        } catch (IOException e) {
-          logger.log(Level.WARNING, "Cannot print the file");
-        }
-
-      } catch (CPAException e) {
-        // FIXME: This is only for the first evaluation!!
-        // throw new IllegalStateException(
-        // "The invariant generation via seahorn failed, due to " + e,
-        // e);
-        throw new IllegalArgumentException(e);
-      }
-    }
+    // if (predicatesFiles.isEmpty()) {
+    // List<Path> preds = new ArrayList<>();
+    // predicatesFiles = preds;
+    // try {
+    // List<Supplier<Path>> suppliers = new ArrayList<>();
+    //
+    // // Add all specified invariant generation tools
+    //
+    // ExternalInvariantGenerator gen =
+    // ExternalInvariantGenerator.getInstance(ExternalInvariantGenerators.VERIABS, config);
+    // suppliers.add(
+    // gen.getSupplierGeneratingInvariants(
+    // cfa,
+    // new ArrayList<CFANode>(),
+    // specification,
+    // logger,
+    // shutdownNotifier,
+    // config));
+    //
+    // // Start the computation
+    // List<CompletableFuture<Path>> generatedInvariants =
+    // suppliers.parallelStream()
+    // .map(s -> CompletableFuture.supplyAsync(s))
+    // .collect(Collectors.toList());
+    // CompletableFuture<Path> c = anyOf(generatedInvariants);
+    //
+    // try {
+    // predicatesFiles.add(c.get());
+    // } catch (InterruptedException | ExecutionException e) {
+    // logger.log(
+    // Level.WARNING,
+    // "The invariant generation was interruped. Continue without additional invariant.");
+    // e.printStackTrace();
+    // }
+    // // FIXME: just for tests: print the generated invariant
+    // BufferedReader reader;
+    // try {
+    // String fileContent = "";
+    // reader = Files.newBufferedReader(predicatesFiles.get(0), Charset.defaultCharset());
+    // String line;
+    // while ((line = reader.readLine()) != null) {
+    // fileContent = fileContent.concat(line);
+    // }
+    // reader.close();
+    //
+    // logger.log(Level.WARNING, fileContent);
+    // } catch (IOException e) {
+    // logger.log(Level.WARNING, "Cannot print the file");
+    // }
+    //
+    // } catch (CPAException e) {
+    // // FIXME: This is only for the first evaluation!!
+    // // throw new IllegalStateException(
+    // // "The invariant generation via seahorn failed, due to " + e,
+    // // e);
+    // throw new IllegalArgumentException(e);
+    // }
+    // }
 
     if (!predicatesFiles.isEmpty()) {
       PredicateMapParser parser =

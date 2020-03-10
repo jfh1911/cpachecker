@@ -62,6 +62,7 @@ import org.sosy_lab.cpachecker.core.algorithm.bmc.BMCAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.pdr.PdrAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.counterexamplecheck.CounterexampleCheckAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.impact.ImpactAlgorithm;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvgenImportAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.mpv.MPVAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.mpv.MPVReachedSet;
 import org.sosy_lab.cpachecker.core.algorithm.parallel_bam.ParallelBAMAlgorithm;
@@ -173,6 +174,12 @@ public class CoreComponentsFactory {
             + " analysis finishing in time. All other analyses are terminated."
   )
   private boolean useParallelAlgorithm = false;
+
+  @Option(
+    secure = true,
+    name = "generateExternalInvariants",
+    description = "restart the analysis using a different configuration after unknown result")
+  private boolean useExternalInvariantGeneration = false;
 
   @Option(
     secure = true,
@@ -389,7 +396,15 @@ public class CoreComponentsFactory {
             "Cannot use CBMC as analysis with more than one input file");
       }
       algorithm = new ExternalCBMCAlgorithm(cfa.getFileNames().get(0), config, logger);
-
+    } else if (useExternalInvariantGeneration) {
+      algorithm =
+          new ExternalInvgenImportAlgorithm(
+              config,
+              logger,
+              shutdownNotifier,
+              specification,
+              cfa,
+              aggregatedReachedSets);
     } else if (useParallelAlgorithm) {
       algorithm =
           new ParallelAlgorithm(
@@ -399,6 +414,7 @@ public class CoreComponentsFactory {
               specification,
               cfa,
               aggregatedReachedSets);
+
 
     } else {
       algorithm = CPAAlgorithm.create(cpa, logger, config, shutdownNotifier);
@@ -558,6 +574,7 @@ public class CoreComponentsFactory {
         || useRestartingAlgorithm
         || useHeuristicSelectionAlgorithm
         || useParallelAlgorithm
+        || useExternalInvariantGeneration
         || asConditionalVerifier) {
       // this algorithm needs an indirection so that it can change
       // the actual reached set instance on the fly

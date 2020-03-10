@@ -1052,12 +1052,12 @@ public class PredicateAbstractionManager {
     thmProver.push(predDef);
     AllSatCallbackImpl callback = new AllSatCallbackImpl();
     logger.log(
-        Level.INFO,
+        Level.ALL,
         "Starting predicate abstraction by computing allSat, current time is ",
         LocalTime.now(ZoneId.of("Europe/Paris")).toString());
     Region result = thmProver.allSat(callback, predVars);
     logger.log(
-        Level.INFO,
+        Level.ALL,
         "Finished predicate abstraction by computing allSat, current time is ",
         LocalTime.now(ZoneId.of("Europe/Paris")).toString());
     // pop() is actually costly sometimes, and we delete the environment anyway
@@ -1095,10 +1095,10 @@ public class PredicateAbstractionManager {
     @Override
     public void apply(List<BooleanFormula> model) {
       logger.log(
-          Level.INFO,
+          Level.ALL,
           "Starting 'apply' (constructing region for model) after computing the model, current time is ",
           LocalTime.now(ZoneId.of("Europe/Paris")).toString());
-      logger.log(Level.INFO, "The model is ", model.toString());
+      logger.log(Level.ALL, "The model is ", model.toString());
       if (count == 0) {
         stats.abstractionSolveTime.stop();
         stats.abstractionEnumTime.startOuter();
@@ -1127,7 +1127,7 @@ public class PredicateAbstractionManager {
 
       regionTime.stop();
       logger.log(
-          Level.INFO,
+          Level.ALL,
           "Finished 'apply' (constructing region for model) after computing the model, current time is ",
           LocalTime.now(ZoneId.of("Europe/Paris")).toString());
     }

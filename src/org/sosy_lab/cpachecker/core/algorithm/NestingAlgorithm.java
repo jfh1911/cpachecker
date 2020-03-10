@@ -110,7 +110,44 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
     return Triple.of(algorithm, cpa, reached);
   }
 
-  private Configuration buildSubConfig(Path singleConfigFileName, Collection<String> ignoreOptions)
+  protected Triple<Algorithm, ConfigurableProgramAnalysis, ReachedSet> createAlgorithm(
+      Configuration singleConfig,
+      String nameOfAnalysis,
+      CFANode mainFunction,
+      ShutdownManager singleShutdownManager,
+      AggregatedReachedSets aggregateReached,
+      Collection<Statistics> stats)
+      throws InvalidConfigurationException, CPAException, InterruptedException {
+
+    LogManager singleLogger = logger.withComponentName("Analysis " + nameOfAnalysis);
+
+    ResourceLimitChecker singleLimits =
+        ResourceLimitChecker.fromConfiguration(singleConfig, singleLogger, singleShutdownManager);
+    singleLimits.start();
+
+    CoreComponentsFactory coreComponents =
+        new CoreComponentsFactory(
+            singleConfig,
+            singleLogger,
+            singleShutdownManager.getNotifier(),
+            aggregateReached);
+    ConfigurableProgramAnalysis cpa = coreComponents.createCPA(cfa, specification);
+    GlobalInfo.getInstance().setUpInfoFromCPA(cpa);
+    Algorithm algorithm = coreComponents.createAlgorithm(cpa, cfa, specification);
+    ReachedSet reached = createInitialReachedSet(cpa, mainFunction, coreComponents, singleLogger);
+
+    if (cpa instanceof StatisticsProvider) {
+      ((StatisticsProvider) cpa).collectStatistics(stats);
+    }
+    if (algorithm instanceof StatisticsProvider) {
+      ((StatisticsProvider) algorithm).collectStatistics(stats);
+    }
+
+    return Triple.of(algorithm, cpa, reached);
+  }
+
+  protected Configuration
+      buildSubConfig(Path singleConfigFileName, Collection<String> ignoreOptions)
       throws IOException, InvalidConfigurationException {
 
     ConfigurationBuilder singleConfigBuilder = Configuration.builder();
@@ -195,4 +232,5 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
     }
     return mp;
   }
+
 }

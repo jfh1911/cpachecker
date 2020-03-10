@@ -37,12 +37,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.math.BigInteger;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -63,19 +59,12 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.LockSupport;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
 import org.sosy_lab.common.Classes.UnexpectedCheckedException;
 import org.sosy_lab.common.LazyFutureTask;
 import org.sosy_lab.common.ShutdownManager;
@@ -123,8 +112,6 @@ import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateI
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.EdgeFormulaNegation;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.ExpressionTreeLocationInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.TargetLocationCandidateInvariant;
-import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
-import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerators;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
@@ -180,13 +167,6 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
     private boolean async = true;
 
 
-    @Option(secure = true, description = "Timeout for invariant generation in seconds")
-    private int timeoutForInvariantExecution = -1;
-
-    @Option(
-      secure = true,
-      description = "Define, if a external invariant generation tool should be called in the initale step.")
-    private List<ExternalInvariantGenerators> extInvGens = null;
   }
 
   private static class KInductionInvariantGeneratorStatistics extends BMCStatistics {
@@ -273,7 +253,7 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
         pAggregatedReachedSets);
   }
 
-  static KInductionInvariantGenerator create(
+  public static KInductionInvariantGenerator create(
       final Configuration pConfig,
       final LogManager pLogger,
       final ShutdownManager pShutdownManager,
@@ -542,88 +522,88 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
     // Check if the external invariant generation needs to be called
     Path invariantsAutomatonFile = pOptions.invariantsAutomatonFile;
 
-    if (pOptions.extInvGens != null && invariantsAutomatonFile == null) {
+    // if (pOptions.extInvGens != null && invariantsAutomatonFile == null) {
+    //
+    //
+    // List<Supplier<Path>> suppliers = new ArrayList<>();
+    // if (pOptions.timeoutForInvariantExecution > 0) {
+    // pLogger.log(
+    // Level.INFO,
+    // "Setting up a timmer with timeout of seconds:",
+    // pOptions.timeoutForInvariantExecution);
+    // // The timeout supplier waits for the specified timeout and return an empty optional
+    // Supplier<Path> timeoutSupplier = new Supplier<>() {
+    //
+    // @Override
+    // public Path get() {
+    // LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(pOptions.timeoutForInvariantExecution));
+    // return null;
+    // }
+    // };
+    // suppliers.add(timeoutSupplier);
+    // }
 
+      // // Add all specified invariant generation tools
+      // for (ExternalInvariantGenerators invGenTool : pOptions.extInvGens) {
+      //
+      // ExternalInvariantGenerator gen =
+      // ExternalInvariantGenerator.getInstance(invGenTool, pConfig);
+      // suppliers.add(
+      // gen.getSupplierGeneratingInvariants(
+      // pCFA,
+      // new ArrayList<CFANode>(),
+      // pSpecification,
+      // pLogger,
+      // pShutdownManager.getNotifier(),
+      // pConfig));
+      //
+      // }
+      //
+      //
+      // // Start the computation
+      // List<CompletableFuture<Path>> generatedInvariants =
+      // suppliers.parallelStream()
+      // .map(s -> CompletableFuture.supplyAsync(s))
+      // .collect(Collectors.toList());
+      // CompletableFuture<Path> c = anyOf(generatedInvariants);
+      //
+      // try {
+      // invariantsAutomatonFile = c.get();
+      // } catch (InterruptedException | ExecutionException e) {
+      // pLogger.log(
+      // Level.WARNING,
+      // "The invariant generation was interruped. Continue without additional invariant.");
+      // e.printStackTrace();
+      // }
+      // if (invariantsAutomatonFile == null) {
+      // pLogger.log(
+      // Level.WARNING,
+      // "None of the tools generated an invariant in ",
+      // pOptions.timeoutForInvariantExecution,
+      // " seconds or an error occured. Hence continuing without invariant");
+      // } else {
+      // //FIXME: just for tests: print the generated invariant
+      // BufferedReader reader;
+      // try {
+      // String fileContent = "";
+      // reader =
+      // Files.newBufferedReader(
+      // invariantsAutomatonFile.toFile().toPath(),
+      // Charset.defaultCharset());
+      // String line;
+      // while ((line = reader.readLine()) != null) {
+      // fileContent = fileContent.concat(line);
+      // }
+      // reader.close();
+      //
+      // pLogger.log(Level.WARNING, fileContent);
+      // } catch (IOException e) {
+      // pLogger.log(Level.WARNING, "Cannot print the file");
+      // }
+      //
+      // }
 
-      List<Supplier<Path>> suppliers = new ArrayList<>();
-      if (pOptions.timeoutForInvariantExecution > 0) {
-        pLogger.log(
-            Level.INFO,
-            "Setting up a timmer with timeout of seconds:",
-            pOptions.timeoutForInvariantExecution);
-        // The timeout supplier waits for the specified timeout and return an empty optional
-        Supplier<Path> timeoutSupplier = new Supplier<>() {
-
-        @Override
-          public Path get() {
-          LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(pOptions.timeoutForInvariantExecution));
-            return null;
-        }
-      };
-        suppliers.add(timeoutSupplier);
-      }
-
-      // Add all specified invariant generation tools
-      for (ExternalInvariantGenerators invGenTool : pOptions.extInvGens) {
-
-        ExternalInvariantGenerator gen =
-            ExternalInvariantGenerator.getInstance(invGenTool, pConfig);
-        suppliers.add(
-            gen.getSupplierGeneratingInvariants(
-                pCFA,
-                new ArrayList<CFANode>(),
-                pSpecification,
-                pLogger,
-                pShutdownManager.getNotifier(),
-                pConfig));
-
-      }
-
-
-      // Start the computation
-      List<CompletableFuture<Path>> generatedInvariants =
-          suppliers.parallelStream()
-              .map(s -> CompletableFuture.supplyAsync(s))
-              .collect(Collectors.toList());
-      CompletableFuture<Path> c = anyOf(generatedInvariants);
-
-      try {
-        invariantsAutomatonFile = c.get();
-      } catch (InterruptedException | ExecutionException e) {
-        pLogger.log(
-            Level.WARNING,
-            "The invariant generation was interruped. Continue without additional invariant.");
-        e.printStackTrace();
-      }
-      if (invariantsAutomatonFile == null) {
-        pLogger.log(
-            Level.WARNING,
-            "None of the tools generated an invariant in ",
-            pOptions.timeoutForInvariantExecution,
-            " seconds or an error occured. Hence continuing without invariant");
-    } else {
-      //FIXME: just for tests: print the generated invariant
-        BufferedReader reader;
-        try {
-          String fileContent = "";
-          reader =
-              Files.newBufferedReader(
-                  invariantsAutomatonFile.toFile().toPath(),
-                  Charset.defaultCharset());
-          String line;
-          while ((line = reader.readLine()) != null) {
-            fileContent = fileContent.concat(line);
-          }
-          reader.close();
-
-          pLogger.log(Level.WARNING, fileContent);
-        } catch (IOException e) {
-          pLogger.log(Level.WARNING, "Cannot print the file");
-        }
-
-    }
-
-    }
+    // }
 
 
 
@@ -1103,18 +1083,5 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
     });
   }
 
-  public static <T> CompletableFuture<T> anyOf(List<? extends CompletionStage<? extends T>> l) {
 
-    // Code is taken from
-    // https://stackoverflow.com/questions/33913193/completablefuture-waiting-for-first-one-normally-return
-    CompletableFuture<T> f = new CompletableFuture<>();
-    Consumer<T> complete = f::complete;
-    CompletableFuture
-        .allOf(l.stream().map(s -> s.thenAccept(complete)).toArray(CompletableFuture<?>[]::new))
-        .exceptionally(ex -> {
-          f.completeExceptionally(ex);
-          return null;
-        });
-    return f;
-  }
 }

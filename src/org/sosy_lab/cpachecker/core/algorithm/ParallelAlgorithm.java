@@ -571,7 +571,7 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
     reached.add(initialState, initialPrecision);
   }
 
-  private static class ParallelAnalysisResult {
+  public static class ParallelAnalysisResult {
 
     private final @Nullable ReachedSet reached;
     private final @Nullable AlgorithmStatus status;
