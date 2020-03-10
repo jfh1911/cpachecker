@@ -151,8 +151,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS + "VeriAbsInvariantGeneration.sh",
         pPath.toFile().getAbsolutePath(),
         absolutePathToInvFile,
-        PATH_TO_CPA_DIR + PATH_TO_SCRIPTS,
-        "/home/cppp/Documents/VeriAbs/scripts/");
+        PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
     Process process = builder.start();
 
     int exitCode = process.waitFor();
