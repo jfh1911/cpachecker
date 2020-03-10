@@ -184,47 +184,6 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
             extInvGens);
   }
 
-  private Callable<ParallelInvGenResult> createAnalysis() {
-    return () -> {
-
-      try {
-        AbstractState initialState =
-            master.getSecond()
-                .getInitialState(mainEntryNode, StateSpacePartition.getDefaultPartition());
-        Precision initialPrecision =
-            master.getSecond()
-                .getInitialPrecision(mainEntryNode, StateSpacePartition.getDefaultPartition());
-        master.getThird().add(initialState, initialPrecision);
-      } catch (InterruptedException e) {
-        logger.logUserException(
-            Level.INFO,
-            e,
-            "Initializing reached set took too long, analysis cannot be started");
-        // terminated.set(true);
-        return new ParallelInvGenResult();
-      }
-
-      AlgorithmStatus result = master.getFirst().run(master.getThird());
-      // terminated.set(true);
-      return new ParallelInvGenResult(result, master.getThird());
-    };
-  }
-
-  private Callable<ParallelInvGenResult> createInvariants() {
-    return () -> {
-
-      provider.start();
-      if (provider.hasComputedInvariants()) {
-        // terminated.set(true);
-        logger.log(Level.WARNING, "The invariant generation finished successfully");
-        return new ParallelInvGenResult(provider.getFirstComputedPath());
-      } else {
-        logger.log(Level.WARNING, "No invariants were generated!");
-        return new ParallelInvGenResult();
-      }
-    };
-  }
-
   @Override
   public AlgorithmStatus run(ReachedSet pReachedSet) throws CPAException, InterruptedException {
     mainEntryNode = AbstractStates.extractLocation(pReachedSet.getFirstState());
@@ -235,9 +194,49 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
     // AtomicBoolean terminated = new AtomicBoolean(false);
 
-    Callable<ParallelInvGenResult> masterRunner = createAnalysis();
-    Callable<ParallelInvGenResult> invGenRunner = createInvariants();
+    Callable<ParallelInvGenResult> masterRunner = new Callable<>() {
+      @Override
+      public ParallelInvGenResult call() throws Exception {
 
+        try {
+          AbstractState initialState =
+              master.getSecond()
+                  .getInitialState(mainEntryNode, StateSpacePartition.getDefaultPartition());
+          Precision initialPrecision =
+              master.getSecond()
+                  .getInitialPrecision(mainEntryNode, StateSpacePartition.getDefaultPartition());
+          master.getThird().add(initialState, initialPrecision);
+        } catch (InterruptedException e) {
+          logger.logUserException(
+              Level.INFO,
+              e,
+              "Initializing reached set took too long, analysis cannot be started");
+          // terminated.set(true);
+          return new ParallelInvGenResult();
+        }
+
+        AlgorithmStatus result = master.getFirst().run(master.getThird());
+        // terminated.set(true);
+        return new ParallelInvGenResult(result, master.getThird());
+
+      }
+    };
+
+    Callable<ParallelInvGenResult> invGenRunner = new Callable<>() {
+
+      @Override
+      public ParallelInvGenResult call() throws Exception {
+        provider.start();
+        if (provider.hasComputedInvariants()) {
+          // terminated.set(true);
+          logger.log(Level.WARNING, "The invariant generation finished successfully");
+          return new ParallelInvGenResult(provider.getFirstComputedPath());
+        } else {
+          logger.log(Level.WARNING, "No invariants were generated!");
+          return new ParallelInvGenResult();
+        }
+      }
+    };
     List<ListenableFuture<ParallelInvGenResult>> futures = new ArrayList<>(NUM_OF_THREATS_NEEDED);
 
     futures.add(exec.submit(masterRunner));
@@ -281,8 +280,6 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
   private void handleFutureResults(List<ListenableFuture<ParallelInvGenResult>> futures)
       throws InterruptedException, Error {
-
-    List<CPAException> exceptions = new ArrayList<>();
 
     try {
       ListenableFuture<ParallelInvGenResult> f = Futures.inCompletionOrder(futures).get(0);
@@ -333,7 +330,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
           logger
               .logUserException(Level.WARNING, cause, "Analysis not completed due to concurrency");
         }
-        exceptions.add((CPAException) cause);
+
 
       } else {
         // cancel other computations
@@ -603,7 +600,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
   }
 
-  public class ParallelInvGenResult {
+  public static class ParallelInvGenResult {
 
     private boolean isAnalysis;
     private boolean isInvGen;
