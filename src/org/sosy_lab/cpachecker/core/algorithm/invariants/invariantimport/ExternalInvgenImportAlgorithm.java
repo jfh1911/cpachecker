@@ -153,9 +153,9 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
               ImmutableSet.of("analysis.generateExternalInvariants"),
               stats);
     } catch (InvalidConfigurationException e) {
-      logger.logUserException(
+      logger.log(
           Level.WARNING,
-          e,
+          Throwables.getStackTraceAsString(e),
           "Skipping SelectionAlgorithm because the configuration file "
               + masterAnalysisconfigFiles.toString()
               + " is invalid");
@@ -272,8 +272,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
         return finalResult.getStatus();
       }
     } catch (CPAException | InterruptedException | InvalidConfigurationException | IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+      logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
     }
 
     return AlgorithmStatus.UNSOUND_AND_PRECISE;
@@ -318,7 +317,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
           }
         } catch (InterruptedException | ExecutionException e) {
-          e.printStackTrace();
+          logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
           // return AlgorithmStatus.NO_PROPERTY_CHECKED;
         }
 

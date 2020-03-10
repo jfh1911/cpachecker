@@ -21,6 +21,7 @@ package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.util.concurrent.Futures;
@@ -146,8 +147,14 @@ public class ExternalInvariantProvider {
                 shutdownManager.getNotifier(),
                 config));
       } catch (InvalidConfigurationException | CPAException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
+        logger.log(
+            Level.INFO,
+            "An error occured while setting up the invarant generation tools."
+                + "hence Anort the computation and reutnr without invariant",
+            Throwables.getStackTraceAsString(e));
+        this.hasFinished = true;
+        return hasFinished;
+
       }
 
     }
