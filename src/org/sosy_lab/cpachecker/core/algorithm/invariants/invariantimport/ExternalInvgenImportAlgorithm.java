@@ -43,7 +43,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.Classes.UnexpectedCheckedException;
@@ -99,15 +98,9 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
   @FileOption(FileOption.Type.OPTIONAL_INPUT_FILE)
   private Path masterAnalysisconfigFiles;
 
-  @Option(secure = true, required = true, description = "TODO")
-  @FileOption(FileOption.Type.OPTIONAL_INPUT_FILE)
-  private Path restartAnalysisconfigFiles;
-
-  private final LogManager logger;
   private final ShutdownManager shutdown;
-  private final CFA cfa;
+
   private final Specification spec;
-  private final Configuration globalConfig;
 
   private ParallelAnalysisResult finalResult = null;
   private Collection<Statistics> stats;
@@ -136,12 +129,12 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     pConfig.inject(this);
     pLogger.log(Level.WARNING, extInvGens.toString());
 
-    logger = pLogger;
+    // logger = pLogger;
     shutdown = ShutdownManager.createWithParent(checkNotNull(pShutdownNotifier));
     spec = checkNotNull(pSpecification);
-    cfa = checkNotNull(pCfa);
+    // cfa = checkNotNull(pCfa);
 
-    globalConfig = pConfig;
+    // globalConfig = pConfig;
     aggregatedReachedSetManager = new AggregatedReachedSetManager();
     aggregatedReachedSetManager.addAggregated(pAggregatedReachedSets);
 
@@ -221,9 +214,14 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     return () -> {
 
       provider.start();
-
-      // terminated.set(true);
-      return new ParallelInvGenResult(provider.getFirstComputedPath());
+      if (provider.hasComputedInvariants()) {
+        // terminated.set(true);
+        logger.log(Level.WARNING, "The invariant generation finished successfully");
+        return new ParallelInvGenResult(provider.getFirstComputedPath());
+      } else {
+        logger.log(Level.WARNING, "No invariants were generated!");
+        return new ParallelInvGenResult();
+      }
     };
   }
 
@@ -235,7 +233,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
     ListeningExecutorService exec = listeningDecorator(newFixedThreadPool(NUM_OF_THREATS_NEEDED));
 
-    AtomicBoolean terminated = new AtomicBoolean(false);
+    // AtomicBoolean terminated = new AtomicBoolean(false);
 
     Callable<ParallelInvGenResult> masterRunner = createAnalysis();
     Callable<ParallelInvGenResult> invGenRunner = createInvariants();
@@ -280,41 +278,10 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
     return AlgorithmStatus.UNSOUND_AND_PRECISE;
 
-    // AggregatedReachedSets aggregateReached = new AggregatedReachedSets();
-    //
-    // Collection<Statistics> stats = new ArrayList<>();
-    //
-    // // provider.start();
-    // // System.err.println("Inv gen manually completed");
-    //
-    // // Start everything
-    // @Nullable
-    //
-    // // ConfigurableProgramAnalysis chosenCpa = currentAlg.getSecond();
-    // ReachedSet reachedSetForChosenAnalysis = master.getThird();
-    //
-    // // In fact, we are not running the analysis for a specified time alone.
-    // // We start both threads in parallel and let the invariant generation sleep for the specified
-    // // time
-    //
-    // ExecutorService executors = Executors.newSingleThreadExecutor();
-    // // = Executors.newFixedThreadPool(NUM_OF_THREATS_NEEDED);
-    //
-    //
-    // Future<ParallelInvGenResult> invGenRes = invGenRunner.computeResult();
-    // Future<ParallelInvGenResult> analysisRes =
-    // masterRunner.computeResult(reachedSetForChosenAnalysis);
-    //
-    // while (!analysisRes.isDone() && !invGenRes.isDone()) {
-    // // Busy wait
-    // System.out.print(".");
-    // Thread.sleep(300);
-    // }
-
   }
 
   private void handleFutureResults(List<ListenableFuture<ParallelInvGenResult>> futures)
-      throws InterruptedException, Error, CPAException {
+      throws InterruptedException, Error {
 
     List<CPAException> exceptions = new ArrayList<>();
 
@@ -412,16 +379,13 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       throws CPAEnabledAnalysisPropertyViolationException, CPAException, InterruptedException,
       InvalidConfigurationException, IOException {
 
-    System.out.println("\n\n\n\n\n\n\n\n\n");
-
     Algorithm currentAlgorithm;
-    ConfigurableProgramAnalysis currentCpa;
+    // ConfigurableProgramAnalysis currentCpa;
     ReachedSet currentReached = null;
 
     // Update the configuration
     try {
-      Configuration singleConfig =
-          super.buildSubConfig(restartAnalysisconfigFiles, new HashSet<>());
+      Configuration singleConfig = super.buildSubConfig(masterAnalysisconfigFiles, new HashSet<>());
       ConfigurationBuilder builder = Configuration.builder();
 
       builder.copyFrom(singleConfig);
@@ -437,14 +401,14 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       Triple<Algorithm, ConfigurableProgramAnalysis, ReachedSet> restartAlg =
           super.createAlgorithm(
               newConfig,
-              restartAnalysisconfigFiles.toString(),
+              masterAnalysisconfigFiles.toString(),
               mainEntryNode,
               singleShutdownManager,
               new AggregatedReachedSets(),
               stats);
 
       currentAlgorithm = restartAlg.getFirst();
-      currentCpa = restartAlg.getSecond();
+      // currentCpa = restartAlg.getSecond();
       currentReached = restartAlg.getThird();
 
     } catch (InvalidConfigurationException e) {
@@ -452,13 +416,13 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
           Level.WARNING,
           e,
           "Skipping one analysis because the configuration file "
-              + restartAnalysisconfigFiles.toString()
+              + masterAnalysisconfigFiles.toString()
               + " is invalid");
       throw e;
     } catch (IOException e) {
       String message =
           "Skipping one analysis because the configuration file "
-              + restartAnalysisconfigFiles.toString()
+              + masterAnalysisconfigFiles.toString()
               + " could not be read";
       if (shutdownNotifier.shouldShutdown() && e instanceof ClosedByInterruptException) {
         logger.log(Level.WARNING, message);
@@ -634,91 +598,6 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
   }
 
-  // public class AlgorithmRunner {
-  //
-  // private ExecutorService executor;
-  // private Algorithm algorithm;
-  //
-  // public AlgorithmRunner(Algorithm pAlgorithm, ExecutorService pExecutor) {
-  // super();
-  // algorithm = pAlgorithm;
-  // executor = pExecutor;
-  // }
-  //
-  // public Future<ParallelInvGenResult> computeResult(ReachedSet pReachedSet) {
-  // Future<ParallelInvGenResult> res = executor.submit(() -> {
-  // AlgorithmStatus status = algorithm.run(pReachedSet);
-  // return new ParallelInvGenResult(status);
-  // });
-  // executor.shutdown();
-  // return res;
-  // }
-  // }
-  //
-  // public class InvGenRunner {
-  //
-  // private ExecutorService executor;
-  // private ExternalInvariantProvider provider;
-  //
-  // public InvGenRunner(ExternalInvariantProvider pProvider, ExecutorService pExecutor) {
-  // super();
-  // executor = pExecutor;
-  // provider = pProvider;
-  // }
-  //
-  // public Callable<ParallelInvGenResult> computeResult() {
-  //
-  //
-  //
-  // ListenableFuture<ParallelInvGenResult> res = executor.submit(() -> {
-  // provider.start();
-  // if (provider.hasComputedInvariants()) {
-  // return new ParallelInvGenResult(provider.getFirstComputedPath());
-  // } else {
-  // return new ParallelInvGenResult();
-  // }
-  // });
-  // return res;
-  // }
-  // }
-
-  // private Algorithm getMasterAnalysis() {
-  // Algorithm chosenAlgorithm;
-  // Triple<Algorithm, ConfigurableProgramAnalysis, ReachedSet> currentAlg;
-  // ShutdownManager shutdownManager = ShutdownManager.createWithParent(shutdownNotifier);
-  // try {
-  // currentAlg = createAlgorithm(chosenConfig, cfa.getMainFunction(), shutdownManager);
-  // } catch (InvalidConfigurationException e) {
-  // logger.logUserException(
-  // Level.WARNING,
-  // e,
-  // "Skipping SelectionAlgorithm because the configuration file "
-  // + chosenConfig.toString()
-  // + " is invalid");
-  // return AlgorithmStatus.UNSOUND_AND_PRECISE;
-  // } catch (IOException e) {
-  // String message =
-  // "Skipping SelectionAlgorithm because the configuration file "
-  // + chosenConfig.toString()
-  // + " could not be read";
-  // if (shutdownNotifier.shouldShutdown() && e instanceof ClosedByInterruptException) {
-  // logger.log(Level.WARNING, message);
-  // } else {
-  // logger.logUserException(Level.WARNING, e, message);
-  // }
-  // return AlgorithmStatus.UNSOUND_AND_PRECISE;
-  // }
-  //
-  // chosenAlgorithm = currentAlg.getFirst();
-  // // ConfigurableProgramAnalysis chosenCpa = currentAlg.getSecond();
-  // ReachedSet reachedSetForChosenAnalysis = currentAlg.getThird();
-  //
-  // ForwardingReachedSet reached = (ForwardingReachedSet) pReachedSet;
-  // reached.setDelegate(reachedSetForChosenAnalysis);
-  //
-  // return chosenAlgorithm.run(reachedSetForChosenAnalysis);
-  // }
-
   @Override
   public void collectStatistics(Collection<Statistics> pStatsCollection) {
     // TODO Auto-generated method stub
@@ -782,3 +661,88 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
   }
 
 }
+
+// public class AlgorithmRunner {
+//
+// private ExecutorService executor;
+// private Algorithm algorithm;
+//
+// public AlgorithmRunner(Algorithm pAlgorithm, ExecutorService pExecutor) {
+// super();
+// algorithm = pAlgorithm;
+// executor = pExecutor;
+// }
+//
+// public Future<ParallelInvGenResult> computeResult(ReachedSet pReachedSet) {
+// Future<ParallelInvGenResult> res = executor.submit(() -> {
+// AlgorithmStatus status = algorithm.run(pReachedSet);
+// return new ParallelInvGenResult(status);
+// });
+// executor.shutdown();
+// return res;
+// }
+// }
+//
+// public class InvGenRunner {
+//
+// private ExecutorService executor;
+// private ExternalInvariantProvider provider;
+//
+// public InvGenRunner(ExternalInvariantProvider pProvider, ExecutorService pExecutor) {
+// super();
+// executor = pExecutor;
+// provider = pProvider;
+// }
+//
+// public Callable<ParallelInvGenResult> computeResult() {
+//
+//
+//
+// ListenableFuture<ParallelInvGenResult> res = executor.submit(() -> {
+// provider.start();
+// if (provider.hasComputedInvariants()) {
+// return new ParallelInvGenResult(provider.getFirstComputedPath());
+// } else {
+// return new ParallelInvGenResult();
+// }
+// });
+// return res;
+// }
+// }
+
+// private Algorithm getMasterAnalysis() {
+// Algorithm chosenAlgorithm;
+// Triple<Algorithm, ConfigurableProgramAnalysis, ReachedSet> currentAlg;
+// ShutdownManager shutdownManager = ShutdownManager.createWithParent(shutdownNotifier);
+// try {
+// currentAlg = createAlgorithm(chosenConfig, cfa.getMainFunction(), shutdownManager);
+// } catch (InvalidConfigurationException e) {
+// logger.logUserException(
+// Level.WARNING,
+// e,
+// "Skipping SelectionAlgorithm because the configuration file "
+// + chosenConfig.toString()
+// + " is invalid");
+// return AlgorithmStatus.UNSOUND_AND_PRECISE;
+// } catch (IOException e) {
+// String message =
+// "Skipping SelectionAlgorithm because the configuration file "
+// + chosenConfig.toString()
+// + " could not be read";
+// if (shutdownNotifier.shouldShutdown() && e instanceof ClosedByInterruptException) {
+// logger.log(Level.WARNING, message);
+// } else {
+// logger.logUserException(Level.WARNING, e, message);
+// }
+// return AlgorithmStatus.UNSOUND_AND_PRECISE;
+// }
+//
+// chosenAlgorithm = currentAlg.getFirst();
+// // ConfigurableProgramAnalysis chosenCpa = currentAlg.getSecond();
+// ReachedSet reachedSetForChosenAnalysis = currentAlg.getThird();
+//
+// ForwardingReachedSet reached = (ForwardingReachedSet) pReachedSet;
+// reached.setDelegate(reachedSetForChosenAnalysis);
+//
+// return chosenAlgorithm.run(reachedSetForChosenAnalysis);
+// }

@@ -32,6 +32,7 @@ import java.nio.file.Paths;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import javax.annotation.Nullable;
@@ -305,6 +306,30 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
           throw new RuntimeException(e.toString());
         }
       }
+    };
+  }
+
+  @Override
+  public Callable<Path> getCallableGeneratingInvariants(
+      CFA pCfa,
+      List<CFANode> pTargetNodesToGenerateFor,
+      Specification pSpecification,
+      LogManager pLogger,
+      ShutdownNotifier pShutdownManager,
+      Configuration pConfig)
+      throws CPAException {
+    return () -> {
+      Path res =
+          generateInvariant(
+              pCfa,
+              pTargetNodesToGenerateFor,
+              pSpecification,
+              pLogger,
+              pShutdownManager,
+              pConfig).toPath();
+      pLogger.log(Level.WARNING, "Invariant generation finished for tool : VeriAbs");
+      return res;
+
     };
   }
 
