@@ -68,6 +68,7 @@ public class ExternalInvariantProvider {
   private int timeoutForInvariantExecution;
   private List<ExternalInvariantGenerators> extInvGens;
   private boolean waitForOthers = false;
+  private AtomicBoolean shoudlShutdownTimeout = new AtomicBoolean(false);
 
   public ExternalInvariantProvider(
       Configuration pConfig,
@@ -103,8 +104,8 @@ public class ExternalInvariantProvider {
         for (int i = 0; i < startInvariantExecutionTimer && !pShouldTerminate.get(); i++) {
           TimeUnit.SECONDS.sleep(1);
         }
-        if(pShouldTerminate.get()) {
-          hasFinished=true;
+        if (pShouldTerminate.get()) {
+          hasFinished = true;
           return hasFinished;
         }
       } catch (InterruptedException e) {
@@ -121,8 +122,8 @@ public class ExternalInvariantProvider {
       throw new IllegalArgumentException(
           "At least one invariant generation tool needs to be present");
     }
-    List<Callable<Path>> suppliers =
-        new ArrayList<>(initialCapacity);
+
+    List<Callable<Path>> suppliers = new ArrayList<>(initialCapacity);
     if (timeoutForInvariantExecution > 0) {
       logger.log(
           Level.INFO,
@@ -130,7 +131,8 @@ public class ExternalInvariantProvider {
           timeoutForInvariantExecution);
       // The timeout supplier waits for the specified timeout and return an empty optional
 
-      Callable<Path> timeoutCallable = getTimeoutcallable(timeoutForInvariantExecution);
+      Callable<Path> timeoutCallable =
+          getTimeoutcallable(timeoutForInvariantExecution, shoudlShutdownTimeout);
       suppliers.add(timeoutCallable);
     }
     ListeningExecutorService exec =
@@ -179,7 +181,7 @@ public class ExternalInvariantProvider {
     } finally {
       // Wait some time so that all threads are shut down and we have a happens-before relation
       // (necessary for statistics).
-       if (!awaitTermination(exec, 0, TimeUnit.SECONDS)) {
+      if (!awaitTermination(exec, 10, TimeUnit.SECONDS)) {
         logger.log(Level.WARNING, "Not all threads are terminated, shutting them down now!");
       }
       exec.shutdownNow();
@@ -202,6 +204,9 @@ public class ExternalInvariantProvider {
           this.computedPath.add(result);
         }
         if (!this.waitForOthers) {
+          // Allow the threads, especially the timeout thread some time to shutdown
+          shoudlShutdownTimeout.getAndSet(true);
+          LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
           for (int i = 1; i < futures.size(); i++) {
             Futures.inCompletionOrder(futures).get(i).cancel(true);
           }
@@ -215,9 +220,12 @@ public class ExternalInvariantProvider {
 
   }
 
-  private Callable<Path> getTimeoutcallable(int pTimeoutForInvariantExecution) {
+  private Callable<Path>
+      getTimeoutcallable(int pTimeoutForInvariantExecution, AtomicBoolean shouldShutdown) {
     return () -> {
-      LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(pTimeoutForInvariantExecution));
+      for (int i = 0; i < pTimeoutForInvariantExecution && !shouldShutdown.get(); i++) {
+        LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
+      }
       logger.log(Level.WARNING, "The invariant generation timed out!");
       return null;
 
