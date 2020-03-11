@@ -174,6 +174,8 @@ public class ExternalInvariantProvider {
     try {
       handleFutureResults(futures);
 
+    } catch (Exception e) {
+      logger.log(Level.INFO, e.getClass().toString());
     } finally {
       // Wait some time so that all threads are shut down and we have a happens-before relation
       // (necessary for statistics).
