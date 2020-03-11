@@ -375,7 +375,7 @@ abstract class AbstractBMCAlgorithm
       do {
         shutdownNotifier.shutdownIfNecessary();
 
-        logger.log(Level.INFO, "Creating formula for program");
+        logger.log(Level.FINE, "Creating formula for program");
         stats.bmcPreparation.start();
         status = BMCHelper.unroll(logger, reachedSet, algorithm, cpa);
         stats.bmcPreparation.stop();
@@ -624,7 +624,7 @@ abstract class AbstractBMCAlgorithm
       CandidateInvariant pCandidateInvariant)
       throws CPATransferException, InterruptedException, SolverException {
     BooleanFormula program = bfmgr.not(pCandidateInvariant.getAssertion(pReachedSet, fmgr, pmgr));
-    logger.log(Level.INFO, "Starting satisfiability check...");
+    logger.log(Level.FINE, "Starting satisfiability check...");
     stats.satCheck.start();
     pProver.push(program);
     boolean safe = pProver.isUnsat();
@@ -779,7 +779,7 @@ abstract class AbstractBMCAlgorithm
         .filter(Predicates.not(IS_SLICED_STATE));
 
     if (boundingAssertions) {
-      logger.log(Level.INFO, "Starting assertions check...");
+      logger.log(Level.FINER, "Starting assertions check...");
       boolean sound = true;
 
       if (!boundingAssertionsSlicing) {

@@ -366,7 +366,7 @@ class KInductionProver implements AutoCloseable {
 
     // Create initial reached set:
     // Run algorithm in order to create formula (A & B)
-    logger.log(Level.INFO, "Running algorithm to create induction hypothesis");
+    logger.log(Level.FINER, "Running algorithm to create induction hypothesis");
     // Ensure the reached set is prepared
     reachedSet.setDesiredK(pK + 1);
     reachedSet.ensureK();
@@ -457,7 +457,7 @@ class KInductionProver implements AutoCloseable {
 
 
 
-    logger.log(Level.INFO, "Starting induction check...");
+    logger.log(Level.FINE, "Starting induction check...");
 
     stats.inductionCheck.start();
 
@@ -637,7 +637,7 @@ class KInductionProver implements AutoCloseable {
     prover.pop(); // Pop end states
 
     stats.inductionCheck.stop();
-    logger.log(Level.INFO, "Soundness after induction check:", result.isSuccessful());
+    logger.log(Level.FINER, "Soundness after induction check:", result.isSuccessful());
     // logger.log(
     // LogLevel,
     // "Inductino check took : ",
