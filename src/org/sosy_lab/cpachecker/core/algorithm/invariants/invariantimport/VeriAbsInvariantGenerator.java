@@ -158,7 +158,12 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
 
     int exitCode = process.waitFor();
     // After finishing the invariant generation script ensure that everything worked out as planned!
-    assert exitCode == 0;
+    if (exitCode != 0) {
+      pLogger.log(
+          Level.WARNING,
+          "The invariant genreatino for VeriAbs returned a non-zero value, it is %d!",
+          exitCode);
+    }
 
     // Since the cpachecker input does not like "-1*", replace them by a simple "-"
     Path pathToWitness = Path.of(ABSOLUTE_PATH_TO_INV_FILE);

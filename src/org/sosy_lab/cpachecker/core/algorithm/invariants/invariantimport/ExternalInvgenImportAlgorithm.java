@@ -128,6 +128,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     super(pConfig, pLogger, pShutdownNotifier, pSpecification, pCfa);
     pConfig.inject(this);
     pLogger.log(Level.WARNING, extInvGens.toString());
+    try {
 
     // logger = pLogger;
     shutdown = ShutdownManager.createWithParent(checkNotNull(pShutdownNotifier));
@@ -182,10 +183,15 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
             timeoutForInvariantExecution,
             startInvariantExecutionTimer,
             extInvGens);
+    } catch (Throwable e) {
+      logger.log(Level.INFO, e.getClass().toString(), Throwables.getStackTraceAsString(e));
+      throw new IllegalArgumentException("COnstructor failed");
+    }
   }
 
   @Override
   public AlgorithmStatus run(ReachedSet pReachedSet) throws CPAException, InterruptedException {
+    try {
     mainEntryNode = AbstractStates.extractLocation(pReachedSet.getFirstState());
 
     ForwardingReachedSet forwardingReachedSet = (ForwardingReachedSet) pReachedSet;
@@ -276,6 +282,10 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
     return AlgorithmStatus.UNSOUND_AND_PRECISE;
 
+    } catch (Throwable e) {
+      logger.log(Level.INFO, e.getClass().toString(), Throwables.getStackTraceAsString(e));
+      throw new IllegalArgumentException("Run failed");
+    }
   }
 
   private void handleFutureResults(
@@ -439,7 +449,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
     AlgorithmStatus status = null;
     try {
-      logger.log(Level.INFO, "Starting analysis %d ...");
+      logger.log(Level.INFO, "Re-Starting analysis  ...");
       status = currentAlgorithm.run(currentReached);
 
       if (currentReached.hasViolatedProperties() && status.isPrecise()) {
