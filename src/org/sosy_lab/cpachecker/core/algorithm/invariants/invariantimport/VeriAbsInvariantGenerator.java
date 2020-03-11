@@ -107,6 +107,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       Configuration pConfig)
       throws CPAException {
     try {
+      pLogger.log(Level.FINEST, this.pathToOutDir);
       File tempFile =
           generateInvariant(
               pCfa,
