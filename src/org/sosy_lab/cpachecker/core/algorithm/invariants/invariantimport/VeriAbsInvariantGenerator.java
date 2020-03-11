@@ -57,9 +57,11 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     description = "Path to the directory where the generated files should be stored. by default we use the /output dir")
   private String pathToOutDir = "output/";
 
-  static final Level LOG_LEVEL = Level.ALL;
+  static final Level LOG_LEVEL = Level.INFO;
 
   private final String PATH_TO_CPA_DIR;
+  String ABSOLUTE_PATH_TO_INV_FILE =
+      "/home/jfh/Documents/cpachecker/output/" + "witness.graphml";
 
   public VeriAbsInvariantGenerator(Configuration pConfiguration)
       throws InvalidConfigurationException {
@@ -70,7 +72,6 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
             .getCodeSource()
             .getLocation()
             .getPath() + "../";
-
   }
 
   @Override
@@ -139,8 +140,8 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
   private File genInvs(Path pPath, LogManager pLogger) throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
-    String absolutePathToInvFile = PATH_TO_CPA_DIR + pathToOutDir;
-    pLogger.log(LOG_LEVEL, "Storing generated inv file at files at " + absolutePathToInvFile);
+
+    pLogger.log(LOG_LEVEL, "Storing generated inv file at files at " + ABSOLUTE_PATH_TO_INV_FILE);
 
     /**
      * # Usage of the script:: # $1 = path to the file to generate invariant for # $2 = path to the
@@ -150,7 +151,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     builder.command(
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS + "VeriAbsInvariantGeneration.sh",
         pPath.toFile().getAbsolutePath(),
-        absolutePathToInvFile,
+        ABSOLUTE_PATH_TO_INV_FILE,
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
     Process process = builder.start();
 
@@ -159,14 +160,14 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     assert exitCode == 0;
 
     // Since the cpachecker input does not like "-1*", replace them by a simple "-"
-    Path pathToWitness = Path.of(absolutePathToInvFile + "witness.graphml");
+    Path pathToWitness = Path.of(ABSOLUTE_PATH_TO_INV_FILE);
     String content = new String(Files.readAllBytes(pathToWitness), StandardCharsets.UTF_8);
     while (content.contains("-1 * ")) {
       content = content.replace("-1 * ", "-");
     }
     Files.write(pathToWitness, content.getBytes(StandardCharsets.UTF_8));
 
-    return new File(absolutePathToInvFile + "witness.graphml");
+    return new File(ABSOLUTE_PATH_TO_INV_FILE);
 
   }
 
