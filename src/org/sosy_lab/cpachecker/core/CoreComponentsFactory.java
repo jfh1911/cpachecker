@@ -168,13 +168,19 @@ public class CoreComponentsFactory {
   )
   private boolean useParallelAlgorithm = false;
 
-  @Option(
+   @Option(
     secure = true,
     name = "algorithm.MPI",
     description = "Use MPI for running analyses in new subprocesses. The resulting reachedset "
         + "is the one of the first analysis returning in time. All other mpi-processes will "
         + "get aborted.")
   private boolean useMPIProcessAlgorithm = false;
+
+  @Option(
+    secure = true,
+    name = "generateExternalInvariants",
+    description = "restart the analysis using a different configuration after unknown result")
+  private boolean useExternalInvariantGeneration = false;
 
   @Option(
       secure = true,

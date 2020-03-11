@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import javax.annotation.Nullable;
@@ -56,10 +57,11 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     description = "Path to the directory where the generated files should be stored. by default we use the /output dir")
   private String pathToOutDir = "output/";
 
-
-  static final Level LOG_LEVEL = Level.ALL;
+  static final Level LOG_LEVEL = Level.INFO;
 
   private final String PATH_TO_CPA_DIR;
+  String ABSOLUTE_PATH_TO_INV_FILE =
+      "/home/jfh/Documents/cpachecker/output/" + "witness.graphml";
 
   public VeriAbsInvariantGenerator(Configuration pConfiguration)
       throws InvalidConfigurationException {
@@ -70,7 +72,6 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
             .getCodeSource()
             .getLocation()
             .getPath() + "../";
-
   }
 
   @Override
@@ -84,10 +85,10 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       throws CPAException {
 
     // Start VeriAbs:
-      List<Path> sourceFiles = pCfa.getFileNames();
-      if (sourceFiles.size() != 1) {
-        throw new CPAException("Can onyl handle CFAs, where one source file is contained");
-      }
+    List<Path> sourceFiles = pCfa.getFileNames();
+    if (sourceFiles.size() != 1) {
+      throw new CPAException("Can onyl handle CFAs, where one source file is contained");
+    }
     try {
       return genInvs(sourceFiles.get(0), pLogger);
     } catch (IOException | InterruptedException e) {
@@ -106,6 +107,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       Configuration pConfig)
       throws CPAException {
     try {
+      pLogger.log(Level.FINEST, this.pathToOutDir);
       File tempFile =
           generateInvariant(
               pCfa,
@@ -118,7 +120,6 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       final Set<CandidateInvariant> candidates = new LinkedHashSet<>();
 
       final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
-
 
       WitnessInvariantsExtractor extractor =
           new WitnessInvariantsExtractor(
@@ -137,12 +138,11 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     }
   }
 
-  private File genInvs(Path pPath, LogManager pLogger)
-      throws IOException, InterruptedException {
+  private File genInvs(Path pPath, LogManager pLogger) throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
-    String absolutePathToInvFile = PATH_TO_CPA_DIR + pathToOutDir;
-    pLogger.log(LOG_LEVEL, "Storing generated inv file at files at " + absolutePathToInvFile);
+
+    pLogger.log(LOG_LEVEL, "Storing generated inv file at files at " + ABSOLUTE_PATH_TO_INV_FILE);
 
     /**
      * # Usage of the script:: # $1 = path to the file to generate invariant for # $2 = path to the
@@ -152,27 +152,30 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     builder.command(
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS + "VeriAbsInvariantGeneration.sh",
         pPath.toFile().getAbsolutePath(),
-        absolutePathToInvFile,
+        ABSOLUTE_PATH_TO_INV_FILE,
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
     Process process = builder.start();
 
     int exitCode = process.waitFor();
     // After finishing the invariant generation script ensure that everything worked out as planned!
-    assert exitCode == 0;
+    if (exitCode != 0) {
+      pLogger.log(
+          Level.WARNING,
+          "The invariant genreatino for VeriAbs returned a non-zero value, it is %d!",
+          exitCode);
+    }
 
     // Since the cpachecker input does not like "-1*", replace them by a simple "-"
-    Path pathToWitness = Path.of(absolutePathToInvFile + "witness.graphml");
+    Path pathToWitness = Path.of(ABSOLUTE_PATH_TO_INV_FILE);
     String content = new String(Files.readAllBytes(pathToWitness), StandardCharsets.UTF_8);
     while (content.contains("-1 * ")) {
       content = content.replace("-1 * ", "-");
     }
     Files.write(pathToWitness, content.getBytes(StandardCharsets.UTF_8));
 
-    return new File(absolutePathToInvFile + "witness.graphml");
+    return new File(ABSOLUTE_PATH_TO_INV_FILE);
 
   }
-
-
 
   private String getMessage() {
     return "During computation, an interla error occured. The added exception provides a more detailed explanation"
@@ -220,4 +223,27 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     };
   }
 
+  @Override
+  public Callable<Path> getCallableGeneratingInvariants(
+      CFA pCfa,
+      List<CFANode> pTargetNodesToGenerateFor,
+      Specification pSpecification,
+      LogManager pLogger,
+      ShutdownNotifier pShutdownManager,
+      Configuration pConfig)
+      throws CPAException {
+    return () -> {
+      Path res =
+          generateInvariant(
+              pCfa,
+              pTargetNodesToGenerateFor,
+              pSpecification,
+              pLogger,
+              pShutdownManager,
+              pConfig).toPath();
+      pLogger.log(Level.WARNING, "Invariant generation finished for tool : VeriAbs");
+      return res;
+
+    };
+  }
 }
