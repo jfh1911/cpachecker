@@ -128,7 +128,6 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     super(pConfig, pLogger, pShutdownNotifier, pSpecification, pCfa);
     pConfig.inject(this);
     pLogger.log(Level.WARNING, extInvGens.toString());
-    try {
 
     // logger = pLogger;
     shutdown = ShutdownManager.createWithParent(checkNotNull(pShutdownNotifier));
@@ -183,15 +182,12 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
             timeoutForInvariantExecution,
             startInvariantExecutionTimer,
             extInvGens);
-    } catch (Throwable e) {
-      logger.log(Level.INFO, e.getClass().toString(), Throwables.getStackTraceAsString(e));
-      throw new IllegalArgumentException("COnstructor failed");
-    }
+
   }
 
   @Override
   public AlgorithmStatus run(ReachedSet pReachedSet) throws CPAException, InterruptedException {
-    try {
+
     mainEntryNode = AbstractStates.extractLocation(pReachedSet.getFirstState());
 
     ForwardingReachedSet forwardingReachedSet = (ForwardingReachedSet) pReachedSet;
@@ -281,11 +277,6 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     }
 
     return AlgorithmStatus.UNSOUND_AND_PRECISE;
-
-    } catch (Throwable e) {
-      logger.log(Level.INFO, e.getClass().toString(), Throwables.getStackTraceAsString(e));
-      throw new IllegalArgumentException("Run failed");
-    }
   }
 
   private void handleFutureResults(
@@ -302,7 +293,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
         try {
           TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
-          // Nothing to do here
+          logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
         }
         Futures.inCompletionOrder(futures).get(1).cancel(true);
         finalResult = ParallelAnalysisResult.of(result.reachedSet, result.getResult(), "");
@@ -349,7 +340,6 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
           logger
               .logUserException(Level.WARNING, cause, "Analysis not completed due to concurrency");
         }
-
 
       } else {
         // cancel other computations
@@ -484,8 +474,10 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       if (e instanceof CounterexampleAnalysisFailed || e instanceof RefinementFailedException) {
         // status = status.withPrecise(false);
       }
+      logger.log(Level.WARNING, "Attention: throwing", Throwables.getStackTraceAsString(e));
       throw e;
     } catch (InterruptedException e) {
+      logger.log(Level.WARNING, "Attention: throwing", Throwables.getStackTraceAsString(e));
       throw e;
     }
 

@@ -110,6 +110,7 @@ public class ExternalInvariantProvider {
         }
       } catch (InterruptedException e) {
         // IF an error occures, we dont do anything and dont generate invariants.
+        logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
         hasFinished = false;
         return hasFinished;
 
@@ -177,7 +178,7 @@ public class ExternalInvariantProvider {
       handleFutureResults(futures);
 
     } catch (Exception e) {
-      logger.log(Level.INFO, e.getClass().toString());
+      logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
     } finally {
       // Wait some time so that all threads are shut down and we have a happens-before relation
       // (necessary for statistics).
@@ -213,6 +214,7 @@ public class ExternalInvariantProvider {
           break;
         }
       } catch (InterruptedException | ExecutionException e) {
+        logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
         logger.log(Level.WARNING, "One invairant generation failed!");
       }
 
@@ -237,6 +239,7 @@ public class ExternalInvariantProvider {
       return computedPath.get(0);
     } else {
       // FIXME: Enhance error handling
+      logger.log(Level.WARNING, "No path found!");
       throw new IllegalArgumentException("");
     }
   }
@@ -300,7 +303,7 @@ public class ExternalInvariantProvider {
         // true);
         return parseReachedSet();
       } catch (InvalidConfigurationException | CPAException | InterruptedException e) {
-        // TODO Auto-generated catch block
+        logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
         throw new CPAException("", e);
       }
 
