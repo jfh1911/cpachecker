@@ -6,4 +6,5 @@
 echo python lib/UAutomizer-linux/Ultimate.py --spec $3unreach-call.prp --architecture 32bit --witness-dir $2 --file $1  
 cd lib/UAutomizer-linux/
 pwd
-python Ultimate.py --spec $3unreach-call.prp --architecture 32bit --witness-dir $2 --file $1  
+python Ultimate.py --spec $3unreach-call.prp --architecture 32bit --witness-dir $2 --file $1  > /dev/null 2>&1
+
