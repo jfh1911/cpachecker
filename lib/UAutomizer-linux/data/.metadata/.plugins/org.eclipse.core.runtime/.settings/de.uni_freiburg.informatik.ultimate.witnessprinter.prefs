@@ -1,0 +1,17 @@
+Command\ to\ execute\ witness\ verifier=
+Delete\ the\ .graphml\ file\ after\ verification=false
+Do\ not\ use\ ACSL=true
+Generate\ witnesses=true
+Graph\ data\ architecture=32bit
+Graph\ data\ producer=Automizer
+Graph\ data\ programhash=67bb0790f696b3c18eb630bed2fc34fee971c82b
+Graph\ data\ specification=CHECK( init(main()), LTL(G \! call(__VERIFIER_error())) )\n\n
+Log\ witness\ to\ console=false
+Path\ to\ .prp\ file=
+Timeout\ in\ seconds\ for\ witness\ verifier=10
+Use\ the\ following\ witness\ verifier=CPACHECKER
+Verify\ the\ witness\ and\ generate\ results=false
+Witness\ directory=/home/cppp/Documents/cpachecker/cpachecker/output/
+Witness\ filename=witness.graphml
+Write\ witness\ besides\ input\ file=false
+eclipse.preferences.version=1

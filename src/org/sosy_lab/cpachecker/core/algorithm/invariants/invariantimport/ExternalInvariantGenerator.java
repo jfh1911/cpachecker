@@ -105,6 +105,8 @@ public interface ExternalInvariantGenerator {
       getInstance(ExternalInvariantGenerators instance, Configuration pConfiguration)
           throws InvalidConfigurationException {
     switch (instance) {
+      case ULTIMATEAUTOMIZER:
+        return new UAInvariantGenerator();
       case VERIABS:
         return new VeriAbsInvariantGenerator(pConfiguration);
       case SEAHORN:
