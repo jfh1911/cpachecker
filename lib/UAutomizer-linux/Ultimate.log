@@ -1,0 +1,258 @@
+This is Ultimate 0.1.22-b24fe96
+INFO : Resetting all preferences to default values...
+INFO : Resetting UltimateCore preferences to default values
+[2020-03-17 14:50:06,336 INFO  L177        SettingsManager]: Ultimate Commandline Interface provides no preferences, ignoring...
+[2020-03-17 14:50:06,338 INFO  L174        SettingsManager]: Resetting Boogie Preprocessor preferences to default values
+[2020-03-17 14:50:06,342 INFO  L174        SettingsManager]: Resetting Boogie Procedure Inliner preferences to default values
+[2020-03-17 14:50:06,343 INFO  L174        SettingsManager]: Resetting Abstract Interpretation preferences to default values
+[2020-03-17 14:50:06,350 INFO  L174        SettingsManager]: Resetting LassoRanker preferences to default values
+[2020-03-17 14:50:06,357 INFO  L174        SettingsManager]: Resetting Reaching Definitions preferences to default values
+[2020-03-17 14:50:06,367 INFO  L174        SettingsManager]: Resetting SyntaxChecker preferences to default values
+[2020-03-17 14:50:06,368 INFO  L177        SettingsManager]: Büchi Program Product provides no preferences, ignoring...
+[2020-03-17 14:50:06,368 INFO  L174        SettingsManager]: Resetting LTL2Aut preferences to default values
+[2020-03-17 14:50:06,369 INFO  L174        SettingsManager]: Resetting BlockEncodingV2 preferences to default values
+[2020-03-17 14:50:06,370 INFO  L174        SettingsManager]: Resetting AutomataScriptInterpreter preferences to default values
+[2020-03-17 14:50:06,371 INFO  L174        SettingsManager]: Resetting BuchiAutomizer preferences to default values
+[2020-03-17 14:50:06,372 INFO  L174        SettingsManager]: Resetting CACSL2BoogieTranslator preferences to default values
+[2020-03-17 14:50:06,375 INFO  L174        SettingsManager]: Resetting CodeCheck preferences to default values
+[2020-03-17 14:50:06,378 INFO  L174        SettingsManager]: Resetting InvariantSynthesis preferences to default values
+[2020-03-17 14:50:06,387 INFO  L174        SettingsManager]: Resetting RCFGBuilder preferences to default values
+[2020-03-17 14:50:06,390 INFO  L174        SettingsManager]: Resetting TraceAbstraction preferences to default values
+[2020-03-17 14:50:06,391 INFO  L177        SettingsManager]: TraceAbstractionConcurrent provides no preferences, ignoring...
+[2020-03-17 14:50:06,393 INFO  L177        SettingsManager]: TraceAbstractionWithAFAs provides no preferences, ignoring...
+[2020-03-17 14:50:06,394 INFO  L174        SettingsManager]: Resetting IcfgTransformer preferences to default values
+[2020-03-17 14:50:06,395 INFO  L174        SettingsManager]: Resetting Boogie Printer preferences to default values
+[2020-03-17 14:50:06,407 INFO  L174        SettingsManager]: Resetting Witness Printer preferences to default values
+[2020-03-17 14:50:06,408 INFO  L177        SettingsManager]: Boogie PL CUP Parser provides no preferences, ignoring...
+[2020-03-17 14:50:06,408 INFO  L174        SettingsManager]: Resetting CDTParser preferences to default values
+[2020-03-17 14:50:06,408 INFO  L177        SettingsManager]: PEA to Boogie provides no preferences, ignoring...
+[2020-03-17 14:50:06,408 INFO  L177        SettingsManager]: AutomataScriptParser provides no preferences, ignoring...
+[2020-03-17 14:50:06,409 INFO  L174        SettingsManager]: Resetting Witness Parser preferences to default values
+[2020-03-17 14:50:06,411 INFO  L181        SettingsManager]: Finished resetting all preferences to default values...
+[2020-03-17 14:50:06,413 INFO  L98         SettingsManager]: Beginning loading settings from /home/cppp/Documents/cpachecker/cpachecker/bin/UAutomizer-linux/config/svcomp-Reach-32bit-Automizer_Default.epf
+[2020-03-17 14:50:06,434 INFO  L110        SettingsManager]: Loading preferences was successful
+[2020-03-17 14:50:06,434 INFO  L112        SettingsManager]: Preferences different from defaults after loading the file:
+[2020-03-17 14:50:06,434 INFO  L131        SettingsManager]: Preferences of UltimateCore differ from their defaults:
+[2020-03-17 14:50:06,434 INFO  L133        SettingsManager]:  * Logger pattern=%-5p: %m%n
+[2020-03-17 14:50:06,435 INFO  L131        SettingsManager]: Preferences of Boogie Procedure Inliner differ from their defaults:
+[2020-03-17 14:50:06,435 INFO  L133        SettingsManager]:  * to procedures, called more than once=true
+[2020-03-17 14:50:06,435 INFO  L131        SettingsManager]: Preferences of BlockEncodingV2 differ from their defaults:
+[2020-03-17 14:50:06,436 INFO  L133        SettingsManager]:  * Create parallel compositions if possible=false
+[2020-03-17 14:50:06,436 INFO  L133        SettingsManager]:  * Use SBE=true
+[2020-03-17 14:50:06,436 INFO  L131        SettingsManager]: Preferences of CACSL2BoogieTranslator differ from their defaults:
+[2020-03-17 14:50:06,436 INFO  L133        SettingsManager]:  * sizeof long=4
+[2020-03-17 14:50:06,436 INFO  L133        SettingsManager]:  * Overapproximate operations on floating types=true
+[2020-03-17 14:50:06,436 INFO  L133        SettingsManager]:  * sizeof POINTER=4
+[2020-03-17 14:50:06,436 INFO  L133        SettingsManager]:  * Check division by zero=IGNORE
+[2020-03-17 14:50:06,436 INFO  L133        SettingsManager]:  * Pointer to allocated memory at dereference=IGNORE
+[2020-03-17 14:50:06,437 INFO  L133        SettingsManager]:  * If two pointers are subtracted or compared they have the same base address=IGNORE
+[2020-03-17 14:50:06,437 INFO  L133        SettingsManager]:  * Check array bounds for arrays that are off heap=IGNORE
+[2020-03-17 14:50:06,437 INFO  L133        SettingsManager]:  * sizeof long double=12
+[2020-03-17 14:50:06,437 INFO  L133        SettingsManager]:  * Check if freed pointer was valid=false
+[2020-03-17 14:50:06,437 INFO  L133        SettingsManager]:  * Pointer base address is valid at dereference=IGNORE
+[2020-03-17 14:50:06,437 INFO  L131        SettingsManager]: Preferences of RCFGBuilder differ from their defaults:
+[2020-03-17 14:50:06,438 INFO  L133        SettingsManager]:  * Size of a code block=SequenceOfStatements
+[2020-03-17 14:50:06,438 INFO  L133        SettingsManager]:  * To the following directory=./dump/
+[2020-03-17 14:50:06,438 INFO  L133        SettingsManager]:  * SMT solver=External_DefaultMode
+[2020-03-17 14:50:06,438 INFO  L133        SettingsManager]:  * Command for external solver=z3 SMTLIB2_COMPLIANT=true -memory:2024 -smt2 -in -t:2000
+[2020-03-17 14:50:06,438 INFO  L131        SettingsManager]: Preferences of TraceAbstraction differ from their defaults:
+[2020-03-17 14:50:06,438 INFO  L133        SettingsManager]:  * Interpolant automaton=TWOTRACK
+[2020-03-17 14:50:06,438 INFO  L133        SettingsManager]:  * Compute Interpolants along a Counterexample=FPandBP
+[2020-03-17 14:50:06,439 INFO  L133        SettingsManager]:  * Positions where we compute the Hoare Annotation=LoopsAndPotentialCycles
+[2020-03-17 14:50:06,439 INFO  L133        SettingsManager]:  * Trace refinement strategy=CAMEL
+[2020-03-17 14:50:06,439 INFO  L133        SettingsManager]:  * SMT solver=External_ModelsAndUnsatCoreMode
+[2020-03-17 14:50:06,439 INFO  L133        SettingsManager]:  * Command for external solver=z3 SMTLIB2_COMPLIANT=true -memory:2024 -smt2 -in
+[2020-03-17 14:50:06,439 INFO  L133        SettingsManager]:  * Compute Hoare Annotation of negated interpolant automaton, abstraction and CFG=true
+Applying setting for plugin de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator: Entry function -> main
+Applying setting for plugin de.uni_freiburg.informatik.ultimate.witnessprinter: Witness directory -> /home/cppp/Documents/cpachecker/cpachecker/output/
+Applying setting for plugin de.uni_freiburg.informatik.ultimate.witnessprinter: Witness filename -> witness.graphml
+Applying setting for plugin de.uni_freiburg.informatik.ultimate.witnessprinter: Write witness besides input file -> false
+Applying setting for plugin de.uni_freiburg.informatik.ultimate.witnessprinter: Graph data specification -> CHECK( init(main()), LTL(G ! call(__VERIFIER_error())) )
+
+
+Applying setting for plugin de.uni_freiburg.informatik.ultimate.witnessprinter: Graph data producer -> Automizer
+Applying setting for plugin de.uni_freiburg.informatik.ultimate.witnessprinter: Graph data architecture -> 32bit
+Applying setting for plugin de.uni_freiburg.informatik.ultimate.witnessprinter: Graph data programhash -> 67bb0790f696b3c18eb630bed2fc34fee971c82b
+INFO : Repository-Root is: /tmp
+INFO : [Toolchain 1]: Parser(s) successfully initialized
+INFO : [Toolchain 1]: Toolchain data selected.
+INFO : Initializing CDTParser...
+INFO : CDTParser initialized
+INFO : [Toolchain 1]: Parsing single file: /home/cppp/Documents/cpachecker/cpachecker/doc/examples/reach_loops/loop-invgen--nest-if3.i
+INFO : ####################### [Toolchain 1] #######################
+INFO : Walking toolchain with 5 elements.
+INFO : ------------------------CACSL2BoogieTranslator----------------------------
+INFO : Initializing CACSL2BoogieTranslator...
+INFO : CACSL2BoogieTranslator initialized
+INFO : Executing the observer ACSLObjectContainerObserver from plugin CACSL2BoogieTranslator for "CDTParser AST 17.03 02:50:06" (1/1) ...
+INFO : Invalid model from CACSL2BoogieTranslator for observer de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator.ACSLObjectContainerObserver@384054d1 and model type de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator AST 17.03 02:50:06, skipping insertion in model container
+INFO : Executing the observer CACSL2BoogieTranslatorObserver from plugin CACSL2BoogieTranslator for "CDTParser AST 17.03 02:50:06" (1/1) ...
+INFO : Using SV-COMP mode
+INFO : Using SV-COMP mode
+INFO : Settings: Checked method=main
+INFO : Settings: Checked method=main
+INFO : Adding new model de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator AST 17.03 02:50:07 WrapperNode
+INFO : ------------------------ END CACSL2BoogieTranslator----------------------------
+INFO : ------------------------Boogie Preprocessor----------------------------
+INFO : Initializing Boogie Preprocessor...
+INFO : Boogie Preprocessor initialized
+INFO : Executing the observer EnsureBoogieModelObserver from plugin Boogie Preprocessor for "de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator AST 17.03 02:50:07" (1/1) ...
+INFO : Executing the observer TypeChecker from plugin Boogie Preprocessor for "de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator AST 17.03 02:50:07" (1/1) ...
+INFO : Executing the observer ConstExpander from plugin Boogie Preprocessor for "de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator AST 17.03 02:50:07" (1/1) ...
+INFO : Executing the observer StructExpander from plugin Boogie Preprocessor for "de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator AST 17.03 02:50:07" (1/1) ...
+INFO : Executing the observer UnstructureCode from plugin Boogie Preprocessor for "de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator AST 17.03 02:50:07" (1/1) ...
+INFO : Executing the observer FunctionInliner from plugin Boogie Preprocessor for "de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator AST 17.03 02:50:07" (1/1) ...
+INFO : Executing the observer BoogieSymbolTableConstructor from plugin Boogie Preprocessor for "de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator AST 17.03 02:50:07" (1/1) ...
+INFO : ------------------------ END Boogie Preprocessor----------------------------
+INFO : ------------------------RCFGBuilder----------------------------
+INFO : Initializing RCFGBuilder...
+INFO : RCFGBuilder initialized
+INFO : Executing the observer RCFGBuilderObserver from plugin RCFGBuilder for "de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator AST 17.03 02:50:07" (1/1) ...
+INFO : Starting monitored process 1 with z3 SMTLIB2_COMPLIANT=true -memory:2024 -smt2 -in -t:2000 (exit command is (exit), workingDir is null)
+INFO : Waiting until toolchain timeout for monitored process 1 with z3 SMTLIB2_COMPLIANT=true -memory:2024 -smt2 -in -t:2000
+INFO : Found implementation of procedure ULTIMATE.init
+INFO : Found implementation of procedure ULTIMATE.start
+INFO : Found implementation of procedure __VERIFIER_assert
+INFO : Found implementation of procedure main
+INFO : Found specification of procedure __VERIFIER_error
+INFO : Found specification of procedure __VERIFIER_assert
+INFO : Found specification of procedure __VERIFIER_nondet_int
+INFO : Found specification of procedure main
+INFO : Found specification of procedure ULTIMATE.init
+INFO : Found specification of procedure ULTIMATE.start
+INFO : Using the 1 location(s) as analysis (start of procedure ULTIMATE.start)
+INFO : Adding new model de.uni_freiburg.informatik.ultimate.plugins.generator.rcfgbuilder CFG 17.03 02:50:08 BoogieIcfgContainer
+INFO : ------------------------ END RCFGBuilder----------------------------
+INFO : ------------------------TraceAbstraction----------------------------
+INFO : Initializing TraceAbstraction...
+INFO : TraceAbstraction initialized
+INFO : Executing the observer TraceAbstractionObserver from plugin TraceAbstraction for "CDTParser AST 17.03 02:50:06" (1/3) ...
+INFO : Invalid model from TraceAbstraction for observer de.uni_freiburg.informatik.ultimate.plugins.generator.traceabstraction.TraceAbstractionObserver@59dd31a1 and model type de.uni_freiburg.informatik.ultimate.plugins.generator.traceabstraction AST 17.03 02:50:08, skipping insertion in model container
+INFO : Executing the observer TraceAbstractionObserver from plugin TraceAbstraction for "de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator AST 17.03 02:50:07" (2/3) ...
+INFO : Invalid model from TraceAbstraction for observer de.uni_freiburg.informatik.ultimate.plugins.generator.traceabstraction.TraceAbstractionObserver@59dd31a1 and model type de.uni_freiburg.informatik.ultimate.plugins.generator.traceabstraction AST 17.03 02:50:08, skipping insertion in model container
+INFO : Executing the observer TraceAbstractionObserver from plugin TraceAbstraction for "de.uni_freiburg.informatik.ultimate.plugins.generator.rcfgbuilder CFG 17.03 02:50:08" (3/3) ...
+INFO : Analyzing ICFG loop-invgen--nest-if3.i
+INFO : Automizer settings: Hoare:true NWA Interpolation:FPandBP Determinization: PREDICATE_ABSTRACTION
+INFO : Appying trace abstraction to program that has 1 error locations.
+INFO : Interprodecural is true
+INFO : Hoare is true
+INFO : Compute interpolants for FPandBP
+INFO : Backedges is TWOTRACK
+INFO : Determinization is PREDICATE_ABSTRACTION
+INFO : Difference is false
+INFO : Minimize is MINIMIZE_SEVPA
+INFO : ======== Iteration 0==of CEGAR loop == AllErrorsAtOnce========
+INFO : Mode: main mode - execution starts in main procedure
+INFO : Start isEmpty. Operand 27 states.
+INFO : Finished isEmpty. Found accepting run of length 17
+INFO : Found error trace
+INFO : trace histogram [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+INFO : === Iteration 1 === [__VERIFIER_assertErr0AssertViolation]===
+INFO : Analyzing trace with hash -2056501113, now seen corresponding path program 1 times
+INFO : Switched to mode SMTINTERPOL_TREE_INTERPOLANTS
+INFO : Using refinement strategy CamelRefinementStrategy
+INFO : Craig nested/tree interpolation forces the following order
+INFO : Keeping assertion order NOT_INCREMENTALLY
+INFO : Craig nested/tree interpolation forces the following order
+INFO : Conjunction of SSA is unsat
+WARN : Using partial proofs (cut at CNF-level).  Set option :produce-proofs to true to get complete proofs.
+INFO : Checked inductivity of 0 backedges. 0 proven. 0 refuted. 0 times theorem prover too weak. 0 trivial. 0 not checked.
+INFO : Constructing automaton from 1 perfect and 0 imperfect interpolant sequences.
+INFO : Number of different interpolants: perfect sequences [6] imperfect sequences [] total 6
+INFO : Interpolant automaton has 6 states
+INFO : Constructing interpolant automaton starting with 6 interpolants.
+INFO : CoverageRelationStatistics Valid=9, Invalid=21, Unknown=0, NotChecked=0, Total=30
+INFO : Start difference. First operand 27 states. Second operand 6 states.
+INFO : Subtrahend was deterministic. Have not used determinization.
+INFO : Finished difference Result 50 states and 66 transitions.
+INFO : Switched to read-only mode: deterministic interpolant automaton has 6 states. 
+INFO : Start accepts. Automaton has 6 states. Word has length 16
+INFO : Finished accepts. some prefix is accepted.
+INFO : With dead ends: 50
+INFO : Without dead ends: 0
+INFO : 0 DeclaredPredicates, 8 GetRequests, 2 SyntacticMatches, 0 SemanticMatches, 6 ConstructedPredicates, 0 IntricatePredicates, 0 DeprecatedPredicates, 1 ImplicationChecksByTransitivity, 0.6s TimeCoverageRelationStatistics Valid=17, Invalid=39, Unknown=0, NotChecked=0, Total=56
+INFO : Start minimizeSevpa. Operand 0 states.
+INFO : Finished minimizeSevpa. Reduced states from 0 to 0.
+INFO : Start removeUnreachable. Operand 0 states.
+INFO : Finished removeUnreachable. Reduced from 0 states to 0 states and 0 transitions.
+INFO : Start accepts. Automaton has 0 states and 0 transitions. Word has length 16
+INFO : Finished accepts. word is rejected.
+INFO : Abstraction has 0 states and 0 transitions.
+INFO : Interpolant automaton has 6 states.
+INFO : Start isEmpty. Operand 0 states and 0 transitions.
+INFO : Finished isEmpty. No accepting run.
+INFO : Before removal of dead ends 0 states and 0 transitions.
+INFO : For program point  ULTIMATE.initEXIT(lines 1 24)  no Hoare annotation was computed.
+INFO : At program point  ULTIMATE.initFINAL(lines 1 24)  the Hoare annotation is:  true
+INFO : At program point  ULTIMATE.startENTRY(lines 1 24)  the Hoare annotation is:  true
+INFO : For program point  ULTIMATE.startFINAL(lines 1 24)  no Hoare annotation was computed.
+INFO : At program point  L1(lines 1 24)  the Hoare annotation is:  true
+INFO : For program point  ULTIMATE.startEXIT(lines 1 24)  no Hoare annotation was computed.
+INFO : For program point  L18'''(lines 18 20)  no Hoare annotation was computed.
+INFO : For program point  L21(lines 21 22)  no Hoare annotation was computed.
+INFO : For program point  L19'(line 19)  no Hoare annotation was computed.
+INFO : For program point  L17''(lines 17 23)  no Hoare annotation was computed.
+INFO : At program point  L18''(lines 18 20)  the Hoare annotation is:  (and (<= 1 main_~i~5) (<= 1 main_~l~5))
+INFO : For program point  L17''''(lines 17 23)  no Hoare annotation was computed.
+INFO : At program point  L17'''(lines 17 23)  the Hoare annotation is:  (<= 1 main_~l~5)
+INFO : For program point  L14(line 14)  no Hoare annotation was computed.
+INFO : For program point  mainEXIT(lines 10 24)  no Hoare annotation was computed.
+INFO : At program point  mainENTRY(lines 10 24)  the Hoare annotation is:  true
+INFO : For program point  L16(line 16)  no Hoare annotation was computed.
+INFO : For program point  L15(line 15)  no Hoare annotation was computed.
+INFO : For program point  L18(lines 18 20)  no Hoare annotation was computed.
+INFO : For program point  L17(lines 17 23)  no Hoare annotation was computed.
+INFO : At program point  L19(line 19)  the Hoare annotation is:  (and (<= 1 main_~i~5) (<= 1 main_~l~5))
+INFO : For program point  __VERIFIER_assertEXIT(lines 3 8)  no Hoare annotation was computed.
+INFO : At program point  __VERIFIER_assertENTRY(lines 3 8)  the Hoare annotation is:  true
+INFO : For program point  L4(lines 4 6)  no Hoare annotation was computed.
+INFO : For program point  L5(line 5)  no Hoare annotation was computed.
+INFO : For program point  L4''(lines 4 6)  no Hoare annotation was computed.
+INFO : For program point  __VERIFIER_assertErr0AssertViolation(line 5)  no Hoare annotation was computed.
+INFO : Adding new model de.uni_freiburg.informatik.ultimate.plugins.generator.traceabstraction CFG 17.03 02:50:10 BoogieIcfgContainer
+INFO : ------------------------ END TraceAbstraction----------------------------
+INFO : ------------------------Witness Printer----------------------------
+INFO : Initializing Witness Printer...
+INFO : Witness Printer initialized
+INFO : Executing the observer RCFGCatcher from plugin Witness Printer for "de.uni_freiburg.informatik.ultimate.plugins.generator.rcfgbuilder CFG 17.03 02:50:08" (3/4) ...
+INFO : Generating witness for correct program
+INFO : Ignoring RootEdge to procedure ULTIMATE.init
+INFO : Ignoring RootEdge to procedure main
+INFO : Ignoring RootEdge to procedure __VERIFIER_assert
+INFO : Reduced CFG by removing 12 nodes and edges
+INFO : Reduced CFG by removing 5 nodes and edges
+INFO : Reduced CFG by removing 1 nodes and edges
+INFO : Reduced CFG by removing 1 nodes and edges
+INFO : Wrote witness to /home/cppp/Documents/cpachecker/cpachecker/output/witness.graphml
+INFO : ------------------------ END Witness Printer----------------------------
+INFO : Toolchain (without parser) took 4156.74 ms. Allocated memory was 1.0 GB in the beginning and 1.2 GB in the end (delta: 170.9 MB). Free memory was 979.1 MB in the beginning and 1.2 GB in the end (delta: -178.6 MB). There was no memory consumed. Max. memory is 11.5 GB.
+INFO : CDTParser took 0.04 ms. Allocated memory is still 1.0 GB. Free memory is still 979.1 MB. There was no memory consumed. Max. memory is 11.5 GB.
+INFO : CACSL2BoogieTranslator took 456.68 ms. Allocated memory is still 1.0 GB. Free memory was 979.1 MB in the beginning and 968.4 MB in the end (delta: 10.7 MB). Peak memory consumption was 10.7 MB. Max. memory is 11.5 GB.
+INFO : Boogie Preprocessor took 119.53 ms. Allocated memory is still 1.0 GB. Free memory is still 968.4 MB. There was no memory consumed. Max. memory is 11.5 GB.
+INFO : RCFGBuilder took 863.38 ms. Allocated memory is still 1.0 GB. Free memory was 968.4 MB in the beginning and 946.9 MB in the end (delta: 21.5 MB). Peak memory consumption was 21.5 MB. Max. memory is 11.5 GB.
+INFO : TraceAbstraction took 2568.63 ms. Allocated memory was 1.0 GB in the beginning and 1.2 GB in the end (delta: 170.9 MB). Free memory was 946.9 MB in the beginning and 1.2 GB in the end (delta: -210.8 MB). There was no memory consumed. Max. memory is 11.5 GB.
+INFO : Witness Printer took 115.46 ms. Allocated memory is still 1.2 GB. Free memory is still 1.2 GB. There was no memory consumed. Max. memory is 11.5 GB.
+INFO : #######################  End [Toolchain 1] #######################
+ --- Results ---
+ * Results from de.uni_freiburg.informatik.ultimate.core:
+  - StatisticsResult: Toolchain Benchmarks
+    Benchmark results are:
+ * CDTParser took 0.04 ms. Allocated memory is still 1.0 GB. Free memory is still 979.1 MB. There was no memory consumed. Max. memory is 11.5 GB.
+ * CACSL2BoogieTranslator took 456.68 ms. Allocated memory is still 1.0 GB. Free memory was 979.1 MB in the beginning and 968.4 MB in the end (delta: 10.7 MB). Peak memory consumption was 10.7 MB. Max. memory is 11.5 GB.
+ * Boogie Preprocessor took 119.53 ms. Allocated memory is still 1.0 GB. Free memory is still 968.4 MB. There was no memory consumed. Max. memory is 11.5 GB.
+ * RCFGBuilder took 863.38 ms. Allocated memory is still 1.0 GB. Free memory was 968.4 MB in the beginning and 946.9 MB in the end (delta: 21.5 MB). Peak memory consumption was 21.5 MB. Max. memory is 11.5 GB.
+ * TraceAbstraction took 2568.63 ms. Allocated memory was 1.0 GB in the beginning and 1.2 GB in the end (delta: 170.9 MB). Free memory was 946.9 MB in the beginning and 1.2 GB in the end (delta: -210.8 MB). There was no memory consumed. Max. memory is 11.5 GB.
+ * Witness Printer took 115.46 ms. Allocated memory is still 1.2 GB. Free memory is still 1.2 GB. There was no memory consumed. Max. memory is 11.5 GB.
+ * Results from de.uni_freiburg.informatik.ultimate.plugins.generator.traceabstraction:
+  - PositiveResult [Line: 5]: call of __VERIFIER_error() unreachable
+    For all program executions holds that call of __VERIFIER_error() unreachable at this location
+  - AllSpecificationsHoldResult: All specifications hold
+    1 specifications checked. All of them hold
+  - InvariantResult [Line: 18]: Loop Invariant
+    Derived loop invariant: 1 <= i && 1 <= l
+  - InvariantResult [Line: 17]: Loop Invariant
+    Derived loop invariant: 1 <= l
+  - StatisticsResult: Ultimate Automizer benchmark data
+    CFG has 4 procedures, 27 locations, 1 error locations. SAFE Result, 2.4s OverallTime, 1 OverallIterations, 1 TraceHistogramMax, 0.9s AutomataDifference, 0.0s DeadEndRemovalTime, 0.2s HoareAnnotationTime, HoareTripleCheckerStatistics: 26 SDtfs, 23 SDslu, 78 SDs, 0 SdLazy, 38 SolverSat, 6 SolverUnsat, 0 SolverUnknown, 0 SolverNotchecked, 0.5s Time, PredicateUnifierStatistics: 0 DeclaredPredicates, 8 GetRequests, 2 SyntacticMatches, 0 SemanticMatches, 6 ConstructedPredicates, 0 IntricatePredicates, 0 DeprecatedPredicates, 1 ImplicationChecksByTransitivity, 0.6s Time, 0.0s BasicInterpolantAutomatonTime, BiggestAbstraction: size=27occurred in iteration=0, traceCheckStatistics: No data available, InterpolantConsolidationStatistics: No data available, PathInvariantsStatistics: No data available, 0/0 InterpolantCoveringCapability, TotalInterpolationStatistics: No data available, 0.0s AbstIntTime, 0 AbstIntIterations, 0 AbstIntStrong, NaN AbsIntWeakeningRatio, NaN AbsIntAvgWeakeningVarsNumRemoved, NaN AbsIntAvgWeakenedConjuncts, AutomataMinimizationStatistics: 0.0s AutomataMinimizationTime, 1 MinimizatonAttempts, 0 StatesRemovedByMinimization, 0 NontrivialMinimizations, HoareAnnotationStatistics: 0.0s HoareAnnotationTime, 8 LocationsWithAnnotation, 9 PreInvPairs, 13 NumberOfFragments, 22 HoareAnnotationTreeSize, 9 FomulaSimplifications, 8 FormulaSimplificationTreeSizeReduction, 0.0s HoareSimplificationTime, 8 FomulaSimplificationsInter, 0 FormulaSimplificationTreeSizeReductionInter, 0.2s HoareSimplificationTimeInter, RefinementEngineStatistics: TraceCheckStatistics: 0.0s SsaConstructionTime, 0.2s SatisfiabilityAnalysisTime, 0.6s InterpolantComputationTime, 16 NumberOfCodeBlocks, 16 NumberOfCodeBlocksAsserted, 1 NumberOfCheckSat, 15 ConstructedInterpolants, 0 QuantifiedInterpolants, 495 SizeOfPredicates, 0 NumberOfNonLiveVariables, 0 ConjunctsInSsa, 0 ConjunctsInUnsatCore, 1 InterpolantComputations, 1 PerfectInterpolantSequences, 0/0 InterpolantCoveringCapability, InvariantSynthesisStatistics: No data available, InterpolantConsolidationStatistics: No data available
+RESULT: Ultimate proved your program to be correct!
+Received shutdown request...
