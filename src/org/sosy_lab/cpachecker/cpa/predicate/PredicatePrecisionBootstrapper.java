@@ -17,7 +17,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -32,7 +34,13 @@ import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.io.IO;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
+import org.sosy_lab.cpachecker.cfa.DummyCFAEdge;
+import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression.BinaryOperator;
+import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
+import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
+import org.sosy_lab.cpachecker.core.AnalysisDirection;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.ExpressionTreeLocationInvariant;
@@ -44,12 +52,19 @@ import org.sosy_lab.cpachecker.cpa.predicate.persistence.PredicateMapParser;
 import org.sosy_lab.cpachecker.cpa.predicate.persistence.PredicatePersistenceUtils.PredicateParsingFailedException;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
+import org.sosy_lab.cpachecker.util.expressions.ExpressionTree;
+import org.sosy_lab.cpachecker.util.expressions.LeafExpression;
 import org.sosy_lab.cpachecker.util.predicates.AbstractionManager;
 import org.sosy_lab.cpachecker.util.predicates.AbstractionPredicate;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormulaManager;
+import org.sosy_lab.cpachecker.util.predicates.pathformula.SSAMap;
+import org.sosy_lab.cpachecker.util.predicates.pathformula.ctoformula.CtoFormulaConverter;
+import org.sosy_lab.cpachecker.util.predicates.pathformula.ctoformula.CtoFormulaTypeHandler;
+import org.sosy_lab.cpachecker.util.predicates.pathformula.ctoformula.FormulaEncodingOptions;
 import org.sosy_lab.cpachecker.util.predicates.precisionConverter.Converter.PrecisionConverter;
 import org.sosy_lab.cpachecker.util.predicates.smt.FormulaManagerView;
 import org.sosy_lab.cpachecker.util.statistics.KeyValueStatistics;
+import org.sosy_lab.java_smt.api.BooleanFormula;
 
 @Options(prefix = "cpa.predicate")
 public class PredicatePrecisionBootstrapper implements StatisticsProvider {
@@ -86,6 +101,11 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
 
     @Option(secure = true, description = "initial predicates are added as atomic predicates")
     private boolean splitIntoAtoms = false;
+
+    @Option(
+      secure = true,
+      description = "initial predicates are splitt into clauses, if they are a conmjunction")
+    private boolean splittConjunctionsIntoClauses = false;
 
     public boolean applyFunctionWide() {
       return applyFunctionWide;
@@ -266,6 +286,7 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
     return result;
   }
 
+  @SuppressWarnings("rawtypes")
   private PredicatePrecision parseInvariantsFromCorrectnessWitnessAsPredicates(Path pWitnessFile) {
     PredicatePrecision result = PredicatePrecision.empty();
     try {
@@ -289,8 +310,39 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
             MultimapBuilder.treeKeys().arrayListValues().build();
 
         List<AbstractionPredicate> predicates = new ArrayList<>();
+
+        if (options.splittConjunctionsIntoClauses) {
+
+        ExpressionTree tree = invariant.asExpressionTree();
+        if (tree instanceof LeafExpression) {
+          if (((LeafExpression) tree).getExpression() instanceof CExpression) {
+            for (CExpression expr : splittIntoClauses(
+                (CExpression) ((LeafExpression) tree).getExpression())) {
+
+              CtoFormulaConverter conv =
+                  new CtoFormulaConverter(
+                      new FormulaEncodingOptions(config),
+                      formulaManagerView,
+                      cfa.getMachineModel(),
+                      Optional.empty(),
+                      logger,
+                      shutdownNotifier,
+                      new CtoFormulaTypeHandler(logger, cfa.getMachineModel()),
+                      AnalysisDirection.FORWARD);
+              // PathFormula pFormula = pathFormulaManager.makeEmptyPathFormula();
+
+              CFAEdge edge = new DummyCFAEdge(null, null);
+              String function = invariant.getLocation().getFunctionName();
+              BooleanFormula f =
+                  conv.makePredicate(expr, edge, function, SSAMap.emptySSAMap().builder());
+                predicates
+                    .add(abstractionManager.makePredicate(formulaManagerView.uninstantiate(f)));
+            }
+          }
+        }
+        } else {
         // get atom predicates from invariant
-        if (options.splitIntoAtoms) {
+          if (options.splitIntoAtoms) {
           predicates.addAll(
               predicateAbstractionManager.getPredicatesForAtomsOf(
                   invariant.getFormula(formulaManagerView, pathFormulaManager, null)));
@@ -301,6 +353,7 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
           predicates.add(
               abstractionManager.makePredicate(
                   invariant.getFormula(formulaManagerView, pathFormulaManager, null)));
+          }
         }
         for (AbstractionPredicate predicate : predicates) {
           localPredicates.put(invariant.getLocation(), predicate);
@@ -327,6 +380,23 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
           Level.WARNING,
           e,
           "Predicate from correctness witness invariants could not be computed");
+    }
+    return result;
+  }
+
+  private Collection<CExpression> splittIntoClauses(CExpression pExpression) {
+    HashSet<CExpression> result = new HashSet<>();
+    if (pExpression instanceof CBinaryExpression) {
+      CBinaryExpression bin = (CBinaryExpression) pExpression;
+      if (bin.getOperator()
+          .equals(BinaryOperator.BINARY_AND)) {
+        result.addAll(splittIntoClauses(bin.getOperand1()));
+        result.addAll(splittIntoClauses(bin.getOperand2()));
+      } else {
+        result.add(bin);
+      }
+    } else {
+      result.add(pExpression);
     }
     return result;
   }
