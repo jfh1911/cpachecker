@@ -111,7 +111,7 @@ public interface ExternalInvariantGenerator {
         return new VeriAbsInvariantGenerator(pConfiguration);
       case SEAHORN:
       default:
-        return new SeahornInvariantGenerator(pConfiguration);
+        return new SeahornInvariantGenerationWrapper(pConfiguration);
 
     }
   }

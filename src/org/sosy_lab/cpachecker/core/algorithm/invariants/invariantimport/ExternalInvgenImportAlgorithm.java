@@ -317,7 +317,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
             CPAs.closeIfPossible(master.getFirst(), logger);
 
-            logger.log(Level.INFO, "RestartAlgorithm switches to the next configuration...");
+            logger.log(Level.INFO, "Restarting the master analysis");
             // store the generated invariants for later use
 
             pathToGeneratedInvar = result.getPathToInvariant();

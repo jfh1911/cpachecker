@@ -20,40 +20,24 @@
 package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
 import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.function.Supplier;
 import java.util.logging.Level;
-import javax.annotation.Nullable;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.TransformerException;
-import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.configuration.Option;
 import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
-import org.sosy_lab.cpachecker.cfa.model.CFANode;
-import org.sosy_lab.cpachecker.core.Specification;
-import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
-import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
-import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
 
 @Options(prefix = "invariantGeneration.kInduction.seahorn")
-public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
+public class SeahornInvariantGenerator {
 
   private static final String PATH_TO_SCRIPTS =
       "src/org/sosy_lab/cpachecker/core/algorithm/invariants/invariantimport/scripts/";
@@ -63,7 +47,6 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     description = "Path to the directory where the generated files should be stored. by default we use the /output dir")
   private String pathToOutDir = "output/";
   private static final int OFFSET = 0;
-  private File witnessFile;
 
   static final Level LOG_LEVEL = Level.ALL;
 
@@ -73,98 +56,28 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       throws InvalidConfigurationException {
     // set the output directory to the directory used by the cpa checker
     pConfiguration.inject(this);
-    witnessFile = new File("proofWitness_Seahorn.graphml");
+
     PATH_TO_CPA_DIR =
         SeahornInvariantGenerator.class.getProtectionDomain()
             .getCodeSource()
             .getLocation()
             .getPath() + "../";
-
   }
 
-  @Override
-  public File generateInvariant(
-      CFA pCfa,
-      @Nullable List<CFANode> pTargetNodesToGenerateFor,
-      Specification pSpecification,
-      LogManager pLogger,
-      ShutdownNotifier pShutdownNotifier,
-      Configuration pConfig)
-      throws CPAException {
-    try {
-      witnessFile.createNewFile();
-      // Start Seahorn:
-      List<Path> sourceFiles = pCfa.getFileNames();
-      if (sourceFiles.size() != 1) {
-        throw new CPAException("Can onyl handle CFAs, where one source file is contained");
-      }
-      Multimap<Integer, Pair<String, String>> genINvs =
-          genInvsAndLoad(sourceFiles.get(0), pCfa, pLogger);
-      pLogger.log(LOG_LEVEL, "Generated %d many invariants via seahorn", genINvs.entries().size());
-
-
-
-      InvariantsInC2WitnessTransformer transformer = new InvariantsInC2WitnessTransformer();
-      transformer
-          .transform(
-              genINvs,
-              witnessFile,
-              pCfa,
-              pSpecification,
-              sourceFiles.get(0).toFile(),
-              pLogger);
-      return witnessFile;
-    } catch (TransformerException | ParserConfigurationException | IOException
-        | InterruptedException e) {
-      // throw new CPAException(getMessage() + System.lineSeparator() + e.toString(), e);
-      throw new IllegalArgumentException(e);
-    }
-  }
-
-  @Override
-  public Set<CandidateInvariant> generateInvariantAndLoad(
-      CFA pCfa,
-      @Nullable List<CFANode> pTargetNodesToGenerateFor,
-      Specification pSpecification,
-      LogManager pLogger,
-      ShutdownNotifier pShutdownNotifier,
-      Configuration pConfig)
-      throws CPAException {
-    try {
-      File tempFile =
-          generateInvariant(
-              pCfa,
-              pTargetNodesToGenerateFor,
-              pSpecification,
-              pLogger,
-              pShutdownNotifier,
-              pConfig);
-
-      final Set<CandidateInvariant> candidates = new LinkedHashSet<>();
-
-      final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
-
-
-      WitnessInvariantsExtractor extractor =
-          new WitnessInvariantsExtractor(
-              pConfig,
-              pSpecification,
-              pLogger,
-              pCfa,
-              pShutdownNotifier,
-              tempFile.toPath());
-      extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
-      pLogger.log(LOG_LEVEL, "The invariants imported are" + candidates.toString());
-      pLogger.log(LOG_LEVEL, "The invariants imported are" + candidates.toString());
-      return candidates;
-    } catch (InvalidConfigurationException | InterruptedException e) {
-      throw new CPAException(getMessage() + System.lineSeparator() + e.toString(), e);
-    }
-  }
-
-  private Multimap<Integer, Pair<String, String>>
+  /**
+   *
+   * computes invariants via seahorn and a mapping from seahorn invariants to c code lines
+   *
+   *
+   * @param pPath the path to c file
+   * @param pCfa the cfa of the program
+   * @param pLogger the logger to use
+   * @return a multimap, where the first parameter is the line number, the second one a string of
+   *         the source code and the third a string with the c invariant
+   */
+  public Multimap<Integer, Pair<String, String>>
       genInvsAndLoad(Path pPath, CFA pCfa, LogManager pLogger)
-      throws IOException, InterruptedException {
+          throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
     String absolutePathToInvFile = PATH_TO_CPA_DIR + pathToOutDir;
@@ -208,16 +121,6 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       String line = reader.readLine();
       // Skip the first line
       try {
-
-        // Writer fw =
-        // Files.newBufferedWriter(
-        // Paths.get("/home/jfh/Documents/seahorn/generatedINvariants.txt"),
-        // Charset.defaultCharset(),
-        // StandardOpenOption.APPEND);
-        // PrintWriter out = new PrintWriter(fw);
-
-        // out.println(pCfa.getFileNames().get(0) + ":");
-
         while ((line = reader.readLine()) != null) {
           if (line.indexOf(",") == -1) {
             if (line.startsWith("main@entry")
@@ -242,15 +145,9 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
             }
             invs.put(lineNumber - OFFSET, Pair.of(code, inv));
 
-            // out.println(code + " <-->" + inv);
-
           }
         }
         reader.close();
-        // Store the generated invariant for later evaluations
-
-        // out.flush();
-        // out.close();
       } catch (IOException e) {
         throw new IllegalArgumentException(e);
       }
@@ -261,76 +158,6 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     }
 
     return invs;
-  }
-
-  private String getMessage() {
-    return "During computation, an interla error occured. The added exception provides a more detailed explanation"
-        + System.lineSeparator()
-        + "* @throws CPAException If the CFA contains more than one source file"
-        + System.lineSeparator()
-        + "  * @throws ParserConfigurationException in case of errors while parsing the Witness"
-        + System.lineSeparator()
-        + " * @throws IOException if the source file is not readable"
-        + System.lineSeparator()
-        + " * @throws TransformerException If the xml file is invalid"
-        + System.lineSeparator()
-        + " * @throws InterruptedException, InvalidConfigurationException  in case of problems loading the generated invariant"
-        + System.lineSeparator();
-  }
-
-  @Override
-  public Supplier<Path> getSupplierGeneratingInvariants(
-      CFA pCfa,
-      List<CFANode> pTargetNodesToGenerateFor,
-      Specification pSpecification,
-      LogManager pLogger,
-      ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
-      throws CPAException {
-    return new Supplier<>() {
-
-      @Override
-      public Path get() {
-        try {
-          Path res =
-              generateInvariant(
-                  pCfa,
-                  pTargetNodesToGenerateFor,
-                  pSpecification,
-                  pLogger,
-                  pShutdownManager,
-                  pConfig).toPath();
-          pLogger.log(Level.WARNING, "Invariant generation finished for tool : SeaHorn");
-          return res;
-        } catch (CPAException e) {
-          throw new RuntimeException(e.toString());
-        }
-      }
-    };
-  }
-
-  @Override
-  public Callable<Path> getCallableGeneratingInvariants(
-      CFA pCfa,
-      List<CFANode> pTargetNodesToGenerateFor,
-      Specification pSpecification,
-      LogManager pLogger,
-      ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
-      throws CPAException {
-    return () -> {
-      Path res =
-          generateInvariant(
-              pCfa,
-              pTargetNodesToGenerateFor,
-              pSpecification,
-              pLogger,
-              pShutdownManager,
-              pConfig).toPath();
-      pLogger.log(Level.WARNING, "Invariant generation finished for tool : VeriAbs");
-      return res;
-
-    };
   }
 
 }
