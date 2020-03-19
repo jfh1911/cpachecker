@@ -95,7 +95,7 @@ import org.sosy_lab.cpachecker.util.expressions.ExpressionTrees;
 import org.sosy_lab.cpachecker.util.expressions.LeafExpression;
 import org.sosy_lab.cpachecker.util.expressions.Simplifier;
 
-class CParserUtils {
+public class CParserUtils {
 
   private static final String CPACHECKER_TMP_PREFIX = "__CPAchecker_TMP";
 
@@ -221,7 +221,7 @@ class CParserUtils {
    * @return a collection of C statements.
    * @throws InvalidAutomatonException if the input strings cannot be interpreted as C statements.
    */
-  static Collection<CStatement> parseStatements(
+  public static Collection<CStatement> parseStatements(
       Set<String> pStatements,
       Optional<String> pResultFunction,
       CParser pCParser,
@@ -308,7 +308,7 @@ class CParserUtils {
    * @return an expression tree conjoining the expressions of successfully parsed expression
    *     statements.
    */
-  static ExpressionTree<AExpression> parseStatementsAsExpressionTree(
+  public static ExpressionTree<AExpression> parseStatementsAsExpressionTree(
       Set<String> pStatements,
       Optional<String> pResultFunction,
       CParser pCParser,
@@ -717,7 +717,7 @@ class CParserUtils {
   /**
    * Instances of this class are aggregates of utilities required for the parsing functions of {@link CParserUtils}.
    */
-  static class ParserTools {
+  public static class ParserTools {
 
     private final ExpressionTreeFactory<AExpression> expressionTreeFactory;
 
@@ -736,7 +736,8 @@ class CParserUtils {
       logger = Objects.requireNonNull(pLogger);
     }
 
-    static ParserTools create(ExpressionTreeFactory<AExpression> pExpressionTreeFactory,
+    public static ParserTools create(
+        ExpressionTreeFactory<AExpression> pExpressionTreeFactory,
         MachineModel pMachineModel, LogManager pLogger) {
       return new ParserTools(pExpressionTreeFactory, pMachineModel, pLogger);
     }

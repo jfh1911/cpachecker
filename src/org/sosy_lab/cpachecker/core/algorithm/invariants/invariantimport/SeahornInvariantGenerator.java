@@ -103,6 +103,53 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
       pLogger.log(LOG_LEVEL, "Generated %d many invariants via seahorn", genINvs.entries().size());
 
 
+      // SeaHornInvToARGTransformer parser =
+      // new SeaHornInvToARGTransformer(
+      // pConfig,
+      // pLogger,
+      // new InvariantsOptions(pConfig) ,
+      // pShutdownNotifier,
+      // pCfa,
+      // pSpecification,
+      // genINvs);
+      //
+      //
+      // ConfigurationBuilder builder = Configuration.builder();
+      //
+      // builder.copyFrom(pConfig);
+      // builder.setOption("analysis.reachedSet", "NORMAL");
+      //
+      //
+      // Configuration tempConfig = builder.build();
+      // ReachedSetFactory setFac = new ReachedSetFactory(tempConfig, pLogger);
+      // ReachedSet pReached = setFac.create();
+      //
+      // CPAAlgorithm algorithm = CPAAlgorithm.create(parser, pLogger, tempConfig,
+      // pShutdownNotifier);
+      // pReached.add(
+      // parser.getInitialState(pCfa.getMainFunction(), StateSpacePartition.getDefaultPartition()),
+      // parser.getInitialPrecision(
+      // pCfa.getMainFunction(),
+      // StateSpacePartition.getDefaultPartition()));
+      // algorithm.run(pReached);
+      //
+      // ImmutableSet<ARGState> rootStates = ARGUtils.getRootStates(pReached);
+      // if (rootStates.size() != 1) {
+      // pLogger.log(Level.INFO, "Could not determine ARG root for witness view");
+      // throw new IllegalArgumentException("");
+      // }
+      // ARGState rootState = rootStates.iterator().next();
+      //
+      // WitnessExporter argWitnessExporter =
+      // new WitnessExporter(tempConfig, pLogger, Specification.alwaysSatisfied(), pCfa);
+      // Witness witness = argWitnessExporter.generateProofWitness(
+      // rootState, Predicates.alwaysTrue(), BiPredicates.alwaysTrue());
+      //
+      // StringWriter pTarget = new StringWriter();
+      // WitnessToOutputFormatsUtils.writeToGraphMl(witness, pTarget );
+      // System.out.println(pTarget.toString());
+      //
+      // Thread.sleep(10000);
 
       InvariantsInC2WitnessTransformer transformer = new InvariantsInC2WitnessTransformer();
       transformer
@@ -162,7 +209,7 @@ public class SeahornInvariantGenerator implements ExternalInvariantGenerator {
     }
   }
 
-  private Multimap<Integer, Pair<String, String>>
+  public Multimap<Integer, Pair<String, String>>
       genInvsAndLoad(Path pPath, CFA pCfa, LogManager pLogger)
       throws IOException, InterruptedException {
 
