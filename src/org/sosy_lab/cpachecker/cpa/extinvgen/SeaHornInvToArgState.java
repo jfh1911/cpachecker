@@ -66,7 +66,7 @@ public class SeaHornInvToArgState
 
   @Override
   public int hashCode() {
-    return Objects.hash(defaultValue, globalInvMap, location);
+    return Objects.hash(location);
   }
 
   @Override
