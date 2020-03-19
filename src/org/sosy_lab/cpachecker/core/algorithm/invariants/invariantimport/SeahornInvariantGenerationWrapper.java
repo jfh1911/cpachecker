@@ -27,9 +27,10 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -173,7 +174,8 @@ public class SeahornInvariantGenerationWrapper implements ExternalInvariantGener
               .generateProofWitness(rootState, Predicates.alwaysTrue(), BiPredicates.alwaysTrue());
 
       @SuppressWarnings("resource")
-      BufferedWriter writer = new BufferedWriter(new FileWriter(witnessFile));
+      BufferedWriter writer =
+          Files.newBufferedWriter(witnessFile.toPath(), Charset.defaultCharset());
       WitnessToOutputFormatsUtils.writeToGraphMl(witness, writer);
       writer.flush();
       writer.close();
