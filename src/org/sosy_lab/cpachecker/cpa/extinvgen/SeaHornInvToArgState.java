@@ -77,7 +77,7 @@ public class SeaHornInvToArgState
     if (obj == null) {
       return false;
     }
-    if (getClass() != obj.getClass()) {
+    if (!(obj instanceof SeaHornInvToArgState)) {
       return false;
     }
     SeaHornInvToArgState other = (SeaHornInvToArgState) obj;
