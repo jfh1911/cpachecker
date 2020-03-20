@@ -19,9 +19,6 @@
  */
 package org.sosy_lab.cpachecker.cpa.extinvgen;
 
-import com.google.common.collect.Multimap;
-import java.nio.file.Path;
-import java.util.List;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
@@ -32,7 +29,6 @@ import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.UAInvar
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.interfaces.CPAFactory;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
-import org.sosy_lab.cpachecker.util.Pair;
 
 public class UAInvToARGCPA extends ExternalInvToARGCPA {
   UAInvariantGenerator generator;
@@ -55,14 +51,11 @@ public class UAInvToARGCPA extends ExternalInvToARGCPA {
       throws CPAException, InvalidConfigurationException {
     super(pConfig, pLogger, pShutdownNotifier, pCfa, pSpecification);
 
-    List<Path> sourceFiles = pCfa.getFileNames();
-    if (sourceFiles.size() != 1) {
+    if (pCfa.getFileNames().size() != 1) {
       throw new CPAException("Can onyl handle CFAs, where one source file is contained");
     }
     generator = new UAInvariantGenerator(pConfig);
-    Multimap<Integer, Pair<String, String>> mapping =
-        generator.genInvsAndLoad(sourceFiles.get(0), pCfa, pLogger);
-    super.injectAndParseInvariants(mapping);
+    super.injectAndParseInvariants(generator.genInvsAndLoad(pCfa, pLogger));
 
   }
 

@@ -56,7 +56,7 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
 
   static final Level LOG_LEVEL = Level.INFO;
   private final String PATH_TO_CPA_DIR;
-  String ABSOLUTE_PATH_TO_INV_FILE = "/home/cppp/Documents/cpachecker/cpachecker/output/";
+  String ABSOLUTE_PATH_TO_INV_FILE = "/run/";
   InvariantInC2WitnessParser parser;
 
   @Option(
@@ -137,7 +137,7 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   public Multimap<Integer, Pair<String, String>>
-      genInvsAndLoad(Path pPath, CFA pCfa, LogManager pLogger) throws CPAException {
+      genInvsAndLoad(CFA pCfa, LogManager pLogger) throws CPAException {
 
     // Start UA:
     List<Path> sourceFiles = pCfa.getFileNames();
@@ -181,8 +181,8 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
 
     // Since the cpachecker input does not like "-1*", replace them by a simple "-"
     Path pathToLogFile = Path.of(ABSOLUTE_PATH_TO_INV_FILE + "log.txt");
-    UALogParser parser = new UALogParser(pLogger);
-    return parser.parseLog(pathToLogFile);
+    UALogParser logParser = new UALogParser(pLogger);
+    return logParser.parseLog(pathToLogFile);
 
 
   }

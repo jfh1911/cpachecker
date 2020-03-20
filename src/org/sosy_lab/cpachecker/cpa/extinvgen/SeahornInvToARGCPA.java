@@ -20,7 +20,6 @@
 package org.sosy_lab.cpachecker.cpa.extinvgen;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.Multimap;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -35,7 +34,6 @@ import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.Seahorn
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.interfaces.CPAFactory;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
-import org.sosy_lab.cpachecker.util.Pair;
 
 public class SeahornInvToARGCPA extends ExternalInvToARGCPA {
   SeahornInvariantGenerator generator;
@@ -63,9 +61,7 @@ public class SeahornInvToARGCPA extends ExternalInvToARGCPA {
         throw new CPAException("Can onyl handle CFAs, where one source file is contained");
       }
       generator = new SeahornInvariantGenerator(pConfig);
-      Multimap<Integer, Pair<String, String>> mapping =
-          generator.genInvsAndLoad(sourceFiles.get(0), pCfa, pLogger);
-      super.injectAndParseInvariants(mapping);
+      super.injectAndParseInvariants(generator.genInvsAndLoad(sourceFiles.get(0), pCfa, pLogger));
 
     } catch (IOException | InterruptedException | InvalidConfigurationException e) {
       pLogger.log(InvariantInC2WitnessParser.LOG_LEVEL, Throwables.getStackTraceAsString(e));
