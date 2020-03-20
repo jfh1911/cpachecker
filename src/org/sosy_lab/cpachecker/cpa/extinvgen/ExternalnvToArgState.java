@@ -30,14 +30,14 @@ import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.expressions.ExpressionTree;
 import org.sosy_lab.cpachecker.util.expressions.ExpressionTrees;
 
-public class SeaHornInvToArgState
-    implements ExpressionTreeReportingState, LatticeAbstractState<SeaHornInvToArgState> {
+public class ExternalnvToArgState
+    implements ExpressionTreeReportingState, LatticeAbstractState<ExternalnvToArgState> {
 
   private Map<CFANode, ExpressionTree<AExpression>> globalInvMap;
   private ExpressionTree<AExpression> defaultValue;
   private CFANode location;
 
-  public SeaHornInvToArgState(
+  public ExternalnvToArgState(
       Map<CFANode, ExpressionTree<AExpression>> pGlobalInvMap,
       ExpressionTree<AExpression> pDefaultValue,
       CFANode pLocation) {
@@ -53,13 +53,13 @@ public class SeaHornInvToArgState
   }
 
   @Override
-  public SeaHornInvToArgState join(SeaHornInvToArgState pOther)
+  public ExternalnvToArgState join(ExternalnvToArgState pOther)
       throws CPAException, InterruptedException {
     return pOther;
   }
 
   @Override
-  public boolean isLessOrEqual(SeaHornInvToArgState pOther)
+  public boolean isLessOrEqual(ExternalnvToArgState pOther)
       throws CPAException, InterruptedException {
     return true;
   }
@@ -77,10 +77,10 @@ public class SeaHornInvToArgState
     if (obj == null) {
       return false;
     }
-    if (!(obj instanceof SeaHornInvToArgState)) {
+    if (!(obj instanceof ExternalnvToArgState)) {
       return false;
     }
-    SeaHornInvToArgState other = (SeaHornInvToArgState) obj;
+    ExternalnvToArgState other = (ExternalnvToArgState) obj;
     return Objects.equals(location, other.location);
   }
 

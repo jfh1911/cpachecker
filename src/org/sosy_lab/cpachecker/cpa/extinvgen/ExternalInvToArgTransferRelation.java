@@ -31,11 +31,11 @@ import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.util.expressions.ExpressionTree;
 
-public class SeaHornInvToArgTransferRelation implements TransferRelation {
+public class ExternalInvToArgTransferRelation implements TransferRelation {
   Map<CFANode, ExpressionTree<AExpression>> generatedInvariants;
   private ExpressionTree<AExpression> defaultValue;
 
-  public SeaHornInvToArgTransferRelation(
+  public ExternalInvToArgTransferRelation(
       Map<CFANode, ExpressionTree<AExpression>> pGeneratedInvariants,
       ExpressionTree<AExpression> pDefaultValue) {
     generatedInvariants = pGeneratedInvariants;
@@ -55,7 +55,7 @@ public class SeaHornInvToArgTransferRelation implements TransferRelation {
           throws CPATransferException, InterruptedException {
     return Collections
         .singleton(
-            new SeaHornInvToArgState(generatedInvariants, defaultValue, pCfaEdge.getSuccessor()));
+            new ExternalnvToArgState(generatedInvariants, defaultValue, pCfaEdge.getSuccessor()));
   }
 
 }
