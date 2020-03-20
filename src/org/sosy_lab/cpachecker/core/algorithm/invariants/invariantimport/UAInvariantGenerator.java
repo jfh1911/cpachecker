@@ -23,8 +23,6 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -35,18 +33,22 @@ import java.util.logging.Level;
 import javax.annotation.Nullable;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
+import org.sosy_lab.common.configuration.FileOption;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
+import org.sosy_lab.common.configuration.Option;
+import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
+import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
 
-
+@Options(prefix = "invariantGeneration.wrapper")
 public class UAInvariantGenerator implements ExternalInvariantGenerator {
-
+  private File witnessFile;
   private static final String PATH_TO_SCRIPTS =
       "src/org/sosy_lab/cpachecker/core/algorithm/invariants/invariantimport/scripts/";
 
@@ -54,15 +56,23 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
 
   static final Level LOG_LEVEL = Level.INFO;
   private final String PATH_TO_CPA_DIR;
-  String ABSOLUTE_PATH_TO_INV_FILE = "/run/";
+  String ABSOLUTE_PATH_TO_INV_FILE = "/home/cppp/Documents/cpachecker/cpachecker/output/";
+  InvariantInC2WitnessParser parser;
 
-  public UAInvariantGenerator() {
+  @Option(
+    secure = true,
+    description = "Path to the config file containing the cpas to generate and load invariants from seahorn")
+  @FileOption(FileOption.Type.REQUIRED_INPUT_FILE)
+  private Path configForInvGen = null;
+
+  public UAInvariantGenerator(Configuration pConfig) throws InvalidConfigurationException {
+    pConfig.inject(this);
     // set the output directory to the directory used by the cpa checker
     PATH_TO_CPA_DIR =
-        UAInvariantGenerator.class.getProtectionDomain()
-            .getCodeSource()
-            .getLocation()
-            .getPath() + "../";
+        UAInvariantGenerator.class.getProtectionDomain().getCodeSource().getLocation().getPath()
+            + "../";
+    parser = new InvariantInC2WitnessParser(pConfig);
+    witnessFile = new File("proofWitness_UA.graphml");
   }
 
   @Override
@@ -75,16 +85,13 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
       Configuration pConfig)
       throws CPAException {
 
-    // Start UA:
-    List<Path> sourceFiles = pCfa.getFileNames();
-    if (sourceFiles.size() != 1) {
-      throw new CPAException("Can onyl handle CFAs, where one source file is contained");
-    }
-    try {
-      return genInvs(sourceFiles.get(0), pLogger);
-    } catch (IOException | InterruptedException e) {
-      throw new CPAException("", e);
-    }
+    return parser.generateInvariant(
+        pCfa,
+        pSpecification,
+        pLogger,
+        pShutdownNotifier,
+        configForInvGen,
+        witnessFile);
 
   }
 
@@ -129,10 +136,25 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
     }
   }
 
-  private File genInvs(Path pPath, LogManager pLogger) throws IOException, InterruptedException {
+  public Multimap<Integer, Pair<String, String>>
+      genInvsAndLoad(Path pPath, CFA pCfa, LogManager pLogger) throws CPAException {
+
+    // Start UA:
+    List<Path> sourceFiles = pCfa.getFileNames();
+    if (sourceFiles.size() != 1) {
+      throw new CPAException("Can onyl handle CFAs, where one source file is contained");
+    }
+    try {
+      return genInvs(sourceFiles.get(0), pLogger);
+    } catch (IOException | InterruptedException e) {
+      throw new CPAException("", e);
+    }
+  }
+
+  private Multimap<Integer, Pair<String, String>> genInvs(Path pPath, LogManager pLogger)
+      throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
-
 
     pLogger.log(LOG_LEVEL, "Storing generated inv file at files at " + ABSOLUTE_PATH_TO_INV_FILE);
 
@@ -158,14 +180,10 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
     }
 
     // Since the cpachecker input does not like "-1*", replace them by a simple "-"
-    Path pathToWitness = Path.of(ABSOLUTE_PATH_TO_INV_FILE + "witness.graphml");
-    String content = new String(Files.readAllBytes(pathToWitness), StandardCharsets.UTF_8);
-    while (content.contains("-1 * ")) {
-      content = content.replace("-1 * ", "-");
-    }
-    Files.write(pathToWitness, content.getBytes(StandardCharsets.UTF_8));
+    Path pathToLogFile = Path.of(ABSOLUTE_PATH_TO_INV_FILE + "log.txt");
+    UALogParser parser = new UALogParser(pLogger);
+    return parser.parseLog(pathToLogFile);
 
-    return new File(ABSOLUTE_PATH_TO_INV_FILE + "witness.graphml");
 
   }
 
@@ -238,4 +256,5 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
 
     };
   }
+
 }
