@@ -123,7 +123,7 @@ public class SeahornInvariantGenerator {
       try {
         while ((line = reader.readLine()) != null) {
           if (line.indexOf(",") == -1) {
-            if (line.startsWith("main@entry")
+            if (line.contains("@")
                 || line.startsWith("main@verifier.error.split")
                 || line.startsWith("main@")) {
               // Cannot parse these invariants (true or false, hence ignore it)
@@ -139,10 +139,14 @@ public class SeahornInvariantGenerator {
             // +1 to ignore the ','
             String code = line.substring(line.indexOf(",") + 1);
             String inv = reader.readLine();
-            // FIXME: Find elegant solution:
-            if (inv.contains("(n>=0) && ")) {
-              inv = inv.replace("(n>=0) && ", "");
+            while (inv.contains("||")) {
+              inv = inv.replace("||", "|");
             }
+
+            // // FIXME: Find elegant solution:
+            // if (inv.contains("(n>=0) && ")) {
+            // inv = inv.replace("(n>=0) && ", "");
+            // }
             invs.put(lineNumber - OFFSET, Pair.of(code, inv));
 
           }
