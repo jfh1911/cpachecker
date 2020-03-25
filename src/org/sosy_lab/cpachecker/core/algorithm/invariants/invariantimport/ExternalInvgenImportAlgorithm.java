@@ -127,6 +127,9 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       throws InvalidConfigurationException, CPAException, InterruptedException {
     super(pConfig, pLogger, pShutdownNotifier, pSpecification, pCfa);
     pConfig.inject(this);
+    if (extInvGens == null) {
+      extInvGens = new ArrayList<>();
+    }
     pLogger.log(Level.WARNING, extInvGens.toString());
 
     // logger = pLogger;
@@ -172,6 +175,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       }
     }
     // Than, initalize the invariant generation analysis
+
     provider =
         new ExternalInvariantProvider(
             globalConfig,
@@ -474,11 +478,15 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       if (e instanceof CounterexampleAnalysisFailed || e instanceof RefinementFailedException) {
         // status = status.withPrecise(false);
       }
-      logger.log(Level.WARNING, "Attention: throwing", Throwables.getStackTraceAsString(e));
-      throw e;
+      logger.log(
+          Level.WARNING,
+          "Attention: An error occured! Reason:",
+          Throwables.getStackTraceAsString(e));
     } catch (InterruptedException e) {
-      logger.log(Level.WARNING, "Attention: throwing", Throwables.getStackTraceAsString(e));
-      throw e;
+      logger.log(
+          Level.WARNING,
+          "Attention: the ananlysis was interrupted! Reason:",
+          Throwables.getStackTraceAsString(e));
     }
 
     // final CoreComponentsFactory coreComponents =

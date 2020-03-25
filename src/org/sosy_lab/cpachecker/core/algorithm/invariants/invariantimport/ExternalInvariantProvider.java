@@ -120,8 +120,9 @@ public class ExternalInvariantProvider {
     // Check if a timeout is needed
     int initialCapacity = extInvGens.size() + (timeoutForInvariantExecution > 0 ? 1 : 0);
     if (initialCapacity <= 0) {
-      throw new IllegalArgumentException(
-          "At least one invariant generation tool needs to be present");
+      logger.log(Level.WARNING, "No invariant generation present, returning 0");
+      this.hasFinished = true;
+      return hasFinished;
     }
 
     List<Callable<Path>> suppliers = new ArrayList<>(initialCapacity);
@@ -214,7 +215,7 @@ public class ExternalInvariantProvider {
           break;
         }
       } catch (InterruptedException | ExecutionException e) {
-        logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
+        // logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
         logger.log(Level.WARNING, "One invairant generation failed!");
       }
 
