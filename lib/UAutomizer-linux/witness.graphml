@@ -31,18 +31,18 @@
 <key id="tokens" attr.name="tokens" for="edge"/>
 <key id="control" attr.name="control" for="edge"/>
 <key id="originfile" attr.name="originfile" for="edge">
-<default>/home/cppp/Documents/cpachecker/cpachecker/doc/examples/reach_loops/loop-invgen--nest-if3.i</default>
+<default>/home/cppp/Documents/cpachecker/cpachecker/doc/examples/loops-crafted--sumt3.c</default>
 </key>
 <key id="sourcecode" attr.name="sourcecode" for="edge"/>
 <graph edgedefault="directed">
-<data key="programfile">/home/cppp/Documents/cpachecker/cpachecker/doc/examples/reach_loops/loop-invgen--nest-if3.i</data>
-<data key="programhash">67bb0790f696b3c18eb630bed2fc34fee971c82b</data>
+<data key="programfile">/home/cppp/Documents/cpachecker/cpachecker/doc/examples/loops-crafted--sumt3.c</data>
+<data key="programhash">061e6ba1d53d9c5c96dfbb0744b589f75380e27b</data>
 <data key="sourcecodelang">C</data>
 <data key="producer">Automizer</data>
 <data key="specification">CHECK( init(main()), LTL(G ! call(__VERIFIER_error())) )
 
 </data>
-<data key="creationtime">2020-03-17T13:44Z</data>
+<data key="creationtime">2020-03-20T09:17Z</data>
 <data key="witness-type">correctness_witness</data>
 <data key="architecture">32bit</data>
 <node id="N0">
@@ -62,13 +62,11 @@
 <node id="N12"/>
 <node id="N13"/>
 <node id="N14"/>
-<node id="N15">
-<data key="invariant">1 &lt;= l</data>
+<node id="N15"/>
+<node id="N16">
+<data key="invariant">i + k + j &lt;= l &amp;&amp; l &lt;= i + k + j</data>
 </node>
-<node id="N16"/>
-<node id="N17">
-<data key="invariant">1 &lt;= i &amp;&amp; 1 &lt;= l</data>
-</node>
+<node id="N17"/>
 <node id="N18"/>
 <node id="N19"/>
 <node id="N20"/>
@@ -80,36 +78,35 @@
 <node id="N26"/>
 <node id="N27"/>
 <node id="N28"/>
-<node id="N29"/>
 <edge id="E0" source="N0" target="N1">
-<data key="endline">11</data>
-<data key="startline">11</data>
-<data key="sourcecode">int i,k,n,l;</data>
+<data key="endline">9</data>
+<data key="startline">9</data>
+<data key="sourcecode">int SIZE = 20000001;</data>
 </edge>
 <edge id="E1" source="N1" target="N2">
 <data key="endline">12</data>
 <data key="startline">12</data>
-<data key="sourcecode">__VERIFIER_nondet_int()</data>
+<data key="sourcecode">unsigned int n,i,k,j,l=0;</data>
 </edge>
 <edge id="E2" source="N2" target="N3">
 <data key="endline">12</data>
 <data key="startline">12</data>
-<data key="sourcecode">n = __VERIFIER_nondet_int()</data>
+<data key="sourcecode">unsigned int n,i,k,j,l=0;</data>
 </edge>
 <edge id="E3" source="N3" target="N4">
 <data key="endline">12</data>
 <data key="startline">12</data>
-<data key="sourcecode">__VERIFIER_nondet_int()</data>
+<data key="sourcecode">unsigned int n,i,k,j,l=0;</data>
 </edge>
 <edge id="E4" source="N4" target="N5">
-<data key="endline">13</data>
-<data key="startline">13</data>
-<data key="sourcecode">__VERIFIER_nondet_int()</data>
+<data key="endline">12</data>
+<data key="startline">12</data>
+<data key="sourcecode">unsigned int n,i,k,j,l=0;</data>
 </edge>
 <edge id="E5" source="N5" target="N6">
-<data key="endline">13</data>
-<data key="startline">13</data>
-<data key="sourcecode">l = __VERIFIER_nondet_int()</data>
+<data key="endline">12</data>
+<data key="startline">12</data>
+<data key="sourcecode">unsigned int n,i,k,j,l=0;</data>
 </edge>
 <edge id="E6" source="N6" target="N7">
 <data key="endline">13</data>
@@ -117,172 +114,146 @@
 <data key="sourcecode">__VERIFIER_nondet_int()</data>
 </edge>
 <edge id="E7" source="N7" target="N8">
-<data key="endline">14</data>
-<data key="startline">14</data>
-<data key="control">condition-true</data>
-<data key="sourcecode">[!(l&gt;0)]</data>
+<data key="endline">13</data>
+<data key="startline">13</data>
+<data key="sourcecode">n = __VERIFIER_nondet_int()</data>
 </edge>
-<edge id="E8" source="N7" target="N9">
-<data key="endline">14</data>
-<data key="startline">14</data>
-<data key="control">condition-false</data>
-<data key="sourcecode">[!(!(l&gt;0))]</data>
-</edge>
-<edge id="E9" source="N8" target="N10">
-<data key="endline">14</data>
-<data key="startline">14</data>
-<data key="sourcecode">return 0;</data>
-</edge>
-<edge id="E10" source="N9" target="N11">
-<data key="endline">15</data>
-<data key="startline">15</data>
-<data key="control">condition-true</data>
-<data key="sourcecode">[!(l &lt; 1000000)]</data>
-</edge>
-<edge id="E11" source="N9" target="N12">
-<data key="endline">15</data>
-<data key="startline">15</data>
-<data key="control">condition-false</data>
-<data key="sourcecode">[!(!(l &lt; 1000000))]</data>
-</edge>
-<edge id="E12" source="N11" target="N10">
-<data key="endline">15</data>
-<data key="startline">15</data>
-<data key="sourcecode">return 0;</data>
-</edge>
-<edge id="E13" source="N12" target="N13">
-<data key="endline">16</data>
-<data key="startline">16</data>
-<data key="control">condition-true</data>
-<data key="sourcecode">[!(n &lt; 1000000)]</data>
-</edge>
-<edge id="E14" source="N12" target="N14">
-<data key="endline">16</data>
-<data key="startline">16</data>
-<data key="control">condition-false</data>
-<data key="sourcecode">[!(!(n &lt; 1000000))]</data>
-</edge>
-<edge id="E15" source="N13" target="N10">
-<data key="endline">16</data>
-<data key="startline">16</data>
-<data key="sourcecode">return 0;</data>
-</edge>
-<edge id="E16" source="N14" target="N15">
-<data key="endline">17</data>
-<data key="enterLoopHead">true</data>
-<data key="startline">17</data>
-<data key="sourcecode">k=1</data>
-</edge>
-<edge id="E17" source="N15" target="N10">
-<data key="endline">17</data>
-<data key="startline">17</data>
-<data key="control">condition-true</data>
-<data key="sourcecode">[k&lt;n]</data>
-</edge>
-<edge id="E18" source="N15" target="N16">
-<data key="endline">17</data>
-<data key="startline">17</data>
-<data key="control">condition-false</data>
-<data key="sourcecode">[!(k&lt;n)]</data>
-</edge>
-<edge id="E19" source="N16" target="N17">
-<data key="endline">18</data>
-<data key="enterLoopHead">true</data>
-<data key="startline">18</data>
-<data key="sourcecode">i=l</data>
-</edge>
-<edge id="E20" source="N17" target="N18">
-<data key="endline">18</data>
-<data key="startline">18</data>
-<data key="control">condition-true</data>
-<data key="sourcecode">[i&lt;n]</data>
-</edge>
-<edge id="E21" source="N17" target="N19">
-<data key="endline">18</data>
-<data key="startline">18</data>
-<data key="control">condition-false</data>
-<data key="sourcecode">[!(i&lt;n)]</data>
-</edge>
-<edge id="E22" source="N18" target="N20">
-<data key="endline">21</data>
-<data key="startline">21</data>
+<edge id="E8" source="N8" target="N9">
+<data key="endline">13</data>
+<data key="startline">13</data>
 <data key="sourcecode">__VERIFIER_nondet_int()</data>
 </edge>
-<edge id="E23" source="N19" target="N21">
-<data key="endline">19</data>
-<data key="startline">19</data>
-<data key="sourcecode">__VERIFIER_assert(1&lt;=i)</data>
-</edge>
-<edge id="E24" source="N19" target="N22">
-<data key="endline">19</data>
-<data key="startline">19</data>
-<data key="sourcecode">__VERIFIER_assert(1&lt;=i)</data>
-</edge>
-<edge id="E25" source="N20" target="N23">
-<data key="endline">21</data>
-<data key="startline">21</data>
+<edge id="E9" source="N9" target="N10">
+<data key="endline">14</data>
+<data key="startline">14</data>
 <data key="control">condition-true</data>
-<data key="sourcecode">[__VERIFIER_nondet_int()]</data>
+<data key="sourcecode">[!(n &lt;= SIZE)]</data>
 </edge>
-<edge id="E26" source="N20" target="N24">
-<data key="endline">21</data>
-<data key="startline">21</data>
+<edge id="E10" source="N9" target="N11">
+<data key="endline">14</data>
+<data key="startline">14</data>
 <data key="control">condition-false</data>
-<data key="sourcecode">[!(__VERIFIER_nondet_int())]</data>
+<data key="sourcecode">[!(!(n &lt;= SIZE))]</data>
 </edge>
-<edge id="E27" source="N21" target="N17">
+<edge id="E11" source="N10" target="N12">
+<data key="endline">14</data>
+<data key="startline">14</data>
+<data key="sourcecode">return 0;</data>
+</edge>
+<edge id="E12" source="N11" target="N13">
+<data key="endline">15</data>
+<data key="startline">15</data>
+<data key="sourcecode">i = 0</data>
+</edge>
+<edge id="E13" source="N13" target="N14">
+<data key="endline">16</data>
+<data key="startline">16</data>
+<data key="sourcecode">j = 0</data>
+</edge>
+<edge id="E14" source="N14" target="N15">
+<data key="endline">17</data>
+<data key="startline">17</data>
+<data key="sourcecode">k = 0</data>
+</edge>
+<edge id="E15" source="N15" target="N16">
 <data key="endline">18</data>
 <data key="enterLoopHead">true</data>
 <data key="startline">18</data>
-<data key="sourcecode">i++</data>
+<data key="sourcecode">l=0</data>
 </edge>
-<edge id="E28" source="N22" target="N25">
+<edge id="E16" source="N16" target="N17">
+<data key="endline">19</data>
+<data key="startline">19</data>
+<data key="control">condition-true</data>
+<data key="sourcecode">[l &lt; n]</data>
+</edge>
+<edge id="E17" source="N16" target="N18">
+<data key="endline">19</data>
+<data key="startline">19</data>
+<data key="control">condition-false</data>
+<data key="sourcecode">[!(l &lt; n)]</data>
+</edge>
+<edge id="E18" source="N17" target="N19">
+<data key="endline">29</data>
+<data key="startline">29</data>
+<data key="sourcecode">__VERIFIER_assert((i+j+k) == l)</data>
+</edge>
+<edge id="E19" source="N18" target="N20">
+<data key="endline">21</data>
+<data key="startline">21</data>
+<data key="control">condition-true</data>
+<data key="sourcecode">[!(l%3)]</data>
+</edge>
+<edge id="E20" source="N18" target="N21">
+<data key="endline">21</data>
+<data key="startline">21</data>
+<data key="control">condition-false</data>
+<data key="sourcecode">[!(!(l%3))]</data>
+</edge>
+<edge id="E21" source="N19" target="N22">
+<data key="endline">29</data>
+<data key="startline">29</data>
+<data key="sourcecode">__VERIFIER_assert((i+j+k) == l)</data>
+</edge>
+<edge id="E22" source="N20" target="N23">
+<data key="endline">22</data>
+<data key="startline">22</data>
+<data key="sourcecode">i = i + 1</data>
+</edge>
+<edge id="E23" source="N21" target="N24">
+<data key="endline">23</data>
+<data key="startline">23</data>
+<data key="control">condition-true</data>
+<data key="sourcecode">[!(l%2)]</data>
+</edge>
+<edge id="E24" source="N21" target="N25">
+<data key="endline">23</data>
+<data key="startline">23</data>
+<data key="control">condition-false</data>
+<data key="sourcecode">[!(!(l%2))]</data>
+</edge>
+<edge id="E25" source="N22" target="N26">
 <data key="endline">4</data>
 <data key="startline">4</data>
 <data key="control">condition-true</data>
 <data key="sourcecode">[!(cond)]</data>
 </edge>
-<edge id="E29" source="N22" target="N26">
+<edge id="E26" source="N22" target="N27">
 <data key="endline">4</data>
 <data key="startline">4</data>
 <data key="control">condition-false</data>
 <data key="sourcecode">[!(!(cond))]</data>
 </edge>
-<edge id="E30" source="N23" target="N27">
-<data key="endline">21</data>
-<data key="startline">21</data>
-<data key="sourcecode">__VERIFIER_nondet_int()</data>
-</edge>
-<edge id="E31" source="N24" target="N28">
-<data key="endline">21</data>
-<data key="startline">21</data>
-<data key="sourcecode">__VERIFIER_nondet_int()</data>
-</edge>
-<edge id="E32" source="N25" target="N29">
-<data key="endline">5</data>
-<data key="startline">5</data>
-<data key="sourcecode">__VERIFIER_error()</data>
-</edge>
-<edge id="E33" source="N25" target="N26">
-<data key="endline">5</data>
-<data key="startline">5</data>
-<data key="sourcecode">__VERIFIER_error()</data>
-</edge>
-<edge id="E34" source="N26" target="N21">
-<data key="endline">19</data>
-<data key="startline">19</data>
-<data key="sourcecode">__VERIFIER_assert(1&lt;=i)</data>
-</edge>
-<edge id="E35" source="N27" target="N28">
-<data key="endline">22</data>
-<data key="startline">22</data>
-<data key="sourcecode">l = l + 1</data>
-</edge>
-<edge id="E36" source="N28" target="N15">
-<data key="endline">17</data>
+<edge id="E27" source="N23" target="N16">
+<data key="endline">27</data>
 <data key="enterLoopHead">true</data>
-<data key="startline">17</data>
-<data key="sourcecode">k++</data>
+<data key="startline">27</data>
+<data key="sourcecode">l = l+1</data>
+</edge>
+<edge id="E28" source="N24" target="N23">
+<data key="endline">24</data>
+<data key="startline">24</data>
+<data key="sourcecode">j = j+1</data>
+</edge>
+<edge id="E29" source="N25" target="N23">
+<data key="endline">26</data>
+<data key="startline">26</data>
+<data key="sourcecode">k = k+1</data>
+</edge>
+<edge id="E30" source="N26" target="N28">
+<data key="endline">5</data>
+<data key="startline">5</data>
+<data key="sourcecode">__VERIFIER_error()</data>
+</edge>
+<edge id="E31" source="N26" target="N27">
+<data key="endline">5</data>
+<data key="startline">5</data>
+<data key="sourcecode">__VERIFIER_error()</data>
+</edge>
+<edge id="E32" source="N27" target="N12">
+<data key="endline">30</data>
+<data key="startline">30</data>
+<data key="sourcecode">return 0;</data>
 </edge>
 </graph>
 </graphml>

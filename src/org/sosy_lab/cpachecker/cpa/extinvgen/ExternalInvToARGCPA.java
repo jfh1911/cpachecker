@@ -96,8 +96,7 @@ public abstract class ExternalInvToARGCPA implements ConfigurableProgramAnalysis
       LogManager pLogger,
       ShutdownNotifier pShutdownNotifier,
       CFA pCfa,
-      Specification pSpecification)
-      throws CPAException {
+      Specification pSpecification) {
     config = pConfig;
     logger = pLogger;
     shutdownNotifier = pShutdownNotifier;
@@ -268,16 +267,16 @@ public abstract class ExternalInvToARGCPA implements ConfigurableProgramAnalysis
       }
     }
     // Cleanup due to performance reasons
-    cleanup(lineToEdgesOfMain);
+    // cleanup(lineToEdgesOfMain);
 
     return lineToEdgesOfMain;
   }
 
 
 
-  private void cleanup(Map<Integer, Set<CFAEdge>> pLineToEdgesOfMain) {
-
-    // FIXME: Just for test
+  // private void cleanup(Map<Integer, Set<CFAEdge>> pLineToEdgesOfMain) {
+  //
+  //
     // // IF any location has an edge, that is an loop enter head, remove the other locations
     // for (Entry<Integer, Set<CFAEdge>> entry : pLineToEdgesOfMain.entrySet()) {
     // List<CFAEdge> loopHeads =
@@ -290,6 +289,6 @@ public abstract class ExternalInvToARGCPA implements ConfigurableProgramAnalysis
     // }
     // }
     //
-  }
+  // }
 
 }

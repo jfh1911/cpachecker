@@ -28,7 +28,6 @@ import com.google.common.collect.ImmutableSet;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.charset.Charset;
@@ -144,7 +143,8 @@ public class InvariantInC2WitnessParser {
 
       writer.flush();
       writer.close();
-      try (BufferedReader br = new BufferedReader(new FileReader(witnessFile))) {
+      try (BufferedReader br =
+          Files.newBufferedReader(witnessFile.toPath(), Charset.defaultCharset())) {
         String line;
         while ((line = br.readLine()) != null) {
           System.out.println(line);

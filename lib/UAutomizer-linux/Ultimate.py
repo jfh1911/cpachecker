@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3.6
 
 from __future__ import print_function
 
@@ -6,11 +6,14 @@ import argparse
 import fnmatch
 import os
 import re
+import signal
 import subprocess
 import sys
+import xml.etree.ElementTree as elementtree
 from stat import ST_MODE
+from functools import lru_cache
 
-version = 'b24fe966'
+version = 'f470102c'
 toolname = 'Automizer'
 write_ultimate_output_to_file = True
 output_file_name = 'Ultimate.log'
@@ -62,6 +65,7 @@ class _PropParser:
         self.ltl = False
         self.init = None
         self.ltlformula = None
+        self.mem_cleanup = False
 
         for match in self.prop_regex.finditer(self.content):
             init, formula = match.groups()
@@ -86,6 +90,8 @@ class _PropParser:
                 self.termination = True
             elif formula == 'G ! overflow':
                 self.overflow = True
+            elif formula == 'G valid-memcleanup':
+                self.mem_cleanup = True
             elif not check_string_contains(self.word_regex.findall(formula), self.forbidden_words):
                 # its ltl
                 if self.ltl:
@@ -109,10 +115,16 @@ class _PropParser:
         return self.mem_deref and not self.mem_free and not self.mem_memtrack
 
     def is_any_mem(self):
-        return self.mem_deref or self.mem_free or self.mem_memtrack
+        return self.mem_deref or self.mem_free or self.mem_memtrack or self.mem_cleanup
 
     def is_mem_deref_memtrack(self):
         return self.mem_deref and self.mem_memtrack
+
+    def is_mem_memtrack(self):
+        return self.mem_memtrack
+
+    def is_mem_cleanup(self):
+        return self.mem_cleanup
 
     def is_overflow(self):
         return self.overflow
@@ -146,7 +158,7 @@ class _CallFailed(Exception):
 class _ExitCode:
     _exit_codes = ["SUCCESS", "FAIL_OPEN_SUBPROCESS", "FAIL_NO_INPUT_FILE", "FAIL_NO_WITNESS_TO_VALIDATE",
                    "FAIL_MULTIPLE_FILES", "FAIL_NO_TOOLCHAIN_FOUND", "FAIL_NO_SETTINGS_FILE_FOUND",
-                   "FAIL_ULTIMATE_ERROR"]
+                   "FAIL_ULTIMATE_ERROR", "FAIL_SIGNAL", "FAIL_NO_JAVA", "FAIL_NO_SPEC", "FAIL_NO_ARCH", "FAIL_WRONG_WITNESS_TYPE" ]
 
     def __init__(self):
         pass
@@ -167,10 +179,46 @@ def check_string_contains(strings, words):
                 return True
     return False
 
+@lru_cache(maxsize=1)
+def get_java():
+    candidates = [
+        'java',
+        '/usr/bin/java',
+        '/opt/oracle-jdk-bin-1.8.0.202/bin/java',
+        '/usr/lib/jvm/java-8-openjdk-amd64/bin/java'
+    ]
+    for candidate in candidates:
+        candidate = which(candidate)
+        if not candidate:
+            continue
+        process = call_desperate([candidate,'-version'])
+        while True:
+            line = process.stdout.readline().decode('utf-8', 'ignore')
+            if not line:
+                break
+            if "1.8" in line: 
+                return candidate
+    print_err("Did not find Java 1.8 in known paths")
+    sys.exit(ExitCode.FAIL_NO_JAVA)
 
-def get_binary():
+def which(program):
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+    return None
+
+def create_ultimate_base_call():
     ultimate_bin = [
-        '/usr/lib/jvm/java-1.8.0-openjdk-amd64/bin/java',
+        get_java(),
         '-Dosgi.configuration.area=' + os.path.join(datadir, 'config'),
         '-Xmx12G',
         '-Xms1G',
@@ -181,7 +229,8 @@ def get_binary():
 
     ultimate_bin = ultimate_bin + [
         '-jar', os.path.join(ultimatedir, 'plugins/org.eclipse.equinox.launcher_1.3.100.v20150511-1540.jar'),
-        '-data', datadir
+        '-data', '@noDefault',
+        '-ultimatedata', datadir
     ]
 
     return ultimate_bin
@@ -216,7 +265,7 @@ def contains_overapproximation_result(line):
 
 
 def run_ultimate(ultimate_call, prop):
-    print('Calling Ultimate with: ' + " ".join(ultimate_call))
+    print("Calling Ultimate with: " + " ".join(ultimate_call))
 
     ultimate_process = call_desperate(ultimate_call)
 
@@ -290,7 +339,10 @@ def run_ultimate(ultimate_call, prop):
             if line.find(mem_free_false_string) != -1:
                 result_msg = 'valid-free'
             if line.find(mem_memtrack_false_string) != -1:
-                result_msg = 'valid-memtrack'
+                if prop.is_mem_cleanup():
+                    result_msg = 'valid-memcleanup'
+                else:
+                    result_msg = 'valid-memtrack'
             if line.find(overflow_false_string) != -1:
                 result = 'FALSE'
                 result_msg = 'OVERFLOW'
@@ -303,7 +355,7 @@ def run_ultimate(ultimate_call, prop):
 
 
 def _init_child_process():
-    new_umask = 022
+    new_umask = 0o022
     os.umask(new_umask)
 
 
@@ -318,20 +370,6 @@ def call_desperate(call_args):
         print('Error trying to open subprocess ' + str(call_args))
         sys.exit(ExitCode.FAIL_OPEN_SUBPROCESS)
     return child_process
-
-
-def call_relaxed(call_args):
-    if call_args is None:
-        print('No call_args given')
-        return '', None
-
-    try:
-        child_process = subprocess.Popen(call_args, stdout=subprocess.PIPE, preexec_fn=_init_child_process)
-        return child_process.communicate()
-    except Exception as ex:
-        print('Error trying to start ' + str(call_args))
-        print(str(ex))
-        return '', None
 
 
 def create_callargs(callargs, arguments):
@@ -394,7 +432,7 @@ def create_cli_settings(prop, validate_witness, architecture, c_file):
         ret.append('--witnessprinter.graph.data.programhash')
 
         sha = call_desperate(['sha1sum', c_file[0]])
-        ret.append(sha.communicate()[0].split()[0])
+        ret.append(sha.communicate()[0].split()[0].decode('utf-8', 'ignore'))
 
     return ret
 
@@ -427,6 +465,20 @@ def check_dir(d):
         raise argparse.ArgumentTypeError("Directory %s does not exist" % d)
     return d
 
+def check_witness_type(witness, type):
+    tree = elementtree.parse(witness)
+    root = tree.getroot()
+    namespace = '{http://graphml.graphdrawing.org/xmlns}'
+    query = ".//{0}graph/{0}data[@key='witness-type']".format(namespace)
+    elem = tree.find(query)
+    if elem is not None:
+        if type == elem.text:
+            return
+        else:
+            print('Provided witness file has type "{}", but you specified witness type "{}"'.format(elem.text, type))
+    else:
+        print('Could not find node with xpath query "{}" in witness file "{}", XML malformed?'.format(query, witness))
+    sys.exit(ExitCode.FAIL_WRONG_WITNESS_TYPE)
 
 def debug_environment():
     # first, list all environment variables
@@ -440,7 +492,9 @@ def debug_environment():
     call_relaxed_and_print(['cat', '/proc/meminfo'])
 
     print('--- Java ---')
-    call_relaxed(['java', '-version'])
+    java_bin = get_java()
+    print("Using java binary {}".format(java_bin))
+    call_relaxed_and_print([java_bin, '-version'])
 
     print('--- Files ---')
     file_counter = 0
@@ -460,7 +514,7 @@ def debug_environment():
 
     print('--- Versions ---')
     print(version)
-    call_relaxed_and_print(create_callargs(get_binary(), ['--version']))
+    call_relaxed_and_print(create_callargs(create_ultimate_base_call(), ['--version']))
 
     print('--- umask ---')
     call_relaxed_and_print(['touch', 'testfile'])
@@ -469,12 +523,21 @@ def debug_environment():
 
 
 def call_relaxed_and_print(call_args):
-    stdout, stderr = call_relaxed(call_args)
+    if call_args is None:
+        print('No call_args given')
+    try:
+        child_process = subprocess.Popen(call_args, stdout=subprocess.PIPE, preexec_fn=_init_child_process)
+        stdout, stderr = child_process.communicate()
+    except Exception as ex:
+        print('Error trying to start ' + str(call_args))
+        print(str(ex))
+        return
+
     if stdout:
-        print(stdout)
+        print(stdout.decode('utf-8', 'ignore'))
     if stderr:
         print('sdterr:')
-        print(stderr)
+        print(stderr.decode('utf-8', 'ignore'))
 
 
 def parse_args():
@@ -484,17 +547,12 @@ def parse_args():
     global witnessdir
     global witnessname
     global enable_assertions
-    if (len(sys.argv) == 2) and (sys.argv[1] == '--version'):
-        print(version)
-        sys.exit(ExitCode.SUCCESS)
-
-    if (len(sys.argv) == 2) and (sys.argv[1] == '--envdebug'):
-        debug_environment()
-        sys.exit(ExitCode.SUCCESS)
 
     parser = argparse.ArgumentParser(description='Ultimate wrapper script for SVCOMP')
     parser.add_argument('--version', action='store_true',
                         help='Print Ultimate.py\'s version and exit')
+    parser.add_argument('--ultversion', action='store_true',
+                        help='Print Ultimate\'s version and exit')
     parser.add_argument('--config', nargs=1, metavar='<dir>', type=check_dir,
                         help='Specify the directory in which the static config files are located; default is config/ '
                              'relative to the location of this script')
@@ -507,19 +565,22 @@ def parse_args():
                         help='Print Ultimate\'s full output to stderr after verification ends')
     parser.add_argument('--envdebug', action='store_true',
                         help='Before doing anything, print as much information about the environment as possible')
+    parser.add_argument('--spec', metavar='<file>', nargs=1, type=check_file,
+                        help='An property (.prp) file from SVCOMP')
+    parser.add_argument('--architecture', choices=['32bit', '64bit'],
+                        help='Choose which architecture (defined as per SV-COMP rules) should be assumed')
+    parser.add_argument('--file', metavar='<file>', nargs=1, type=check_file,
+                        help='One C file')
     parser.add_argument('--validate', nargs=1, metavar='<file>', type=check_file,
                         help='Activate witness validation mode (if supported) and specify a .graphml file as witness')
-    parser.add_argument('--spec', metavar='<file>', nargs=1, type=check_file, required=True,
-                        help='An property (.prp) file from SVCOMP')
-    parser.add_argument('--architecture', choices=['32bit', '64bit'], required=True,
-                        help='Choose which architecture (defined as per SV-COMP rules) should be assumed')
-    parser.add_argument('--file', metavar='<file>', nargs=1, type=check_file, required=True,
-                        help='One C file')
+    parser.add_argument('--witness-type', choices=['correctness_witness', 'violation_witness'],
+                        help='Specify the type of witness you want to validate')
     parser.add_argument('--witness-dir', nargs=1, metavar='<dir>', type=check_dir,
                         help='Specify the directory in which witness files should be saved; default is besides '
                              'the script')
     parser.add_argument('--witness-name', nargs=1,
                         help='Specify a filename for the generated witness; default is witness.graphml')
+
 
     args, extras = parser.parse_known_args()
 
@@ -528,14 +589,27 @@ def parse_args():
 
     if args.envdebug:
         debug_environment()
+        sys.exit(ExitCode.SUCCESS)
 
     if args.version:
         print(version)
         sys.exit(ExitCode.SUCCESS)
 
-    # first, debug environment no matter what to find the error
-    # if not args.envdebug:
-    #    debug_environment()
+    if args.ultversion:
+        call_relaxed_and_print(create_ultimate_base_call() + ['--version'])
+        sys.exit(ExitCode.SUCCESS)
+
+    if args.file is None:
+        print_err("--file is required")
+        sys.exit(ExitCode.FAIL_NO_INPUT_FILE)
+
+    if args.spec is None:
+        print_err("--spec is required")
+        sys.exit(ExitCode.FAIL_NO_SPEC)
+
+    if args.architecture is None:
+        print_err("--architecture is required")
+        sys.exit(ExitCode.FAIL_NO_ARCH)
 
     witness = None
     c_file = args.file[0]
@@ -543,6 +617,8 @@ def parse_args():
 
     if args.validate:
         witness = args.validate[0]
+        if args.witness_type:
+            check_witness_type(witness, args.witness_type)
 
     if args.config:
         configdir = args.config[0]
@@ -582,6 +658,9 @@ def create_settings_search_string(prop, architecture):
     elif prop.is_only_mem_deref():
         print('Checking for memory safety (deref)')
         settings_search_string = 'Deref'
+    elif prop.is_mem_cleanup():
+        print('Checking for memory safety (memcleanup)')
+        settings_search_string = 'MemCleanup'
     elif prop.is_termination():
         print('Checking for termination')
         settings_search_string = 'Termination'
@@ -606,7 +685,7 @@ def get_toolchain_path(prop, witnessmode):
             search_string = '*Termination.xml'
     elif witnessmode:
         search_string = '*ReachWitnessValidation.xml'
-    elif prop.is_mem_deref_memtrack():
+    elif prop.is_any_mem():
         search_string = '*MemDerefMemtrack.xml'
     elif prop.is_ltl():
         search_string = '*LTL.xml'
@@ -657,17 +736,17 @@ def main():
 
     # execute ultimate
     print('Version ' + version)
-    ultimate_bin = get_binary()
+    ultimate_bin = create_ultimate_base_call()
     ultimate_call = create_callargs(ultimate_bin,
                                     ['-tc', toolchain_file, '-i', input_files, '-s', settings_file,
                                      cli_arguments])
     if extras:
         ultimate_call = ultimate_call + extras
 
-    # actually run Ultimate 
+    # actually run Ultimate, first in integer mode
     result, result_msg, overapprox, ultimate_output, error_path = run_ultimate(ultimate_call, prop)
 
-    if overapprox:
+    if overapprox or result.startswith('ERROR') or result.startswith('UNKNOWN'):
         try:
             settings_file = get_settings_path(True, settings_search_string)
         except _AbortButPrint:
@@ -701,7 +780,7 @@ def main():
     print(result)
     if verbose:
         print('--- Real Ultimate output ---')
-        print(ultimate_output.encode('UTF-8', 'replace'))
+        print(ultimate_output)
 
     if result.startswith('ERROR'):
         sys.exit(ExitCode.FAIL_ULTIMATE_ERROR)
@@ -709,5 +788,14 @@ def main():
     sys.exit(ExitCode.SUCCESS)
 
 
+def signal_handler(sig, frame):
+    print('Killed by {}'.format(sig))
+    sys.exit(ExitCode.FAIL_SIGNAL)
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    # just ignore pipe exceptions
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     main()
