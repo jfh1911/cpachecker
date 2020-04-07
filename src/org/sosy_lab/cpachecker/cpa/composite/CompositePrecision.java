@@ -35,13 +35,13 @@ import org.sosy_lab.cpachecker.core.interfaces.AdjustablePrecision;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.core.interfaces.WrapperPrecision;
 
-class CompositePrecision implements WrapperPrecision, AdjustablePrecision, Serializable {
+public class CompositePrecision implements WrapperPrecision, AdjustablePrecision, Serializable {
 
   private static final long serialVersionUID = 1L;
 
   private final ImmutableList<Precision> precisions;
 
-  CompositePrecision(List<Precision> precisions) {
+  public CompositePrecision(List<Precision> precisions) {
     this.precisions = ImmutableList.copyOf(precisions);
   }
 

@@ -31,6 +31,7 @@ import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.ListenableFuture;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Writer;
@@ -135,7 +136,8 @@ public class BMCAlgorithm extends AbstractBMCAlgorithm implements Algorithm {
       ShutdownManager pShutdownManager,
       CFA pCFA,
       final Specification specification,
-      AggregatedReachedSets pAggregatedReachedSets)
+      AggregatedReachedSets pAggregatedReachedSets,
+      List<ListenableFuture<Path>> pHelperFutures)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     super(
         pAlgorithm,
@@ -148,7 +150,8 @@ public class BMCAlgorithm extends AbstractBMCAlgorithm implements Algorithm {
         specification,
         new BMCStatistics(),
         false /* no invariant generator */,
-        pAggregatedReachedSets);
+        pAggregatedReachedSets,
+        pHelperFutures);
     pConfig.inject(this);
 
     cpa = pCPA;

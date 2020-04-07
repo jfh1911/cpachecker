@@ -41,6 +41,8 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.AnalysisDirection;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.InvariantSupplier.TrivialInvariantSupplier;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.WitnessInjectableCPA;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.WitnessInjector;
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.defaults.MergeSepOperator;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractDomain;
@@ -78,7 +80,8 @@ import org.sosy_lab.java_smt.api.SolverException;
  */
 @Options(prefix = "cpa.predicate")
 public class PredicateCPA
-    implements ConfigurableProgramAnalysis, StatisticsProvider, ProofChecker, AutoCloseable {
+    implements ConfigurableProgramAnalysis, StatisticsProvider, ProofChecker, AutoCloseable,
+    WitnessInjectableCPA {
 
   public static CPAFactory factory() {
     return AutomaticCPAFactory.forType(PredicateCPA.class).withOptions(BlockOperator.class);
@@ -130,6 +133,8 @@ public class PredicateCPA
   private final PredicateProvider predicateProvider;
   private final FormulaManagerView formulaManager;
   private final PredicateCpaOptions options;
+
+  private final PredicateWitnessInjector wintessInjector;
 
   // path formulas for PCC
   private final Map<PredicateAbstractState, PathFormula> computedPathFormulaePcc = new HashMap<>();
@@ -228,6 +233,8 @@ public class PredicateCPA
             abstractionManager,
             predicateManager,
             statistics);
+
+    wintessInjector = new PredicateWitnessInjector(precisionBootstraper);
   }
 
   @Override
@@ -380,5 +387,10 @@ public class PredicateCPA
 
   public void changeExplicitAbstractionNodes(final ImmutableSet<CFANode> explicitlyAbstractAt) {
     blk.setExplicitAbstractionNodes(explicitlyAbstractAt);
+  }
+
+  @Override
+  public WitnessInjector getWitnessInjector() {
+    return wintessInjector;
   }
 }

@@ -91,12 +91,18 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
   @Option(
     secure = true,
-    description = "If one do not wnat to start imediatly with the invariant generation.")
+    description = "If one do not want to start imediatly with the invariant generation.")
   public int startInvariantExecutionTimer = -1;
 
   @Option(secure = true, required = true, description = "TODO")
   @FileOption(FileOption.Type.OPTIONAL_INPUT_FILE)
   private Path masterAnalysisconfigFiles;
+
+  @Option(
+    secure = true,
+    required = true,
+    description = "If the other igs should be killed after forst found non trivial invariant")
+  private boolean injectWitnesses;
 
   private final ShutdownManager shutdown;
 
@@ -116,6 +122,8 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
   private @Nullable CFANode mainEntryNode;
   ShutdownManager masterShutdownManager;
   ShutdownManager slaveShutdownManager;
+
+  private boolean shutdownMaster = true;
 
   public ExternalInvgenImportAlgorithm(
       final Configuration pConfig,
@@ -185,17 +193,17 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
             slaveShutdownManager,
             timeoutForInvariantExecution,
             startInvariantExecutionTimer,
-            extInvGens);
+            extInvGens,
+            injectWitnesses);
 
   }
 
   @Override
   public AlgorithmStatus run(ReachedSet pReachedSet) throws CPAException, InterruptedException {
 
+    // Initialize everything:
     mainEntryNode = AbstractStates.extractLocation(pReachedSet.getFirstState());
-
     ForwardingReachedSet forwardingReachedSet = (ForwardingReachedSet) pReachedSet;
-
     ListeningExecutorService exec = listeningDecorator(newFixedThreadPool(NUM_OF_THREATS_NEEDED));
 
     AtomicBoolean terminateInvGen = new AtomicBoolean(false);
@@ -229,7 +237,6 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     };
 
     Callable<ParallelInvGenResult> invGenRunner = new Callable<>() {
-
       @Override
       public ParallelInvGenResult call() throws Exception {
         provider.start(terminateInvGen);
@@ -243,16 +250,17 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
         }
       }
     };
-    List<ListenableFuture<ParallelInvGenResult>> futures = new ArrayList<>(NUM_OF_THREATS_NEEDED);
+    List<ListenableFuture<ParallelInvGenResult>> helperFutures = new ArrayList<>(NUM_OF_THREATS_NEEDED);
 
-    futures.add(exec.submit(masterRunner));
-    futures.add(exec.submit(invGenRunner));
+    // Start the exucutino of master and helper
+    ListenableFuture<ParallelInvGenResult> masterFuture = exec.submit(masterRunner);
+    helperFutures.add(exec.submit(invGenRunner));
 
     // shutdown the executor service,
     exec.shutdown();
 
     try {
-      handleFutureResults(futures, terminateInvGen);
+      handleFutureResults(masterFuture, helperFutures, terminateInvGen);
 
     } finally {
       // Wait some time so that all threads are shut down and we have a happens-before relation
@@ -268,10 +276,15 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       return finalResult.getStatus();
     }
 
+    // Kill the master
+
     // restart with generated invaraints
     shutdown.getNotifier().shutdownIfNecessary();
     try {
-      retryWithGeneratedInvariants(pathToGeneratedInvar, shutdown, forwardingReachedSet);
+      retryWithGeneratedInvariants(
+          pathToGeneratedInvar,
+          shutdown,
+          forwardingReachedSet);
       if (finalResult != null) {
         forwardingReachedSet.setDelegate(finalResult.getReached());
         return finalResult.getStatus();
@@ -284,14 +297,18 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
   }
 
   private void handleFutureResults(
-      List<ListenableFuture<ParallelInvGenResult>> futures,
+      ListenableFuture<ParallelInvGenResult> pMasterFuture,
+      List<ListenableFuture<ParallelInvGenResult>> helperFuture,
       AtomicBoolean pTerminateInvGen)
       throws InterruptedException, Error {
-
+    List<ListenableFuture<ParallelInvGenResult>> futures = new ArrayList<>();
+    futures.add(pMasterFuture);
+    futures.addAll(helperFuture);
     try {
       ListenableFuture<ParallelInvGenResult> f = Futures.inCompletionOrder(futures).get(0);
       ParallelInvGenResult result = f.get();
-      if (result.isAnalysis) {
+      if (result.isAnalysis()) {
+        // Kill inv gens
         pTerminateInvGen.getAndSet(true);
         // Wair for a second to let the analysis termiante if it is still sleeping
         try {
@@ -299,7 +316,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
         } catch (InterruptedException e) {
           logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
         }
-        Futures.inCompletionOrder(futures).get(1).cancel(true);
+        // Futures.inCompletionOrder(futures).get(1).cancel(true);
         finalResult = ParallelAnalysisResult.of(result.reachedSet, result.getResult(), "");
       }
 
@@ -316,6 +333,8 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
             // return analysisRes.get().result;
           } else {
             // Stop the master analysis
+
+            if (shutdownMaster) {
             masterShutdownManager.requestShutdown("Invariant generation is finished");
             CPAs.closeCpaIfPossible(master.getSecond(), logger);
 
@@ -323,7 +342,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
             logger.log(Level.INFO, "Restarting the master analysis");
             // store the generated invariants for later use
-
+            }
             pathToGeneratedInvar = result.getPathToInvariant();
 
           }
@@ -402,6 +421,8 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
           pPathToInvariant.toString());
       builder.setOption("cpa.predicate.abstraction.initialPredicates", pPathToInvariant.toString());
       builder.setOption("analysis.generateExternalInvariants", "false");
+      builder.setOption("analysis.injectGeneratedInvariants", Boolean.toString(injectWitnesses));
+
       // builder.setOption("analysis.generateExternalInvariants", "false");
 
       Configuration newConfig = builder.build();
@@ -413,9 +434,12 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
               mainEntryNode,
               singleShutdownManager,
               new AggregatedReachedSets(),
-              stats);
+              stats,
+              // if no witnesses should be injected, just dont provide it to the new master
+              injectWitnesses ? provider.getFutures() : new ArrayList<>());
 
       currentAlgorithm = restartAlg.getFirst();
+
       // currentCpa = restartAlg.getSecond();
       currentReached = restartAlg.getThird();
 

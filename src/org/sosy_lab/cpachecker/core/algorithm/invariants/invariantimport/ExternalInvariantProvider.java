@@ -23,6 +23,7 @@ import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -33,12 +34,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 import org.sosy_lab.common.ShutdownManager;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
@@ -69,6 +73,7 @@ public class ExternalInvariantProvider {
   private List<ExternalInvariantGenerators> extInvGens;
   private boolean waitForOthers = false;
   private AtomicBoolean shoudlShutdownTimeout = new AtomicBoolean(false);
+  private ImmutableList<ListenableFuture<Path>> futures;
 
   public ExternalInvariantProvider(
       Configuration pConfig,
@@ -78,7 +83,8 @@ public class ExternalInvariantProvider {
       ShutdownManager pShutdownManager,
       int pTimeoutForInvariantExecution,
       int pStartInvariantExecutionTimer,
-      List<ExternalInvariantGenerators> pExtInvGens) {
+      List<ExternalInvariantGenerators> pExtInvGens,
+      boolean pInjectWitnesses) {
     super();
     // options = pOptions;
     computedPath = new ArrayList<>();
@@ -93,6 +99,8 @@ public class ExternalInvariantProvider {
     startInvariantExecutionTimer = pStartInvariantExecutionTimer;
     timeoutForInvariantExecution = pTimeoutForInvariantExecution;
     extInvGens = pExtInvGens;
+
+    waitForOthers = pInjectWitnesses;
 
   }
 
@@ -118,7 +126,8 @@ public class ExternalInvariantProvider {
     }
 
     // Check if a timeout is needed
-    int initialCapacity = extInvGens.size() + (timeoutForInvariantExecution > 0 ? 1 : 0);
+    int initialCapacity = extInvGens.size();
+    // + (timeoutForInvariantExecution > 0 ? 1 : 0);
     if (initialCapacity <= 0) {
       logger.log(Level.WARNING, "No invariant generation present, returning 0");
       this.hasFinished = true;
@@ -126,17 +135,17 @@ public class ExternalInvariantProvider {
     }
 
     List<Callable<Path>> suppliers = new ArrayList<>(initialCapacity);
-    if (timeoutForInvariantExecution > 0) {
-      logger.log(
-          Level.INFO,
-          "Setting up a timmer with timeout of seconds:",
-          timeoutForInvariantExecution);
-      // The timeout supplier waits for the specified timeout and return an empty optional
-
-      Callable<Path> timeoutCallable =
-          getTimeoutcallable(timeoutForInvariantExecution, shoudlShutdownTimeout);
-      suppliers.add(timeoutCallable);
-    }
+    // if (timeoutForInvariantExecution > 0) {
+    // logger.log(
+    // Level.INFO,
+    // "Setting up a timmer with timeout of seconds:",
+    // timeoutForInvariantExecution);
+    // // The timeout supplier waits for the specified timeout and return an empty optional
+    //
+    // Callable<Path> timeoutCallable =
+    // getTimeoutcallable(timeoutForInvariantExecution, shoudlShutdownTimeout);
+    // suppliers.add(timeoutCallable);
+    // }
     ListeningExecutorService exec =
         listeningDecorator(Executors.newFixedThreadPool(initialCapacity));
 
@@ -167,76 +176,88 @@ public class ExternalInvariantProvider {
     }
 
     // Start the computation
-    List<ListenableFuture<Path>> futures = new ArrayList<>(initialCapacity);
-    for (Callable<Path> callable : suppliers) {
-      futures.add(exec.submit(callable));
+    futures =
+        ImmutableList
+            .copyOf(suppliers.stream().map(s -> exec.submit(s)).collect(Collectors.toList()));
 
-    }
     // shutdown the executor service,
     exec.shutdown();
 
     try {
-      handleFutureResults(futures);
+      handleFutureResults();
 
     } catch (Exception e) {
       logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
     } finally {
       // Wait some time so that all threads are shut down and we have a happens-before relation
       // (necessary for statistics).
-      if (!awaitTermination(exec, 10, TimeUnit.SECONDS)) {
-        logger.log(Level.WARNING, "Not all threads are terminated, shutting them down now!");
-      }
-      exec.shutdownNow();
+      // if (!awaitTermination(exec, 10, TimeUnit.SECONDS)) {
+      // logger.log(Level.WARNING, "Not all threads are terminated, shutting them down now!");
+      // }
+      // exec.shutdownNow();
     }
 
     hasFinished = true;
     return hasFinished;
   }
 
-  private void handleFutureResults(List<ListenableFuture<Path>> futures) {
+  private void handleFutureResults() {
 
     // List<CPAException> exceptions = new ArrayList<>();
 
-    for (ListenableFuture<Path> f : Futures.inCompletionOrder(futures)) {
+    ListenableFuture<Path> f = Futures.inCompletionOrder(futures).get(0);
 
       Path result;
       try {
-        result = f.get();
+        if (timeoutForInvariantExecution > 0) {
+          result = f.get(timeoutForInvariantExecution, TimeUnit.SECONDS);
+        } else {
+          result = f.get();
+        }
         if (result != null) {
           this.computedPath.add(result);
         }
-        if (!this.waitForOthers) {
-          // Allow the threads, especially the timeout thread some time to shutdown
-          shoudlShutdownTimeout.getAndSet(true);
-          LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
-          for (int i = 1; i < futures.size(); i++) {
-            Futures.inCompletionOrder(futures).get(i).cancel(true);
-          }
-          break;
-        }
+
       } catch (InterruptedException | ExecutionException e) {
         // logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
+        futures.parallelStream().forEach(fut -> fut.cancel(true));
         logger.log(Level.WARNING, "One invairant generation failed!");
+      } catch (TimeoutException | CancellationException e) {
+        logger.log(Level.WARNING, "The invariant generation timed-out!");
+        futures.parallelStream().forEach(fut -> fut.cancel(true));
       }
 
-    }
 
-  }
-
-  private Callable<Path>
-      getTimeoutcallable(int pTimeoutForInvariantExecution, AtomicBoolean shouldShutdown) {
-    return () -> {
-      for (int i = 0; i < pTimeoutForInvariantExecution && !shouldShutdown.get(); i++) {
+      if (!this.waitForOthers) {
+        // Allow the threads, especially the timeout thread some time to shutdown
+        shoudlShutdownTimeout.getAndSet(true);
         LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
+        logger.log(Level.INFO, "killing other generators");
+        futures.parallelStream().forEach(fut -> fut.cancel(true));
+      futures.parallelStream()
+          .forEach(fut -> System.out.println(fut.isCancelled() || fut.isDone()));
       }
-      logger.log(Level.WARNING, "The invariant generation timed out!");
-      return null;
 
-    };
+
   }
+
+  // private Callable<Path>
+  // getTimeoutcallable(int pTimeoutForInvariantExecution, AtomicBoolean shouldShutdown) {
+  // return () -> {
+  // for (int i = 0; i < pTimeoutForInvariantExecution && !shouldShutdown.get(); i++) {
+  // LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
+  // }
+  // logger.log(Level.WARNING, "The invariant generation timed out!");
+  // return null;
+  //
+  // };
+  // }
 
   public Path getFirstComputedPath() {
     if (hasFinished) {
+      if (computedPath.get(0) == null) {
+        logger.log(Level.WARNING, "Returning null path for generated witness");
+      }
       return computedPath.get(0);
     } else {
       // FIXME: Enhance error handling
@@ -245,27 +266,27 @@ public class ExternalInvariantProvider {
     }
   }
 
-  private static boolean
-      awaitTermination(ListeningExecutorService exec, long timeout, TimeUnit unit) {
-    long timeoutNanos = unit.toNanos(timeout);
-    long endNanos = System.nanoTime() + timeoutNanos;
-
-    boolean interrupted = Thread.interrupted();
-    try {
-      while (true) {
-        try {
-          return exec.awaitTermination(timeoutNanos, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-          interrupted = false;
-          timeoutNanos = Math.max(0, endNanos - System.nanoTime());
-        }
-      }
-    } finally {
-      if (interrupted) {
-        Thread.currentThread().interrupt();
-      }
-    }
-  }
+  // private static boolean
+  // awaitTermination(ListeningExecutorService exec, long timeout, TimeUnit unit) {
+  // long timeoutNanos = unit.toNanos(timeout);
+  // long endNanos = System.nanoTime() + timeoutNanos;
+  //
+  // boolean interrupted = Thread.interrupted();
+  // try {
+  // while (true) {
+  // try {
+  // return exec.awaitTermination(timeoutNanos, TimeUnit.NANOSECONDS);
+  // } catch (InterruptedException e) {
+  // interrupted = false;
+  // timeoutNanos = Math.max(0, endNanos - System.nanoTime());
+  // }
+  // }
+  // } finally {
+  // if (interrupted) {
+  // Thread.currentThread().interrupt();
+  // }
+  // }
+  // }
 
   public AggregatedReachedSets getReachedSet() throws CPAException {
     if (hasFinished) {
@@ -332,6 +353,11 @@ public class ExternalInvariantProvider {
 
   public boolean hasComputedInvariants() {
     return computedPath != null && computedPath.size() > 0;
+  }
+
+  List<ListenableFuture<Path>> getFutures() {
+    futures.forEach(f -> logger.log(Level.WARNING, f.toString()));
+    return this.futures;
   }
 
 }

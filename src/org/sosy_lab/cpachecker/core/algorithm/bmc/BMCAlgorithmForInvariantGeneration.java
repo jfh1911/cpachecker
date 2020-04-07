@@ -24,6 +24,9 @@
 package org.sosy_lab.cpachecker.core.algorithm.bmc;
 
 import com.google.common.base.Verify;
+import com.google.common.util.concurrent.ListenableFuture;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import org.sosy_lab.common.ShutdownManager;
@@ -71,7 +74,8 @@ public class BMCAlgorithmForInvariantGeneration extends AbstractBMCAlgorithm {
       final Specification specification,
       BMCStatistics pBMCStatistics,
       CandidateGenerator pCandidateGenerator,
-      AggregatedReachedSets pAggregatedReachedSets)
+      AggregatedReachedSets pAggregatedReachedSets,
+      List<ListenableFuture<Path>> pHelperFutures)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     super(
         pAlgorithm,
@@ -84,7 +88,8 @@ public class BMCAlgorithmForInvariantGeneration extends AbstractBMCAlgorithm {
         specification,
         pBMCStatistics,
         true /* invariant generator */,
-        pAggregatedReachedSets);
+        pAggregatedReachedSets,
+        pHelperFutures);
     Verify.verify(checkIfInductionIsPossible(pCFA, pLogger));
     candidateGenerator = Objects.requireNonNull(pCandidateGenerator);
   }
