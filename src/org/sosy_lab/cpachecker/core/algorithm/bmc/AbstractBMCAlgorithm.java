@@ -466,7 +466,7 @@ abstract class AbstractBMCAlgorithm
           if (invariantGenerator.isProgramSafe()
               // We eventually need to re-check, if the candidateGenerator produces more candidates,
               // used during witness injection for CoVerCIG
-              || (sound & !candidateGenerator.produceMoreCandidates())) {
+              || (!candidateGenerator.produceMoreCandidates() && sound)) {
             return AlgorithmStatus.SOUND_AND_PRECISE;
           }
         }
