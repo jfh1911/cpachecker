@@ -9,7 +9,6 @@ $4veriabs --property-file  $3unreach-call.prp $1 > /dev/null 2>&1
 
 #Copy the invariant file to $2
 echo cp witness.graphml $2
-rm $2
 cp witness.graphml $2
-rm witness.graphml
+
 
