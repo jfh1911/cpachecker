@@ -34,6 +34,8 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools.SeahornInvariantGenerationWrapper;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools.UAInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools.VeriAbsInvariantGenerator;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 public interface ExternalInvariantGenerator {

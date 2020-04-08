@@ -25,7 +25,7 @@ import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.core.Specification;
-import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.UAInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools.UAInvariantGenerator;
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.interfaces.CPAFactory;
 import org.sosy_lab.cpachecker.exceptions.CPAException;

@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
+package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -43,6 +43,7 @@ import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
 
@@ -60,8 +61,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
   static final Level LOG_LEVEL = Level.INFO;
 
   private final String PATH_TO_CPA_DIR;
-  String ABSOLUTE_PATH_TO_INV_FILE =
-      "/home/jfh/Documents/cpachecker/output/" + "witness.graphml";
+  String ABSOLUTE_PATH_TO_INV_FILE = "/run/" + "witness.graphml";
 
   public VeriAbsInvariantGenerator(Configuration pConfiguration)
       throws InvalidConfigurationException {
@@ -141,6 +141,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
   private File genInvs(Path pPath, LogManager pLogger) throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
+
 
     pLogger.log(LOG_LEVEL, "Storing generated inv file at files at " + ABSOLUTE_PATH_TO_INV_FILE);
 
@@ -240,8 +241,8 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
               pSpecification,
               pLogger,
               pShutdownManager,
-              pConfig).toPath();
-      pLogger.log(Level.WARNING, "Invariant generation finished for tool : VeriAbs");
+                pConfig).toPath();
+        pLogger.log(Level.WARNING, "Invariant generation finished for tool : VeriAbs", res);
       return res;
 
     };
