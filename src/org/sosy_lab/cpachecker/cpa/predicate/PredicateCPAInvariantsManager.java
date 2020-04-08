@@ -23,6 +23,7 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Streams;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.errorprone.annotations.FormatMethod;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -386,18 +387,19 @@ class PredicateCPAInvariantsManager implements StatisticsProvider, InvariantSupp
   }
 
   /**
-   * This method finds invariants for usage during refinement or precision
-   * adjustment of the PredicateAnalysisCPA. The exact use case can be configured.
+   * This method finds invariants for usage during refinement or precision adjustment of the
+   * PredicateAnalysisCPA. The exact use case can be configured.
    *
-   * For better performance this method should only be called during refinement.
-   * The computed invariants (if there are some) are cached for later usage in
-   * precision adjustment.
+   * For better performance this method should only be called during refinement. The computed
+   * invariants (if there are some) are cached for later usage in precision adjustment.
+   * 
    */
   public void findInvariants(
       final ARGPath allStatesTrace,
       final List<ARGState> abstractionStatesTrace,
       final PathFormulaManager pPfmgr,
-      final Solver pSolver) {
+      final Solver pSolver,
+      List<ListenableFuture<Path>> pCompletableWitnesses) {
 
     updateGlobalInvariants(); // we want to have the newest global invariants available
 
@@ -460,7 +462,10 @@ class PredicateCPAInvariantsManager implements StatisticsProvider, InvariantSupp
                 if (pair.getFirst() != null) {
                 wasSuccessful =
                     findInvariantPartOfPathFormulaWithKInduction(
-                            pair.getSecond(), pair.getFirst(), invariantShutdown.getNotifier())
+                        pair.getSecond(),
+                        pair.getFirst(),
+                        invariantShutdown.getNotifier(),
+                        pCompletableWitnesses)
                         || wasSuccessful;
                 } else {
                   addResultToCache(bfmgr.makeTrue(), pair.getSecond());
@@ -486,7 +491,8 @@ class PredicateCPAInvariantsManager implements StatisticsProvider, InvariantSupp
                 findInvariantInterpolants(
                     allStatesTrace,
                     abstractionStatesTrace,
-                    invariantShutdown.getNotifier());
+                    invariantShutdown.getNotifier(),
+                    pCompletableWitnesses);
             break;
 
           default:
@@ -615,7 +621,10 @@ class PredicateCPAInvariantsManager implements StatisticsProvider, InvariantSupp
   }
 
   private boolean findInvariantPartOfPathFormulaWithKInduction(
-      final CFANode pLocation, PathFormula pPathFormula, ShutdownNotifier pInvariantShutdown)
+      final CFANode pLocation,
+      PathFormula pPathFormula,
+      ShutdownNotifier pInvariantShutdown,
+      List<ListenableFuture<Path>> pCompletableWitnesses)
       throws InterruptedException, CPAException, InvalidConfigurationException {
     assert semiCNFConverter != null;
 
@@ -643,7 +652,8 @@ class PredicateCPAInvariantsManager implements StatisticsProvider, InvariantSupp
               new OnlyWarningsLogmanager(logger),
               cfa,
               specification,
-              candidateGenerator)
+          candidateGenerator,
+          pCompletableWitnesses)
           .checkCandidates();
 
       Set<CandidateInvariant> invariants = candidateGenerator.getConfirmedCandidates();
@@ -780,7 +790,10 @@ class PredicateCPAInvariantsManager implements StatisticsProvider, InvariantSupp
   }
 
   private boolean findInvariantInterpolants(
-      ARGPath pPath, List<ARGState> pAbstractionStatesTrace, ShutdownNotifier pInvariantShutdown)
+      ARGPath pPath,
+      List<ARGState> pAbstractionStatesTrace,
+      ShutdownNotifier pInvariantShutdown,
+      List<ListenableFuture<Path>> pCompletableWitnesses)
       throws CPAException, InterruptedException, InvalidConfigurationException {
 
     stats.rfKindTime.start();
@@ -796,7 +809,8 @@ class PredicateCPAInvariantsManager implements StatisticsProvider, InvariantSupp
               new OnlyWarningsLogmanager(logger),
               cfa,
               specification,
-              candidateGenerator);
+              candidateGenerator,
+              pCompletableWitnesses);
       invChecker.checkCandidates();
 
       if (candidateGenerator.hasFoundInvariants()) {

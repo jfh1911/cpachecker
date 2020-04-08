@@ -287,7 +287,7 @@ public class PredicatePrecisionBootstrapper implements StatisticsProvider {
   }
 
   @SuppressWarnings("rawtypes")
-  private PredicatePrecision parseInvariantsFromCorrectnessWitnessAsPredicates(Path pWitnessFile) {
+  public PredicatePrecision parseInvariantsFromCorrectnessWitnessAsPredicates(Path pWitnessFile) {
     PredicatePrecision result = PredicatePrecision.empty();
     try {
       final Set<ExpressionTreeLocationInvariant> invariants = Sets.newLinkedHashSet();

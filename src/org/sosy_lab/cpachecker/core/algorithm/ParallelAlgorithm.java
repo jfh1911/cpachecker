@@ -134,7 +134,8 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
       ShutdownNotifier pShutdownNotifier,
       Specification pSpecification,
       CFA pCfa,
-      AggregatedReachedSets pAggregatedReachedSets)
+      AggregatedReachedSets pAggregatedReachedSets,
+      @Nullable List<ListenableFuture<Path>> pPathToWitnesses)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     config.inject(this);
 
@@ -151,7 +152,8 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
     ImmutableList.Builder<Callable<ParallelAnalysisResult>> analysesBuilder =
         ImmutableList.builder();
     for (AnnotatedValue<Path> p : configFiles) {
-      analysesBuilder.add(createParallelAnalysis(p, ++stats.noOfAlgorithmsUsed));
+      analysesBuilder
+          .add(createParallelAnalysis(p, ++stats.noOfAlgorithmsUsed, pPathToWitnesses));
     }
     analyses = analysesBuilder.build();
   }
@@ -292,7 +294,8 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
 
   private Callable<ParallelAnalysisResult> createParallelAnalysis(
       final AnnotatedValue<Path> pSingleConfigFileName,
-      final int analysisNumber)
+      final int analysisNumber,
+      @Nullable List<ListenableFuture<Path>> pPathToWitnesses)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     final Path singleConfigFileName = pSingleConfigFileName.value();
     final boolean supplyReached;
@@ -341,7 +344,8 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
 
     final ReachedSet reached = coreComponents.createReachedSet();
     final ConfigurableProgramAnalysis cpa = coreComponents.createCPA(cfa, specification);
-    final Algorithm algorithm = coreComponents.createAlgorithm(cpa, cfa, specification);
+    final Algorithm algorithm =
+        coreComponents.createAlgorithm(cpa, cfa, specification, pPathToWitnesses);
 
     AtomicBoolean terminated = new AtomicBoolean(false);
     StatisticsEntry statisticsEntry =

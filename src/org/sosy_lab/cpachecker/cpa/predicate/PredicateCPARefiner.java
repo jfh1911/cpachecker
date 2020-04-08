@@ -275,7 +275,8 @@ public class PredicateCPARefiner implements ARGBasedRefiner, StatisticsProvider 
       }
 
       // find new invariants (this is a noop if no invariants should be used/generated)
-      invariantsManager.findInvariants(allStatesTrace, abstractionStatesTrace, pfmgr, solver);
+      invariantsManager
+          .findInvariants(allStatesTrace, abstractionStatesTrace, pfmgr, solver, new ArrayList<>());
 
       CounterexampleTraceInfo counterexample =
           checkCounterexample(

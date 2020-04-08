@@ -11,6 +11,7 @@ package org.sosy_lab.cpachecker.core.algorithm;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.common.base.Splitter;
+import com.google.common.util.concurrent.ListenableFuture;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -83,7 +84,10 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
 
     CoreComponentsFactory coreComponents =
         new CoreComponentsFactory(
-            singleConfig, singleLogger, singleShutdownManager.getNotifier(), aggregateReached);
+            singleConfig,
+            singleLogger,
+            singleShutdownManager.getNotifier(),
+            aggregateReached);
     ConfigurableProgramAnalysis cpa = coreComponents.createCPA(cfa, specification);
     GlobalInfo.getInstance().setUpInfoFromCPA(cpa);
     Algorithm algorithm = coreComponents.createAlgorithm(cpa, cfa, specification);
@@ -105,7 +109,8 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
       CFANode mainFunction,
       ShutdownManager singleShutdownManager,
       AggregatedReachedSets aggregateReached,
-      Collection<Statistics> stats)
+      Collection<Statistics> stats,
+      List<ListenableFuture<Path>> pPathToWitnesses)
       throws InvalidConfigurationException, CPAException, InterruptedException {
 
     LogManager singleLogger = logger.withComponentName("Analysis " + nameOfAnalysis);
@@ -122,7 +127,7 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
             aggregateReached);
     ConfigurableProgramAnalysis cpa = coreComponents.createCPA(cfa, specification);
     GlobalInfo.getInstance().setUpInfoFromCPA(cpa);
-    Algorithm algorithm = coreComponents.createAlgorithm(cpa, cfa, specification);
+    Algorithm algorithm = coreComponents.createAlgorithm(cpa, cfa, specification, pPathToWitnesses);
     ReachedSet reached = createInitialReachedSet(cpa, mainFunction, coreComponents, singleLogger);
 
     if (cpa instanceof StatisticsProvider) {

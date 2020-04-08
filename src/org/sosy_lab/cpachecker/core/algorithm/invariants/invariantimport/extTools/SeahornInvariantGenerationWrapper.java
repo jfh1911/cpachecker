@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
+package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -38,6 +38,7 @@ import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 @Options(prefix = "invariantGeneration.kInduction.seahorn.wrapper")

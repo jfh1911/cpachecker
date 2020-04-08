@@ -10,6 +10,7 @@ package org.sosy_lab.cpachecker.core.algorithm;
 
 import com.google.common.base.Functions;
 import java.io.PrintStream;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -30,6 +31,9 @@ import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.common.time.Timer;
 import org.sosy_lab.cpachecker.core.CPAcheckerResult.Result;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.WitnessInjectable;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.WitnessInjectableCPA;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.WitnessInjector;
 import org.sosy_lab.cpachecker.core.defaults.MergeSepOperator;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
@@ -55,7 +59,7 @@ import org.sosy_lab.cpachecker.util.statistics.StatHist;
 import org.sosy_lab.cpachecker.util.statistics.StatInt;
 import org.sosy_lab.cpachecker.util.statistics.StatisticsWriter;
 
-public class CPAAlgorithm implements Algorithm, StatisticsProvider {
+public class CPAAlgorithm implements Algorithm, StatisticsProvider, WitnessInjectable {
 
   private static class CPAStatistics implements Statistics {
 
@@ -222,8 +226,11 @@ public class CPAAlgorithm implements Algorithm, StatisticsProvider {
   private final ShutdownNotifier                   shutdownNotifier;
 
   private final AlgorithmStatus status;
+  private final WitnessInjector injector;
 
-  private CPAAlgorithm(ConfigurableProgramAnalysis cpa, LogManager logger,
+  protected CPAAlgorithm(
+      ConfigurableProgramAnalysis cpa,
+      LogManager logger,
       ShutdownNotifier pShutdownNotifier,
       ForcedCovering pForcedCovering,
       boolean pIsImprecise) {
@@ -236,6 +243,11 @@ public class CPAAlgorithm implements Algorithm, StatisticsProvider {
     this.shutdownNotifier = pShutdownNotifier;
     this.forcedCovering = pForcedCovering;
     status = AlgorithmStatus.SOUND_AND_PRECISE.withPrecise(!pIsImprecise);
+    if (cpa instanceof WitnessInjectableCPA) {
+      injector = ((WitnessInjectableCPA) cpa).getWitnessInjector();
+    } else {
+      injector = new DummyWitnessInjector();
+    }
   }
 
   @Override
@@ -459,5 +471,17 @@ public class CPAAlgorithm implements Algorithm, StatisticsProvider {
       ((StatisticsProvider)forcedCovering).collectStatistics(pStatsCollection);
     }
     pStatsCollection.add(stats);
+  }
+
+  public static class DummyWitnessInjector extends WitnessInjector {
+    @Override
+    public void inject(ReachedSet pCurrentReachSet, Path pPathToInvariant) {
+    }
+
+  }
+
+  @Override
+  public void inject(ReachedSet pCurrentReachSet, Path pPathToInvariant) {
+    injector.inject(pCurrentReachSet, pPathToInvariant);
   }
 }

@@ -46,21 +46,21 @@ import org.sosy_lab.cpachecker.exceptions.RefinementFailedException;
 
 public class CEGARAlgorithm implements Algorithm, StatisticsProvider, ReachedSetUpdater {
 
-  private static class CEGARStatistics implements Statistics {
+  protected static class CEGARStatistics implements Statistics {
 
-    private final Timer totalTimer = new Timer();
-    private final Timer refinementTimer = new Timer();
+    final Timer totalTimer = new Timer();
+    final Timer refinementTimer = new Timer();
 
     @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT",
         justification = "only one thread writes, others read")
-    private volatile int countRefinements = 0;
-    private int countSuccessfulRefinements = 0;
-    private int countFailedRefinements = 0;
+    volatile int countRefinements = 0;
+    int countSuccessfulRefinements = 0;
+    int countFailedRefinements = 0;
 
-    private int maxReachedSizeBeforeRefinement = 0;
-    private int maxReachedSizeAfterRefinement = 0;
-    private long totalReachedSizeBeforeRefinement = 0;
-    private long totalReachedSizeAfterRefinement = 0;
+    int maxReachedSizeBeforeRefinement = 0;
+    int maxReachedSizeAfterRefinement = 0;
+    long totalReachedSizeBeforeRefinement = 0;
+    long totalReachedSizeAfterRefinement = 0;
 
     @Override
     public String getName() {
@@ -88,9 +88,9 @@ public class CEGARAlgorithm implements Algorithm, StatisticsProvider, ReachedSet
     }
   }
 
-  private final CEGARStatistics stats = new CEGARStatistics();
+  protected final CEGARStatistics stats = new CEGARStatistics();
 
-  private final List<ReachedSetUpdateListener> reachedSetUpdateListeners =
+  protected final List<ReachedSetUpdateListener> reachedSetUpdateListeners =
       new CopyOnWriteArrayList<>();
 
   public interface CEGARMXBean {
@@ -99,7 +99,7 @@ public class CEGARAlgorithm implements Algorithm, StatisticsProvider, ReachedSet
     boolean isRefinementActive();
   }
 
-  private class CEGARMBean extends AbstractMBean implements CEGARMXBean {
+  protected class CEGARMBean extends AbstractMBean implements CEGARMXBean {
     public CEGARMBean() {
       super("org.sosy_lab.cpachecker:type=CEGAR", logger);
     }
@@ -188,16 +188,16 @@ public class CEGARAlgorithm implements Algorithm, StatisticsProvider, ReachedSet
     }
   }
 
-  private volatile int sizeOfReachedSetBeforeRefinement = 0;
-  private boolean globalRefinement = false;
-  private int maxRefinementNum = -1;
+  protected volatile int sizeOfReachedSetBeforeRefinement = 0;
+  protected boolean globalRefinement = false;
+  protected int maxRefinementNum = -1;
 
-  private final LogManager logger;
-  private final Algorithm algorithm;
-  private final Refiner mRefiner;
+  protected final LogManager logger;
+  protected final Algorithm algorithm;
+  protected final Refiner mRefiner;
 
   /** This constructor gets a Refiner object instead of generating it from the refiner parameter. */
-  private CEGARAlgorithm(
+  protected CEGARAlgorithm(
       Algorithm pAlgorithm,
       Refiner pRefiner,
       LogManager pLogger,
@@ -224,6 +224,8 @@ public class CEGARAlgorithm implements Algorithm, StatisticsProvider, ReachedSet
       do {
         refinementSuccessful = false;
         final AbstractState previousLastState = reached.getLastState();
+
+        // if additional invariant generators are used, check if a new witness is generated:
 
         // run algorithm
         status = status.update(algorithm.run(reached));
@@ -255,6 +257,7 @@ public class CEGARAlgorithm implements Algorithm, StatisticsProvider, ReachedSet
           refinedInPreviousIteration  = false;
         }
 
+
       } while (refinementSuccessful);
 
     } finally {
@@ -263,7 +266,7 @@ public class CEGARAlgorithm implements Algorithm, StatisticsProvider, ReachedSet
     return status;
   }
 
-  private boolean refinementNecessary(ReachedSet reached, AbstractState previousLastState) {
+  protected boolean refinementNecessary(ReachedSet reached, AbstractState previousLastState) {
     if (globalRefinement) {
       // check other states
       return reached.hasViolatedProperties();
@@ -281,7 +284,7 @@ public class CEGARAlgorithm implements Algorithm, StatisticsProvider, ReachedSet
   @SuppressFBWarnings(
       value = "VO_VOLATILE_INCREMENT",
       justification = "only one thread writes countRefinements, others read")
-  private boolean refine(ReachedSet reached) throws CPAException, InterruptedException {
+  protected boolean refine(ReachedSet reached) throws CPAException, InterruptedException {
     logger.log(Level.FINE, "Error found, performing CEGAR");
     stats.countRefinements++;
     stats.totalReachedSizeBeforeRefinement += reached.size();
@@ -338,7 +341,7 @@ public class CEGARAlgorithm implements Algorithm, StatisticsProvider, ReachedSet
     reachedSetUpdateListeners.remove(pReachedSetUpdateListener);
   }
 
-  private void notifyReachedSetUpdateListeners(ReachedSet pReachedSet) {
+  protected void notifyReachedSetUpdateListeners(ReachedSet pReachedSet) {
     for (ReachedSetUpdateListener rsul : reachedSetUpdateListeners) {
       rsul.updated(pReachedSet);
     }

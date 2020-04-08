@@ -17,7 +17,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
+package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -42,6 +42,7 @@ import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
@@ -52,7 +53,6 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
   private static final String PATH_TO_SCRIPTS =
       "src/org/sosy_lab/cpachecker/core/algorithm/invariants/invariantimport/scripts/";
 
-  private String pathToOutDir = "output/";
 
   static final Level LOG_LEVEL = Level.INFO;
   private final String PATH_TO_CPA_DIR;
@@ -105,7 +105,7 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
       Configuration pConfig)
       throws CPAException {
     try {
-      pLogger.log(Level.FINEST, this.pathToOutDir);
+
       File tempFile =
           generateInvariant(
               pCfa,
@@ -253,7 +253,6 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
               pConfig).toPath();
       pLogger.log(Level.WARNING, "Invariant generation finished for tool : Ultimate AUtomizer");
       return res;
-
     };
   }
 

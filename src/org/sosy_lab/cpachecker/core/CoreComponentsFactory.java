@@ -10,6 +10,9 @@ package org.sosy_lab.cpachecker.core;
 
 import static com.google.common.base.Verify.verifyNotNull;
 
+import com.google.common.base.Preconditions;
+import java.nio.file.Path;
+import java.util.Optional;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.ShutdownManager;
@@ -25,6 +28,7 @@ import org.sosy_lab.cpachecker.core.algorithm.AnalysisWithRefinableEnablerCPAAlg
 import org.sosy_lab.cpachecker.core.algorithm.AssumptionCollectorAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.BDDCPARestrictionAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.CEGARAlgorithm.CEGARAlgorithmFactory;
+import org.sosy_lab.cpachecker.core.algorithm.CEGARAlgorithmWithWitnessInjection;
 import org.sosy_lab.cpachecker.core.algorithm.CPAAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.CounterexampleStoreAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.CustomInstructionRequirementsExtractingAlgorithm;
@@ -183,8 +187,14 @@ public class CoreComponentsFactory {
   private boolean useExternalInvariantGeneration = false;
 
   @Option(
-      secure = true,
-      name = "algorithm.termination",
+    secure = true,
+    name = "injectGeneratedInvariants",
+    description = "use injection into the running analysis")
+  private boolean injectGeneratedInvariants = false;
+
+  @Option(
+    secure = true,
+    name = "algorithm.termination",
       description =
           "Use termination algorithm to prove (non-)termination. This needs the TerminationCPA as"
               + " root CPA and an automaton CPA with termination_as_reach.spc in the tree of CPAs.")
@@ -337,7 +347,18 @@ public class CoreComponentsFactory {
   }
 
   public Algorithm createAlgorithm(
-      final ConfigurableProgramAnalysis cpa, final CFA cfa, final Specification specification)
+      final ConfigurableProgramAnalysis cpa,
+      final CFA cfa,
+      final Specification pSpecification)
+      throws InvalidConfigurationException, CPAException, InterruptedException {
+    return createAlgorithm(cpa, cfa, pSpecification, new ArrayList<>());
+  }
+
+  public Algorithm createAlgorithm(
+      final ConfigurableProgramAnalysis cpa,
+      final CFA cfa,
+      final Specification pSpecification,
+      @Nullable List<ListenableFuture<Path>> pPathToWitnesses)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     logger.log(Level.FINE, "Creating algorithms");
 
@@ -400,13 +421,16 @@ public class CoreComponentsFactory {
               shutdownNotifier,
               specification,
               cfa,
-              aggregatedReachedSets);
+              aggregatedReachedSets,
+              pPathToWitnesses);
 
     } else if (useMPIProcessAlgorithm) {
       algorithm = new MPIPortfolioAlgorithm(config, logger, shutdownNotifier, specification);
 
     } else {
       algorithm = CPAAlgorithm.create(cpa, logger, config, shutdownNotifier);
+
+
 
       if (constructResidualProgram) {
         algorithm = new ResidualProgramConstructionAlgorithm(cfa, config, logger, shutdownNotifier,
@@ -429,11 +453,25 @@ public class CoreComponentsFactory {
         algorithm = new AnalysisWithRefinableEnablerCPAAlgorithm(algorithm, cpa, cfa, logger, config, shutdownNotifier);
       }
 
-      if (useCEGAR) {
+      if (useCEGAR && injectGeneratedInvariants) {
+        algorithm =
+            new CEGARAlgorithmWithWitnessInjection.CEGARAlgorithmFactoryWithInjection(
+                algorithm,
+                cpa,
+                logger,
+                config,
+                shutdownNotifier,
+                pPathToWitnesses).newInstance();
+      } else if (useCEGAR) {
         algorithm =
             new CEGARAlgorithmFactory(algorithm, cpa, logger, config, shutdownNotifier)
                 .newInstance();
       }
+
+
+      // if (injectGeneratedInvariants) {
+      // algorithm = CPAAlgorithmWithWitnessInjection.create(cpa, logger, config, shutdownNotifier);
+      // }
 
       if (usePDR) {
         algorithm =
@@ -449,6 +487,7 @@ public class CoreComponentsFactory {
                 aggregatedReachedSets);
       }
 
+
       if (useBMC) {
         verifyNotNull(shutdownManager);
         algorithm =
@@ -461,7 +500,8 @@ public class CoreComponentsFactory {
                 shutdownManager,
                 cfa,
                 specification,
-                aggregatedReachedSets);
+                aggregatedReachedSets,
+                pPathToWitnesses);
       }
 
       if (useIMC) {
