@@ -150,6 +150,13 @@ public class SeahornInvariantGenerationWrapper implements ExternalInvariantGener
               pShutdownManager,
               pConfig).toPath();
       pLogger.log(Level.WARNING, "Invariant generation finished for tool : SeaHorn");
+      if (!checkIfNonTrivial(pCfa, pConfig, pSpecification, pLogger, pShutdownManager, res)) {
+        pLogger.log(
+            Level.WARNING,
+            "The SeaHorn invariant generator only generates trivial invarinats, hence not returning anything");
+        throw new CPAException(
+            "The SeaHorn invariant generator only generates trivial invarinats, hence not returning anything");
+      }
       return res;
 
     };

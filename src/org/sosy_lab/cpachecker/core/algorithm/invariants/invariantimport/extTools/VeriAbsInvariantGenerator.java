@@ -243,6 +243,13 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
               pShutdownManager,
                 pConfig).toPath();
         pLogger.log(Level.WARNING, "Invariant generation finished for tool : VeriAbs", res);
+      if (!checkIfNonTrivial(pCfa, pConfig, pSpecification, pLogger, pShutdownManager, res)) {
+        pLogger.log(
+            Level.WARNING,
+            "The VeriAbs invariant generator only generates trivial invarinats, hence not returning anything");
+        throw new CPAException(
+            "The VeriAbs invariant generator only generates trivial invarinats, hence not returning anything");
+      }
       return res;
 
     };

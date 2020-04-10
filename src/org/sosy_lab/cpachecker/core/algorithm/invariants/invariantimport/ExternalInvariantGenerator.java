@@ -19,12 +19,16 @@
  */
 package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 import java.io.File;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
@@ -33,10 +37,14 @@ import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
+import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.ExpressionTreeCandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools.SeahornInvariantGenerationWrapper;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools.UAInvariantGenerator;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools.VeriAbsInvariantGenerator;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
+import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
+import org.sosy_lab.cpachecker.util.expressions.ExpressionTree;
+import org.sosy_lab.cpachecker.util.expressions.ExpressionTrees;
 
 public interface ExternalInvariantGenerator {
 
@@ -117,5 +125,49 @@ public interface ExternalInvariantGenerator {
         return new SeahornInvariantGenerationWrapper(pConfiguration);
 
     }
+  }
+
+  public default boolean checkIfNonTrivial(
+      CFA pCfa,
+      Configuration pConfig,
+      Specification pSpecification,
+      LogManager pLogger,
+      ShutdownNotifier pShutdownNotifier,
+      Path pRes) {
+    boolean nonTrivialFound = false;
+    try {
+
+      final Set<CandidateInvariant> candidates = new LinkedHashSet<>();
+
+      final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
+
+      WitnessInvariantsExtractor extractor =
+          new WitnessInvariantsExtractor(
+              pConfig,
+              pSpecification,
+              pLogger,
+              pCfa,
+              pShutdownNotifier,
+              pRes);
+      extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
+
+      for (CandidateInvariant inv : candidates) {
+        if (inv instanceof ExpressionTreeCandidateInvariant) {
+          ExpressionTree<Object> tree = ((ExpressionTreeCandidateInvariant) inv).asExpressionTree();
+          if (!tree.equals(ExpressionTrees.getFalse()) && !tree.equals(ExpressionTrees.getTrue())) {
+            // it thee invariant in neither true nor false it is not trivial
+            nonTrivialFound = true;
+            return nonTrivialFound;
+          }
+        }
+      }
+
+    } catch (InvalidConfigurationException | InterruptedException | CPAException e) {
+      pLogger.log(
+          Level.WARNING,
+          "An error orrucred while loading the genrated invariants. Asusming that only trivial invariants are genrated");
+      return false;
+    }
+    return nonTrivialFound;
   }
 }
