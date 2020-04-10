@@ -21,7 +21,11 @@ package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -140,6 +144,19 @@ public interface ExternalInvariantGenerator {
       final Set<CandidateInvariant> candidates = new LinkedHashSet<>();
 
       final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
+
+      try {
+        @SuppressWarnings("resource")
+        BufferedReader reader = Files.newBufferedReader(pRes, Charset.defaultCharset());
+        String line;
+        String witness = "";
+        while ((line = reader.readLine()) != null) {
+          witness = witness.concat(System.lineSeparator() + line);
+        }
+        pLogger.log(Level.INFO, "The generated witness is ", witness);
+      } catch (IOException e) {
+        // Nothing do to here, since only for debugging purposes
+      }
 
       WitnessInvariantsExtractor extractor =
           new WitnessInvariantsExtractor(
