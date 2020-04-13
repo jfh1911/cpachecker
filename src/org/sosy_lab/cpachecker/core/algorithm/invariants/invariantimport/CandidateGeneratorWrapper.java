@@ -49,7 +49,9 @@ import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
 public class CandidateGeneratorWrapper implements CandidateGenerator {
 
   private List<ListenableFuture<Path>> pendingInvs;
-  private int numberOfFinishedGenerators = 0;
+
+  // Start with 1, since first invariant is already injected initially
+  private int numberOfFinishedGenerators = 1;
   private CandidateGenerator defaultGenerator;
   private List<CandidateInvariant> candidates;
   private Set<CandidateInvariant> foundInvariants;
@@ -69,7 +71,7 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
       ShutdownNotifier pPShutdownManager) {
     super();
     pendingInvs = ImmutableList.copyOf(pPendingInvs);
-    pLogger.log(Level.WARNING, "wrapper obtained", pendingInvs.toString());
+    // pLogger.log(Level.WARNING, "wrapper obtained", pendingInvs.toString());
     defaultGenerator = pDefaultGenerator;
     logger = pLogger;
     pConfig = pPConfig;
