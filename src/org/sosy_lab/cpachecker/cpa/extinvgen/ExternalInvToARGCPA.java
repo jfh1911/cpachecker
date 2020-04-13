@@ -171,7 +171,7 @@ public abstract class ExternalInvToARGCPA implements ConfigurableProgramAnalysis
     } catch (InterruptedException e) {
       logger.log(Level.WARNING, "an error occured while parsing the invariants");
     }
-    logger.log(Level.INFO, globalInvMap.toString());
+    // logger.log(Level.INFO, globalInvMap.toString());
   }
 
   private ExpressionTree<AExpression> parseInv2Tree(String pInv, AFunctionDeclaration function)
@@ -270,7 +270,7 @@ public abstract class ExternalInvToARGCPA implements ConfigurableProgramAnalysis
     // Cleanup due to performance reasons
     // cleanup(lineToEdgesOfMain);
     reapir(lineToEdgesOfMain);
-    System.out.println(lineToEdgesOfMain.toString());
+    // System.out.println(lineToEdgesOfMain.toString());
     return lineToEdgesOfMain;
   }
 

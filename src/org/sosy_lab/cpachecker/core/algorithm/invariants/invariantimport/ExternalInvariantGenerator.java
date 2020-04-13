@@ -154,6 +154,7 @@ public interface ExternalInvariantGenerator {
           witness = witness.concat(System.lineSeparator() + line);
         }
         pLogger.log(Level.INFO, "The generated witness is ", witness);
+        reader.close();
       } catch (IOException e) {
         // Nothing do to here, since only for debugging purposes
       }

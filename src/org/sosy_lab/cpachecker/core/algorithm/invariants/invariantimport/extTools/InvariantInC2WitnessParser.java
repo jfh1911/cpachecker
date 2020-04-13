@@ -25,7 +25,6 @@ import com.google.common.base.Predicates;
 import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
@@ -143,13 +142,13 @@ public class InvariantInC2WitnessParser {
 
       writer.flush();
       writer.close();
-      try (BufferedReader br =
-          Files.newBufferedReader(witnessFile.toPath(), Charset.defaultCharset())) {
-        String line;
-        while ((line = br.readLine()) != null) {
-          System.out.println(line);
-        }
-      }
+      // try (BufferedReader br =
+      // Files.newBufferedReader(witnessFile.toPath(), Charset.defaultCharset())) {
+      // String line;
+      // while ((line = br.readLine()) != null) {
+      // System.out.println(line);
+      // }
+      // }
 
       return witnessFile;
 

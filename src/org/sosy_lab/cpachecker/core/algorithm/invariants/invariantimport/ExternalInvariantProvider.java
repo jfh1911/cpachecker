@@ -223,8 +223,8 @@ public class ExternalInvariantProvider {
             LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
             logger.log(Level.INFO, "killing other generators");
             futures.parallelStream().forEach(fut -> fut.cancel(true));
-            futures.parallelStream()
-                .forEach(fut -> System.out.println(fut.isCancelled() || fut.isDone()));
+            // futures.parallelStream()
+            // .forEach(fut -> System.out.println(fut.isCancelled() || fut.isDone()));
           }
           break;
         }
