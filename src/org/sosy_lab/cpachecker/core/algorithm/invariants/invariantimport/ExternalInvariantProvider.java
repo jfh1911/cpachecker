@@ -230,9 +230,9 @@ public class ExternalInvariantProvider {
         }
 
       } catch (InterruptedException | ExecutionException e) {
-        logger.log(Level.WARNING, "One invairant generation failed!", f.toString());
+        logger.log(Level.WARNING, "One invairant generation failed!");
       } catch (TimeoutException | CancellationException e) {
-        logger.log(Level.WARNING, "The invariant generation timed-out!", f.toString());
+        logger.log(Level.WARNING, "The invariant generation timed-out!");
         futures.parallelStream().forEach(fut -> fut.cancel(true));
       }
     }
