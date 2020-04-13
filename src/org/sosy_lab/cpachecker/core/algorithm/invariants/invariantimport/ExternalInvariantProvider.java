@@ -205,7 +205,7 @@ public class ExternalInvariantProvider {
 
     // List<CPAException> exceptions = new ArrayList<>();
 
-    ListenableFuture<Path> f = Futures.inCompletionOrder(futures).get(0);
+    for (ListenableFuture<Path> f : Futures.inCompletionOrder(futures)) {
 
       Path result;
       try {
@@ -216,28 +216,26 @@ public class ExternalInvariantProvider {
         }
         if (result != null) {
           this.computedPath.add(result);
+
+          if (!this.waitForOthers) {
+            // Allow the threads, especially the timeout thread some time to shutdown
+            shoudlShutdownTimeout.getAndSet(true);
+            LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
+            logger.log(Level.INFO, "killing other generators");
+            futures.parallelStream().forEach(fut -> fut.cancel(true));
+            // futures.parallelStream()
+            // .forEach(fut -> System.out.println(fut.isCancelled() || fut.isDone()));
+          }
+          break;
         }
 
       } catch (InterruptedException | ExecutionException e) {
-        // logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
-        futures.parallelStream().forEach(fut -> fut.cancel(true));
         logger.log(Level.WARNING, "One invairant generation failed!");
       } catch (TimeoutException | CancellationException e) {
         logger.log(Level.WARNING, "The invariant generation timed-out!");
         futures.parallelStream().forEach(fut -> fut.cancel(true));
       }
-
-
-      if (!this.waitForOthers) {
-        // Allow the threads, especially the timeout thread some time to shutdown
-        shoudlShutdownTimeout.getAndSet(true);
-        LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
-        logger.log(Level.INFO, "killing other generators");
-        futures.parallelStream().forEach(fut -> fut.cancel(true));
-      futures.parallelStream()
-          .forEach(fut -> System.out.println(fut.isCancelled() || fut.isDone()));
-      }
-
+    }
 
   }
 

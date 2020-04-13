@@ -129,7 +129,6 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
               tempFile.toPath());
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
       pLogger.log(LOG_LEVEL, "The invariants imported are" + candidates.toString());
-      pLogger.log(LOG_LEVEL, "The invariants imported are" + candidates.toString());
       return candidates;
     } catch (InvalidConfigurationException | InterruptedException e) {
       throw new CPAException(getMessage() + System.lineSeparator() + e.toString(), e);
@@ -252,6 +251,13 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
               pShutdownManager,
               pConfig).toPath();
       pLogger.log(Level.WARNING, "Invariant generation finished for tool : Ultimate AUtomizer");
+      if (!checkIfNonTrivial(pCfa, pConfig, pSpecification, pLogger, pShutdownManager, res)) {
+        pLogger.log(
+            Level.WARNING,
+            "The Ultimate Automizer invariant generator only generates trivial invarinats, hence not returning anything");
+        throw new CPAException(
+            "The Ultimate Automizer invariant generator only generates trivial invarinats, hence not returning anything");
+      }
       return res;
     };
   }

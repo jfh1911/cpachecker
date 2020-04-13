@@ -470,6 +470,9 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       logger.log(Level.INFO, "Re-Starting analysis  ...");
       status = currentAlgorithm.run(currentReached);
 
+      // If the master is finished, kill all other running threads
+      provider.getFutures().forEach(helper -> helper.cancel(true));
+
       if (currentReached.hasViolatedProperties() && status.isPrecise()) {
 
         // If the algorithm is not _precise_, verdict "false" actually means "unknown".

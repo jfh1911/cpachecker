@@ -37,6 +37,7 @@ import org.sosy_lab.cpachecker.cfa.CProgramScope;
 import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AFunctionDeclaration;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
+import org.sosy_lab.cpachecker.cfa.model.CFAEdgeType;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.cfa.parser.Scope;
 import org.sosy_lab.cpachecker.core.Specification;
@@ -170,7 +171,7 @@ public abstract class ExternalInvToARGCPA implements ConfigurableProgramAnalysis
     } catch (InterruptedException e) {
       logger.log(Level.WARNING, "an error occured while parsing the invariants");
     }
-    logger.log(Level.INFO, globalInvMap.toString());
+    // logger.log(Level.INFO, globalInvMap.toString());
   }
 
   private ExpressionTree<AExpression> parseInv2Tree(String pInv, AFunctionDeclaration function)
@@ -268,27 +269,50 @@ public abstract class ExternalInvToARGCPA implements ConfigurableProgramAnalysis
     }
     // Cleanup due to performance reasons
     // cleanup(lineToEdgesOfMain);
-
+    reapir(lineToEdgesOfMain);
+    // System.out.println(lineToEdgesOfMain.toString());
     return lineToEdgesOfMain;
   }
 
+  private  void reapir(Map<Integer, Set<CFAEdge>> pLineToEdgesOfMain) {
+    for (Entry<Integer, Set<CFAEdge>> entry : pLineToEdgesOfMain.entrySet()) {
+      if(entry.getValue().size()>1) {
+        Set<CFAEdge> set = entry.getValue();
+        CFANode firstFrom = set.stream().findAny().get().getPredecessor();
+        boolean isBranchHead =
+            entry.getValue()
+                .parallelStream()
+                .allMatch(
+                    e -> e.getEdgeType().equals(CFAEdgeType.AssumeEdge)
+                        && e.getPredecessor().equals(firstFrom));
+        if(isBranchHead) {
+          for (int i = 0; i < firstFrom.getNumEnteringEdges(); i++) {
+            set.add(firstFrom.getEnteringEdge(i));
+          }
+
+          pLineToEdgesOfMain.replace(entry.getKey(), set);
+        }
+        }
+      }
 
 
-  // private void cleanup(Map<Integer, Set<CFAEdge>> pLineToEdgesOfMain) {
+  }
+
+//  private void cleanup(Map<Integer, Set<CFAEdge>> pLineToEdgesOfMain) {
+//
+//    // IF any location has an edge, that is an loop enter head, remove the other locations
+//    for (Entry<Integer, Set<CFAEdge>> entry : pLineToEdgesOfMain.entrySet()) {
+//      List<CFAEdge> loopHeads =
+//          entry.getValue()
+//              .parallelStream()
+//              .filter(edge -> edge instanceof BlankEdge && edge.getPredecessor().isLoopStart())
+//              .collect(Collectors.toList());
+//      if (loopHeads.size() > 0) {
+//        CFAEdge temp = loopHeads.get(0).getSuccessor().getLeavingEdge(0);
+//        pLineToEdgesOfMain.replace(entry.getKey(), Sets.newHashSet(loopHeads.get(0)));
+//      }
+//    }
   //
-  //
-    // // IF any location has an edge, that is an loop enter head, remove the other locations
-    // for (Entry<Integer, Set<CFAEdge>> entry : pLineToEdgesOfMain.entrySet()) {
-    // List<CFAEdge> loopHeads =
-    // entry.getValue()
-    // .parallelStream()
-    // .filter(edge -> edge instanceof BlankEdge && edge.getSuccessor().isLoopStart())
-    // .collect(Collectors.toList());
-    // if (loopHeads.size() > 0) {
-    // pLineToEdgesOfMain.replace(entry.getKey(), Sets.newHashSet(loopHeads.get(0)));
-    // }
-    // }
-    //
   // }
 
 }
