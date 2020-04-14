@@ -84,6 +84,7 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
 
   @Override
   public boolean produceMoreCandidates() {
+    boolean hasProducedNewCandidates = false;
     // check if new invgen finished
     while (numberOfFinishedGenerators < pendingInvs.size()
         && pendingInvs.get(numberOfFinishedGenerators).isDone()) {
@@ -110,7 +111,7 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
                 pathToInvariant);
         extractor.extractCandidatesFromReachedSet(localCandidates, candidateGroupLocations);
         candidates.addAll(localCandidates);
-
+        hasProducedNewCandidates = true;
       } catch (InterruptedException | ExecutionException | InvalidConfigurationException
           | CPAException e) {
         logger.log(
@@ -122,8 +123,7 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
     }
     // Than load and store to internal list of candidates
 
-    return defaultGenerator.produceMoreCandidates()
-        || pendingInvs.size() > numberOfFinishedGenerators;
+    return defaultGenerator.produceMoreCandidates() || hasProducedNewCandidates;
   }
 
   @Override
@@ -140,6 +140,7 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
       candidates.remove(inv);
       foundInvariants.add(inv);
     }
+    defaultGenerator.confirmCandidates(pCandidates);
 
   }
 
