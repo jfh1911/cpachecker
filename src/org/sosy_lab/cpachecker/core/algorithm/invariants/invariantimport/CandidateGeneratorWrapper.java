@@ -95,9 +95,7 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
         logger.log(
             Level.INFO,
             "Injecting witneeses from path ",
-            pathToInvariant,
-            "for tool ",
-            pendingInvs.get(numberOfFinishedGenerators).toString());
+            pathToInvariant);
         final Set<CandidateInvariant> localCandidates = new LinkedHashSet<>();
 
         final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
@@ -117,8 +115,7 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
           | CPAException e) {
         logger.log(
             Level.WARNING,
-            "A problem occured while injecting witnesses from  ",
-            pendingInvs.get(numberOfFinishedGenerators).toString());
+            "A problem occured while injecting witnesses  ");
       }
       // increase number of injected witnesses
       numberOfFinishedGenerators = numberOfFinishedGenerators + 1;

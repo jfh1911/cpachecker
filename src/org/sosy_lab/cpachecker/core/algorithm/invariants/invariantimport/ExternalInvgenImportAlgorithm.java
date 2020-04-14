@@ -507,13 +507,11 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       }
       logger.log(
           Level.WARNING,
-          "Attention: An error occured! Reason:",
-          Throwables.getStackTraceAsString(e));
+          "Attention: An error occured! ");
     } catch (InterruptedException e) {
       logger.log(
           Level.WARNING,
-          "Attention: the ananlysis was interrupted! Reason:",
-          Throwables.getStackTraceAsString(e));
+          "Attention: the ananlysis was interrupted!");
     }
 
     // final CoreComponentsFactory coreComponents =
