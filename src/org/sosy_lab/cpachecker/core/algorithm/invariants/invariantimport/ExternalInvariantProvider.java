@@ -354,7 +354,7 @@ public class ExternalInvariantProvider {
   }
 
   List<ListenableFuture<Path>> getFutures() {
-    futures.forEach(f -> logger.log(Level.WARNING, f.toString()));
+    // futures.forEach(f -> logger.log(Level.WARNING, f.toString()));
     return this.futures;
   }
 

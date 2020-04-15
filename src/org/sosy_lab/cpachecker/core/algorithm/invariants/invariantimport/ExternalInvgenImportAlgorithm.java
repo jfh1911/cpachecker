@@ -416,13 +416,15 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       ConfigurationBuilder builder = Configuration.builder();
 
       builder.copyFrom(singleConfig);
+      if (pPathToInvariant != null) {
       builder.setOption(
           "invariantGeneration.kInduction.invariantsAutomatonFile",
           pPathToInvariant.toString());
       builder.setOption("cpa.predicate.abstraction.initialPredicates", pPathToInvariant.toString());
-      builder.setOption("analysis.generateExternalInvariants", "false");
+      }
       builder.setOption("analysis.injectGeneratedInvariants", Boolean.toString(injectWitnesses));
 
+      builder.setOption("analysis.generateExternalInvariants", "false");
       // builder.setOption("analysis.generateExternalInvariants", "false");
 
       Configuration newConfig = builder.build();
@@ -469,7 +471,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     try {
       logger.log(Level.INFO, "Re-Starting analysis  ...");
       status = currentAlgorithm.run(currentReached);
-
+      logger.log(Level.INFO, "An result was computed...");
       // If the master is finished, kill all other running threads
       provider.getFutures().forEach(helper -> helper.cancel(true));
 
@@ -507,13 +509,11 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       }
       logger.log(
           Level.WARNING,
-          "Attention: An error occured! Reason:",
-          Throwables.getStackTraceAsString(e));
+          "Attention: An error occured! ");
     } catch (InterruptedException e) {
       logger.log(
           Level.WARNING,
-          "Attention: the ananlysis was interrupted! Reason:",
-          Throwables.getStackTraceAsString(e));
+          "Attention: the ananlysis was interrupted!");
     }
 
     // final CoreComponentsFactory coreComponents =
