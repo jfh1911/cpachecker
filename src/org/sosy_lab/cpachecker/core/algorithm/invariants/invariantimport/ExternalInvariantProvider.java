@@ -73,7 +73,7 @@ public class ExternalInvariantProvider {
   private List<ExternalInvariantGenerators> extInvGens;
   private boolean waitForOthers = false;
   private AtomicBoolean shoudlShutdownTimeout = new AtomicBoolean(false);
-  private ImmutableList<ListenableFuture<Path>> futures;
+  private ImmutableList<ListenableFuture<Path>> futures = ImmutableList.of();
 
   public ExternalInvariantProvider(
       Configuration pConfig,
