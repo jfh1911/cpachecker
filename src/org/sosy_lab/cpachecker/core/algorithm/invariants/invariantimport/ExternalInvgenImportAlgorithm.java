@@ -471,7 +471,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     try {
       logger.log(Level.INFO, "Re-Starting analysis  ...");
       status = currentAlgorithm.run(currentReached);
-
+      logger.log(Level.INFO, "An result was computed...");
       // If the master is finished, kill all other running threads
       provider.getFutures().forEach(helper -> helper.cancel(true));
 
