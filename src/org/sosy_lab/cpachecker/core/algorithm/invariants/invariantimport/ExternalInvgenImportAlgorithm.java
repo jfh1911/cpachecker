@@ -416,13 +416,15 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       ConfigurationBuilder builder = Configuration.builder();
 
       builder.copyFrom(singleConfig);
+      if (pPathToInvariant != null) {
       builder.setOption(
           "invariantGeneration.kInduction.invariantsAutomatonFile",
           pPathToInvariant.toString());
       builder.setOption("cpa.predicate.abstraction.initialPredicates", pPathToInvariant.toString());
-      builder.setOption("analysis.generateExternalInvariants", "false");
+      }
       builder.setOption("analysis.injectGeneratedInvariants", Boolean.toString(injectWitnesses));
 
+      builder.setOption("analysis.generateExternalInvariants", "false");
       // builder.setOption("analysis.generateExternalInvariants", "false");
 
       Configuration newConfig = builder.build();
