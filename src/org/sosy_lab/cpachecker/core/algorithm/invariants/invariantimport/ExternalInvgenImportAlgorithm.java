@@ -310,6 +310,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       if (result.isAnalysis()) {
         // Kill inv gens
         pTerminateInvGen.getAndSet(true);
+        provider.getFutures().parallelStream().forEach(helper -> helper.cancel(true));
         // Wair for a second to let the analysis termiante if it is still sleeping
         try {
           TimeUnit.SECONDS.sleep(1);
