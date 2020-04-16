@@ -140,8 +140,6 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
       candidates.remove(inv);
       foundInvariants.add(inv);
     }
-    defaultGenerator.confirmCandidates(pCandidates);
-
   }
 
   @Override
