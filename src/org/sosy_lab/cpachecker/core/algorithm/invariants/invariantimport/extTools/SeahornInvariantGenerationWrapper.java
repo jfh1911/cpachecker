@@ -39,6 +39,7 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerators;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.InvGenCompRes;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
@@ -144,7 +145,9 @@ public class SeahornInvariantGenerationWrapper implements ExternalInvariantGener
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
       Configuration pConfig,
-      int pTimeout) {
+      int pTimeout,
+      List<ExternalInvariantGenerators> pExtInvGens) {
+
     return () -> {
       try {
       Path res =

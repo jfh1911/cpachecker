@@ -45,6 +45,7 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerators;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.InvGenCompRes;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
@@ -248,8 +249,14 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
       Configuration pConfig,
-      int pTimeout)
+      int pTimeout,
+      List<ExternalInvariantGenerators> pExtInvGens)
       {
+
+    if (pExtInvGens.parallelStream().anyMatch(p -> p.equals(ExternalInvariantGenerators.SEAHORN))) {
+      ABSOLUTE_PATH_TO_INV_FILE = "/home/jfh/Documents/seahorn/others/" + "witness_VeriAbs.graphml";
+    }
+
     return () -> {
       try {
       Path res =

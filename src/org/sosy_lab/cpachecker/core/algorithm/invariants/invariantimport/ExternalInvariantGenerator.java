@@ -83,7 +83,8 @@ public interface ExternalInvariantGenerator {
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
       Configuration pConfig,
-      int pTimeout);
+      int pTimeout,
+      List<ExternalInvariantGenerators> pExtInvGens);
 
   /**
    *

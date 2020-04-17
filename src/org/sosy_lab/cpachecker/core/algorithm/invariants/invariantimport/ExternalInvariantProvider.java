@@ -163,7 +163,8 @@ public class ExternalInvariantProvider {
                 logger,
                 shutdownManager.getNotifier(),
                 config,
-                timeoutForInvariantExecution));
+                timeoutForInvariantExecution,
+                extInvGens));
       } catch (InvalidConfigurationException e) {
         logger.log(
             Level.INFO,
