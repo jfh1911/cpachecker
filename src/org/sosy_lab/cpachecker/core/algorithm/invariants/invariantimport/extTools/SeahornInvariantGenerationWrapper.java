@@ -39,6 +39,7 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.InvGenCompRes;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
 @Options(prefix = "invariantGeneration.kInduction.seahorn.wrapper")
@@ -76,7 +77,8 @@ public class SeahornInvariantGenerationWrapper implements ExternalInvariantGener
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
+      Configuration pConfig,
+      int pTimeout)
       throws CPAException {
     // TODO Implement this
     return null;
@@ -89,7 +91,8 @@ public class SeahornInvariantGenerationWrapper implements ExternalInvariantGener
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownNotifier,
-      Configuration pConfig)
+      Configuration pConfig,
+      int pTimeout)
       throws CPAException {
     return parser.generateInvariant(
         pCfa,
@@ -107,7 +110,8 @@ public class SeahornInvariantGenerationWrapper implements ExternalInvariantGener
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
+      Configuration pConfig,
+      int pTimeout)
       throws CPAException {
     return new Supplier<>() {
 
@@ -121,7 +125,8 @@ public class SeahornInvariantGenerationWrapper implements ExternalInvariantGener
                   pSpecification,
                   pLogger,
                   pShutdownManager,
-                  pConfig).toPath();
+                  pConfig,
+                  pTimeout).toPath();
           pLogger.log(Level.WARNING, "Invariant generation finished for tool : SeaHorn");
           return res;
         } catch (CPAException e) {
@@ -132,15 +137,16 @@ public class SeahornInvariantGenerationWrapper implements ExternalInvariantGener
   }
 
   @Override
-  public Callable<Path> getCallableGeneratingInvariants(
+  public Callable<InvGenCompRes> getCallableGeneratingInvariants(
       CFA pCfa,
       List<CFANode> pTargetNodesToGenerateFor,
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
-      throws CPAException {
+      Configuration pConfig,
+      int pTimeout) {
     return () -> {
+      try {
       Path res =
           generateInvariant(
               pCfa,
@@ -148,17 +154,22 @@ public class SeahornInvariantGenerationWrapper implements ExternalInvariantGener
               pSpecification,
               pLogger,
               pShutdownManager,
-              pConfig).toPath();
+                pConfig,
+                pTimeout).toPath();
       pLogger.log(Level.WARNING, "Invariant generation finished for tool : SeaHorn");
       if (!checkIfNonTrivial(pCfa, pConfig, pSpecification, pLogger, pShutdownManager, res)) {
         pLogger.log(
             Level.WARNING,
             "The SeaHorn invariant generator only generates trivial invarinats, hence not returning anything");
-        throw new CPAException(
-            "The SeaHorn invariant generator only generates trivial invarinats, hence not returning anything");
+        return new InvGenCompRes(
+            new CPAException(
+                "The SeaHorn invariant generator only generates trivial invarinats, hence not returning anything"),
+            "SeaHorn");
       }
-      return res;
-
+      return new InvGenCompRes(res, "SeaHorn");
+      } catch (CPAException e) {
+        return new InvGenCompRes(e, "SeaHorn");
+      }
     };
   }
 

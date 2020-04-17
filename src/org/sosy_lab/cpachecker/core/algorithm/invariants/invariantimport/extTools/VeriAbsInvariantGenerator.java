@@ -30,6 +30,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import javax.annotation.Nullable;
@@ -44,6 +45,7 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.InvGenCompRes;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
 
@@ -81,7 +83,8 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownNotifier,
-      Configuration pConfig)
+      Configuration pConfig,
+      int pTimeout)
       throws CPAException {
 
     // Start VeriAbs:
@@ -90,7 +93,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       throw new CPAException("Can onyl handle CFAs, where one source file is contained");
     }
     try {
-      return genInvs(sourceFiles.get(0), pLogger);
+      return genInvs(sourceFiles.get(0), pLogger, pTimeout);
     } catch (IOException | InterruptedException e) {
       throw new CPAException("", e);
     }
@@ -104,7 +107,8 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownNotifier,
-      Configuration pConfig)
+      Configuration pConfig,
+      int pTimeout)
       throws CPAException {
     try {
       pLogger.log(Level.FINEST, this.pathToOutDir);
@@ -115,7 +119,8 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
               pSpecification,
               pLogger,
               pShutdownNotifier,
-              pConfig);
+              pConfig,
+              pTimeout);
 
       final Set<CandidateInvariant> candidates = new LinkedHashSet<>();
 
@@ -138,7 +143,8 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     }
   }
 
-  private File genInvs(Path pPath, LogManager pLogger) throws IOException, InterruptedException {
+  private File genInvs(Path pPath, LogManager pLogger, long pTimeout)
+      throws IOException, InterruptedException, CPAException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
 
@@ -157,14 +163,22 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
     Process process = builder.start();
 
-    int exitCode = process.waitFor();
+    if (pTimeout < 0) {
+      pTimeout = Integer.MAX_VALUE;
+    }
+    boolean isFinished = process.waitFor(pTimeout, TimeUnit.SECONDS);
+    if (!isFinished) {
+      process.destroy();
+    }
     // After finishing the invariant generation script ensure that everything worked out as planned!
-    if (exitCode != 0) {
+    if (process.exitValue() != 0) {
       pLogger.log(
           Level.WARNING,
           "The invariant genreatino for VeriAbs returned a non-zero value, it is %d!",
-          exitCode);
-    }
+          process.exitValue());
+      throw new CPAException(
+          "The invariant genreatino for VeriAbs returned a non-zero value, it is %d!");
+    } else {
 
     // Since the cpachecker input does not like "-1*", replace them by a simple "-"
     Path pathToWitness = Path.of(ABSOLUTE_PATH_TO_INV_FILE);
@@ -175,7 +189,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     Files.write(pathToWitness, content.getBytes(StandardCharsets.UTF_8));
 
     return new File(ABSOLUTE_PATH_TO_INV_FILE);
-
+    }
   }
 
   private String getMessage() {
@@ -200,7 +214,8 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
+      Configuration pConfig,
+      int pTimeout)
       throws CPAException {
     return new Supplier<>() {
 
@@ -214,7 +229,8 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
                   pSpecification,
                   pLogger,
                   pShutdownManager,
-                  pConfig).toPath();
+                  pConfig,
+                  pTimeout).toPath();
           pLogger.log(Level.WARNING, "Invariant generation finished for tool : VeriAbs");
           return res;
         } catch (CPAException e) {
@@ -225,15 +241,17 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   @Override
-  public Callable<Path> getCallableGeneratingInvariants(
+  public Callable<InvGenCompRes> getCallableGeneratingInvariants(
       CFA pCfa,
       List<CFANode> pTargetNodesToGenerateFor,
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
-      throws CPAException {
+      Configuration pConfig,
+      int pTimeout)
+      {
     return () -> {
+      try {
       Path res =
           generateInvariant(
               pCfa,
@@ -241,17 +259,20 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
               pSpecification,
               pLogger,
               pShutdownManager,
-                pConfig).toPath();
+                pConfig,
+                pTimeout).toPath();
         pLogger.log(Level.WARNING, "Invariant generation finished for tool : VeriAbs", res);
       if (!checkIfNonTrivial(pCfa, pConfig, pSpecification, pLogger, pShutdownManager, res)) {
         pLogger.log(
             Level.WARNING,
             "The VeriAbs invariant generator only generates trivial invarinats, hence not returning anything");
-        throw new CPAException(
-            "The VeriAbs invariant generator only generates trivial invarinats, hence not returning anything");
+        return new InvGenCompRes( new CPAException(
+            "The VeriAbs invariant generator only generates trivial invarinats, hence not returning anything"),"VeriAbs");
       }
-      return res;
-
+      return new InvGenCompRes(res, "VeriAbs");
+      } catch (CPAException e) {
+        return new InvGenCompRes(e, "VeriAbs");
+      }
     };
   }
 }

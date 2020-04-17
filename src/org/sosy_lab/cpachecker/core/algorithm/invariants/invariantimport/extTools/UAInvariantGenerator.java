@@ -28,6 +28,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import javax.annotation.Nullable;
@@ -43,6 +44,7 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.InvGenCompRes;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
@@ -82,7 +84,8 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownNotifier,
-      Configuration pConfig)
+      Configuration pConfig,
+      int pTimeout)
       throws CPAException {
 
     return parser.generateInvariant(
@@ -102,7 +105,8 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownNotifier,
-      Configuration pConfig)
+      Configuration pConfig,
+      int pTimeout)
       throws CPAException {
     try {
 
@@ -113,7 +117,8 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
               pSpecification,
               pLogger,
               pShutdownNotifier,
-              pConfig);
+              pConfig,
+              pTimeout);
 
       final Set<CandidateInvariant> candidates = new LinkedHashSet<>();
 
@@ -136,7 +141,7 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   public Multimap<Integer, Pair<String, String>>
-      genInvsAndLoad(CFA pCfa, LogManager pLogger) throws CPAException {
+      genInvsAndLoad(CFA pCfa, LogManager pLogger, int pTimeout) throws CPAException {
 
     // Start UA:
     List<Path> sourceFiles = pCfa.getFileNames();
@@ -144,13 +149,14 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
       throw new CPAException("Can onyl handle CFAs, where one source file is contained");
     }
     try {
-      return genInvs(sourceFiles.get(0), pLogger);
+      return genInvs(sourceFiles.get(0), pLogger, pTimeout);
     } catch (IOException | InterruptedException e) {
       throw new CPAException("", e);
     }
   }
 
-  private Multimap<Integer, Pair<String, String>> genInvs(Path pPath, LogManager pLogger)
+  private Multimap<Integer, Pair<String, String>>
+      genInvs(Path pPath, LogManager pLogger, long pTimeout)
       throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
@@ -168,14 +174,19 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
         ABSOLUTE_PATH_TO_INV_FILE,
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
     Process process = builder.start();
-
-    int exitCode = process.waitFor();
+    if (pTimeout < 0) {
+      pTimeout = Integer.MAX_VALUE;
+    }
+    boolean isFinished = process.waitFor(pTimeout, TimeUnit.SECONDS);
+    if (!isFinished) {
+      process.destroy();
+    }
     // After finishing the invariant generation script ensure that everything worked out as planned!
-    if (exitCode != 0) {
+    if (process.exitValue() != 0) {
       pLogger.log(
           Level.WARNING,
           "The invariant genreatino for Ultimate Automizer returned a non-zero value, it is %d!",
-          exitCode);
+          process.exitValue());
     }
 
     // Since the cpachecker input does not like "-1*", replace them by a simple "-"
@@ -208,7 +219,8 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
+      Configuration pConfig,
+      int pTimeout)
       throws CPAException {
     return new Supplier<>() {
 
@@ -222,7 +234,8 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
                   pSpecification,
                   pLogger,
                   pShutdownManager,
-                  pConfig).toPath();
+                  pConfig,
+                  pTimeout).toPath();
           pLogger.log(Level.WARNING, "Invariant generation finished for tool : Ultimate Automizer");
           return res;
         } catch (CPAException e) {
@@ -233,32 +246,36 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
   }
 
   @Override
-  public Callable<Path> getCallableGeneratingInvariants(
+  public Callable<InvGenCompRes> getCallableGeneratingInvariants(
       CFA pCfa,
       List<CFANode> pTargetNodesToGenerateFor,
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
-      throws CPAException {
+      Configuration pConfig,
+      int pTimeout)
+      {
     return () -> {
-      Path res =
+      try{Path res =
           generateInvariant(
               pCfa,
               pTargetNodesToGenerateFor,
               pSpecification,
               pLogger,
               pShutdownManager,
-              pConfig).toPath();
+                pConfig,
+                pTimeout).toPath();
       pLogger.log(Level.WARNING, "Invariant generation finished for tool : Ultimate AUtomizer");
       if (!checkIfNonTrivial(pCfa, pConfig, pSpecification, pLogger, pShutdownManager, res)) {
         pLogger.log(
             Level.WARNING,
             "The Ultimate Automizer invariant generator only generates trivial invarinats, hence not returning anything");
-        throw new CPAException(
-            "The Ultimate Automizer invariant generator only generates trivial invarinats, hence not returning anything");
+        return new InvGenCompRes( new CPAException(
+            "The Ultimate Automizer invariant generator only generates trivial invarinats, hence not returning anything"), "UltimateAutomizer");
       }
-      return res;
+      return new InvGenCompRes(res, "UltimateAutomizer");}catch(CPAException e) {
+        return new InvGenCompRes(e, "UltimateAutomizer");
+      }
     };
   }
 
