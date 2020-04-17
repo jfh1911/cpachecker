@@ -27,6 +27,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
@@ -72,11 +73,12 @@ public class SeahornInvariantGenerator {
    * @param pPath the path to c file
    * @param pCfa the cfa of the program
    * @param pLogger the logger to use
+   * @param pTimeout for the invariant generation
    * @return a multimap, where the first parameter is the line number, the second one a string of
    *         the source code and the third a string with the c invariant
    */
   public Multimap<Integer, Pair<String, String>>
-      genInvsAndLoad(Path pPath, CFA pCfa, LogManager pLogger)
+      genInvsAndLoad(Path pPath, CFA pCfa, LogManager pLogger, int pTimeout)
           throws IOException, InterruptedException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
@@ -94,10 +96,20 @@ public class SeahornInvariantGenerator {
         absolutePathToInvFile,
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
     Process process = builder.start();
-
-    int exitCode = process.waitFor();
+    if (pTimeout < 0) {
+      pTimeout = Integer.MAX_VALUE;
+    }
+    boolean isFinished = process.waitFor(pTimeout, TimeUnit.SECONDS);
+    if (!isFinished) {
+      process.destroy();
+    }
     // After finishing the invariant generation script ensure that everything worked out as planned!
-    assert exitCode == 0;
+    if (process.exitValue() != 0) {
+      pLogger.log(
+          Level.WARNING,
+          "The invariant genreatino for SeaHorn returned a non-zero value!",
+          process.exitValue());
+    }
     return parseInvFile(absolutePathToInvFile + "invars_in_c.txt", pCfa);
   }
 

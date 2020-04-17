@@ -26,6 +26,8 @@ import java.util.List;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
+import org.sosy_lab.common.configuration.Option;
+import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.core.Specification;
@@ -35,9 +37,16 @@ import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.interfaces.CPAFactory;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
+@Options(prefix = "coverisinv")
 public class SeahornInvToARGCPA extends ExternalInvToARGCPA {
-  SeahornInvariantGenerator generator;
 
+  @Option(
+    secure = true,
+    name = "timeoutForInvariantExecution",
+    description = "The timeout given to the invariant generators")
+  private int pTimeout;
+
+  SeahornInvariantGenerator generator;
   /**
    * Gets a factory for creating InvariantCPAs.
    *
@@ -53,15 +62,17 @@ public class SeahornInvToARGCPA extends ExternalInvToARGCPA {
       ShutdownNotifier pShutdownNotifier,
       CFA pCfa,
       Specification pSpecification)
-      throws CPAException {
+      throws CPAException, InvalidConfigurationException {
     super(pConfig, pLogger, pShutdownNotifier, pCfa, pSpecification);
+    pConfig.inject(this);
     try {
       List<Path> sourceFiles = pCfa.getFileNames();
       if (sourceFiles.size() != 1) {
         throw new CPAException("Can onyl handle CFAs, where one source file is contained");
       }
       generator = new SeahornInvariantGenerator(pConfig);
-      super.injectAndParseInvariants(generator.genInvsAndLoad(sourceFiles.get(0), pCfa, pLogger));
+      super.injectAndParseInvariants(
+          generator.genInvsAndLoad(sourceFiles.get(0), pCfa, pLogger, pTimeout));
 
     } catch (IOException | InterruptedException | InvalidConfigurationException e) {
       pLogger.log(InvariantInC2WitnessParser.LOG_LEVEL, Throwables.getStackTraceAsString(e));

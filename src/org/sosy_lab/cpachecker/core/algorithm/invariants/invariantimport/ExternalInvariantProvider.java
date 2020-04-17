@@ -30,6 +30,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -58,7 +59,7 @@ import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
 public class ExternalInvariantProvider {
   private boolean isStared;
   private boolean hasFinished;
-  private List<Path> computedPath;
+  private List<InvGenCompRes> computedPath;
   private LogManager logger;
   private CFA cFA;
   private Specification specification;
@@ -73,7 +74,7 @@ public class ExternalInvariantProvider {
   private List<ExternalInvariantGenerators> extInvGens;
   private boolean waitForOthers = false;
   private AtomicBoolean shoudlShutdownTimeout = new AtomicBoolean(false);
-  private ImmutableList<ListenableFuture<Path>> futures = ImmutableList.of();
+  private ImmutableList<ListenableFuture<InvGenCompRes>> futures = ImmutableList.of();
 
   public ExternalInvariantProvider(
       Configuration pConfig,
@@ -87,7 +88,7 @@ public class ExternalInvariantProvider {
       boolean pInjectWitnesses) {
     super();
     // options = pOptions;
-    computedPath = new ArrayList<>();
+    computedPath = Collections.synchronizedList(new ArrayList<>());
     logger = pLogger;
     cFA = pCFA;
     specification = pSpecification;
@@ -134,7 +135,7 @@ public class ExternalInvariantProvider {
       return hasFinished;
     }
 
-    List<Callable<Path>> suppliers = new ArrayList<>(initialCapacity);
+    List<Callable<InvGenCompRes>> suppliers = new ArrayList<>(initialCapacity);
     // if (timeoutForInvariantExecution > 0) {
     // logger.log(
     // Level.INFO,
@@ -161,8 +162,9 @@ public class ExternalInvariantProvider {
                 specification,
                 logger,
                 shutdownManager.getNotifier(),
-                config));
-      } catch (InvalidConfigurationException | CPAException e) {
+                config,
+                timeoutForInvariantExecution));
+      } catch (InvalidConfigurationException e) {
         logger.log(
             Level.INFO,
             "An error occured while setting up the invarant generation tools."
@@ -205,18 +207,22 @@ public class ExternalInvariantProvider {
 
     // List<CPAException> exceptions = new ArrayList<>();
 
-    for (ListenableFuture<Path> f : Futures.inCompletionOrder(futures)) {
+    Futures.inCompletionOrder(futures).parallelStream().forEachOrdered(f -> {
 
-      Path result;
+      InvGenCompRes result;
       try {
         if (timeoutForInvariantExecution > 0) {
           result = f.get(timeoutForInvariantExecution, TimeUnit.SECONDS);
         } else {
           result = f.get();
         }
-        if (result != null) {
+        if (result.hasResult() && !shoudlShutdownTimeout.get()) {
           this.computedPath.add(result);
-
+          logger.log(
+              Level.INFO,
+              "Received",
+              result.hasResult() ? " correct result for " : "error from ",
+              result.getNameOfTool());
           if (!this.waitForOthers) {
             // Allow the threads, especially the timeout thread some time to shutdown
             shoudlShutdownTimeout.getAndSet(true);
@@ -226,17 +232,15 @@ public class ExternalInvariantProvider {
             // futures.parallelStream()
             // .forEach(fut -> System.out.println(fut.isCancelled() || fut.isDone()));
           }
-          break;
         }
-
       } catch (InterruptedException | ExecutionException e) {
         logger.log(Level.WARNING, "One invairant generation failed!");
-      } catch (TimeoutException | CancellationException e) {
+      } catch (TimeoutException e) {
         logger.log(Level.WARNING, "The invariant generation timed-out!");
-        futures.parallelStream().forEach(fut -> fut.cancel(true));
+      } catch (CancellationException e) {
+        logger.log(Level.WARNING, "The invariant generation was canceled!");
       }
-    }
-
+    });
   }
 
   // private Callable<Path>
@@ -251,16 +255,13 @@ public class ExternalInvariantProvider {
   // };
   // }
 
-  public Path getFirstComputedPath() {
-    if (hasFinished) {
-      if (computedPath.get(0) == null) {
-        logger.log(Level.WARNING, "Returning null path for generated witness");
-      }
-      return computedPath.get(0);
-    } else {
-      // FIXME: Enhance error handling
-      logger.log(Level.WARNING, "No path found!");
-      throw new IllegalArgumentException("");
+  public Path getFirstComputedPath() throws CPAException {
+    if (hasFinished && !computedPath.isEmpty() && computedPath.get(0).hasResult()) {
+      return computedPath.get(0).getPathToInv();
+
+  } else {
+      throw new CPAException("No invariants were generated");
+
     }
   }
 
@@ -291,7 +292,7 @@ public class ExternalInvariantProvider {
       try {
         Set<CandidateInvariant> candidates = new HashSet<>();
         final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
-        if (!computedPath.isEmpty()) {
+        if (!computedPath.isEmpty() && computedPath.get(0).hasResult()) {
           WitnessInvariantsExtractor extractor =
               new WitnessInvariantsExtractor(
                   config,
@@ -299,11 +300,16 @@ public class ExternalInvariantProvider {
                   logger,
                   cFA,
                   shutdownManager.getNotifier(),
-                  computedPath.get(0));
+                  computedPath.get(0).getPathToInv());
 
           extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
           logger
-              .log(Level.WARNING, "The following candidates are imported: ", candidates.toString());
+              .log(
+                  Level.WARNING,
+                  "The following candidates are imported for tool ",
+                  computedPath.get(0).getNameOfTool(),
+                  ":",
+                  candidates.toString());
           logger.log(
               Level.WARNING,
               "The following candidateGroupLocations are found: ",
@@ -345,15 +351,17 @@ public class ExternalInvariantProvider {
     return hasFinished;
   }
 
-  public List<Path> getComputedPath() {
+  public List<InvGenCompRes> getComputedPath() {
     return computedPath;
   }
 
   public boolean hasComputedInvariants() {
-    return computedPath != null && computedPath.size() > 0;
+    return computedPath != null
+        && computedPath.size() > 0
+        && computedPath.stream().anyMatch(r -> r.hasResult());
   }
 
-  List<ListenableFuture<Path>> getFutures() {
+  List<ListenableFuture<InvGenCompRes>> getFutures() {
     // futures.forEach(f -> logger.log(Level.WARNING, f.toString()));
     return this.futures;
   }

@@ -65,40 +65,25 @@ public interface ExternalInvariantGenerator {
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
+      Configuration pConfig,
+      int pTimeout)
       throws CPAException;
 
-  /**
-   *
-   * @param pCfa of the program
-   * @return the file containing the invariants
-   * @throws CPAException If the CFA contains more than one source file or to wrap different
-   *         exceptions
-   */
-  File generateInvariant(
-      CFA pCfa,
-      List<CFANode> pTargetNodesToGenerateFor,
-      Specification pSpecification,
-      LogManager pLogger,
-      ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
-      throws CPAException;
+
 
   /**
    *
    * @param pCfa of the program
    * @return the path to the file containing the invariants
-   * @throws CPAException If the CFA contains more than one source file or to wrap different
-   *         exceptions
    */
-  public Callable<Path> getCallableGeneratingInvariants(
+  public Callable<InvGenCompRes> getCallableGeneratingInvariants(
       CFA pCfa,
       List<CFANode> pTargetNodesToGenerateFor,
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
-      throws CPAException;
+      Configuration pConfig,
+      int pTimeout);
 
   /**
    *
@@ -113,7 +98,8 @@ public interface ExternalInvariantGenerator {
       Specification pSpecification,
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
-      Configuration pConfig)
+      Configuration pConfig,
+      int pTimeout)
       throws CPAException;
 
   static ExternalInvariantGenerator
@@ -188,4 +174,21 @@ public interface ExternalInvariantGenerator {
     }
     return nonTrivialFound;
   }
+
+  /**
+   *
+   * @param pCfa of the program
+   * @return the file containing the invariants
+   * @throws CPAException If the CFA contains more than one source file or to wrap different
+   *         exceptions
+   */
+  File generateInvariant(
+      CFA pCfa,
+      List<CFANode> pTargetNodesToGenerateFor,
+      Specification pSpecification,
+      LogManager pLogger,
+      ShutdownNotifier pShutdownNotifier,
+      Configuration pConfig,
+      int pTimeout)
+      throws CPAException;
 }

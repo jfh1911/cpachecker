@@ -44,6 +44,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.Classes.UnexpectedCheckedException;
 import org.sosy_lab.common.ShutdownManager;
@@ -111,7 +112,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
   private ParallelAnalysisResult finalResult = null;
   private Collection<Statistics> stats;
 
-  private Path pathToGeneratedInvar;
+  private List<Path> pathToGeneratedInvar;
 
   private AggregatedReachedSetManager aggregatedReachedSetManager;
   protected static final int NUM_OF_THREATS_NEEDED = 2;
@@ -194,7 +195,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
             timeoutForInvariantExecution,
             startInvariantExecutionTimer,
             extInvGens,
-            injectWitnesses);
+            true);
 
   }
 
@@ -243,7 +244,12 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
         if (provider.hasComputedInvariants()) {
           // terminated.set(true);
           logger.log(Level.WARNING, "The invariant generation finished successfully");
-          return new ParallelInvGenResult(provider.getFirstComputedPath());
+          return new ParallelInvGenResult(
+              provider.getComputedPath()
+                  .parallelStream()
+                  .filter(r -> r.hasResult())
+                  .map(r -> r.getPathToInv())
+                  .collect(Collectors.toList()));
         } else {
           logger.log(Level.WARNING, "No invariants were generated!");
           return new ParallelInvGenResult();
@@ -401,7 +407,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
   }
 
   private void retryWithGeneratedInvariants(
-      Path pPathToInvariant,
+      List<Path> pPathToInvariant,
       ShutdownManager singleShutdownManager,
       ForwardingReachedSet pForwardingReachedSet)
       throws CPAEnabledAnalysisPropertyViolationException, CPAException, InterruptedException,
@@ -417,11 +423,11 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       ConfigurationBuilder builder = Configuration.builder();
 
       builder.copyFrom(singleConfig);
-      if (pPathToInvariant != null) {
+      if (!pPathToInvariant.isEmpty()) {
       builder.setOption(
           "invariantGeneration.kInduction.invariantsAutomatonFile",
-          pPathToInvariant.toString());
-      builder.setOption("cpa.predicate.abstraction.initialPredicates", pPathToInvariant.toString());
+          getPaths(pPathToInvariant));
+      builder.setOption("cpa.predicate.abstraction.initialPredicates", getPaths(pPathToInvariant));
       }
       builder.setOption("analysis.injectGeneratedInvariants", Boolean.toString(injectWitnesses));
 
@@ -439,7 +445,8 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
               new AggregatedReachedSets(),
               stats,
               // if no witnesses should be injected, just dont provide it to the new master
-              injectWitnesses ? provider.getFutures() : new ArrayList<>());
+              // FIXME: update for witness injection
+              new ArrayList<>());
 
       currentAlgorithm = restartAlg.getFirst();
 
@@ -640,6 +647,18 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
   }
 
+  private String getPaths(List<Path> pPathToInvariant) {
+    StringBuilder builder = new StringBuilder();
+    if (!pPathToInvariant.isEmpty()) {
+      builder.append(pPathToInvariant.get(0));
+      for (int i = 1; i < pPathToInvariant.size(); i++) {
+        builder.append(" , ");
+        builder.append(pPathToInvariant.get(i).toString());
+      }
+    }
+    return builder.toString();
+  }
+
   @Override
   public void collectStatistics(Collection<Statistics> pStatsCollection) {
     // TODO Auto-generated method stub
@@ -652,7 +671,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     private boolean isInvGen;
     private boolean isTimeout;
     private AlgorithmStatus result;
-    private Path pathToInvariant;
+    private List<Path> pathToInvariant;
     private ReachedSet reachedSet;
 
     public ParallelInvGenResult(AlgorithmStatus pResult, ReachedSet pReachedSet) {
@@ -664,7 +683,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       reachedSet = pReachedSet;
     }
 
-    public ParallelInvGenResult(Path pPathToInvariant) {
+    public ParallelInvGenResult(List<Path> pPathToInvariant) {
       super();
       isAnalysis = false;
       isInvGen = true;
@@ -696,7 +715,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       return result;
     }
 
-    public Path getPathToInvariant() {
+    public List<Path> getPathToInvariant() {
       return pathToInvariant;
     }
 

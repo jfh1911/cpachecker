@@ -22,6 +22,8 @@ package org.sosy_lab.cpachecker.cpa.extinvgen;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
+import org.sosy_lab.common.configuration.Option;
+import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.core.Specification;
@@ -30,7 +32,15 @@ import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.interfaces.CPAFactory;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
+@Options(prefix = "coverisinv")
 public class UAInvToARGCPA extends ExternalInvToARGCPA {
+
+  @Option(
+    secure = true,
+    name = "timeoutForInvariantExecution",
+    description = "The timeout given to the invariant generators")
+  private int pTimeout = -1;
+
   UAInvariantGenerator generator;
 
   /**
@@ -50,12 +60,13 @@ public class UAInvToARGCPA extends ExternalInvToARGCPA {
       Specification pSpecification)
       throws CPAException, InvalidConfigurationException {
     super(pConfig, pLogger, pShutdownNotifier, pCfa, pSpecification);
+    pConfig.inject(this);
 
     if (pCfa.getFileNames().size() != 1) {
       throw new CPAException("Can onyl handle CFAs, where one source file is contained");
     }
     generator = new UAInvariantGenerator(pConfig);
-    super.injectAndParseInvariants(generator.genInvsAndLoad(pCfa, pLogger));
+    super.injectAndParseInvariants(generator.genInvsAndLoad(pCfa, pLogger, pTimeout));
 
   }
 

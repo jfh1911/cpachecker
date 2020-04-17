@@ -17,6 +17,7 @@ import com.google.common.base.Predicates;
 import com.google.common.base.Throwables;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
@@ -133,7 +134,7 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
     @Option(
       secure = true,
       description = "Provides additional candidate invariants to the k-induction invariant generator.")
-    private Path invariantsAutomatonFile = null;
+    private List<Path> invariantsAutomatonFile = ImmutableList.of();
 
     @Option(
       secure = true,
@@ -509,7 +510,8 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
             .create(pCFA, pSpecification, pTargetLocationProvider, pLogger));
 
     final Multimap<String, CFANode> candidateGroupLocations = HashMultimap.create();
-    if (pOptions.invariantsAutomatonFile != null) {
+    if (pOptions.invariantsAutomatonFile != null && !pOptions.invariantsAutomatonFile.isEmpty()) {
+      for (Path path : pOptions.invariantsAutomatonFile) {
       WitnessInvariantsExtractor extractor =
           new WitnessInvariantsExtractor(
               pConfig,
@@ -517,8 +519,9 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
               pLogger,
               pCFA,
               pShutdownManager.getNotifier(),
-              pOptions.invariantsAutomatonFile);
+                path);
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
+      }
     }
 
     candidates.add(TargetLocationCandidateInvariant.INSTANCE);
