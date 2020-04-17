@@ -185,7 +185,7 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
     if (process.exitValue() != 0) {
       pLogger.log(
           Level.WARNING,
-          "The invariant genreatino for Ultimate Automizer returned a non-zero value, it is %d!",
+          "The invariant genreatino for Ultimate Automizer returned a non-zero value!",
           process.exitValue());
     }
 

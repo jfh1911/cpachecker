@@ -107,7 +107,7 @@ public class SeahornInvariantGenerator {
     if (process.exitValue() != 0) {
       pLogger.log(
           Level.WARNING,
-          "The invariant genreatino for SeaHorn returned a non-zero value, it is %d!",
+          "The invariant genreatino for SeaHorn returned a non-zero value!",
           process.exitValue());
     }
     return parseInvFile(absolutePathToInvFile + "invars_in_c.txt", pCfa);

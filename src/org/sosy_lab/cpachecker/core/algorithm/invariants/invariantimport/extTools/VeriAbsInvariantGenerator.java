@@ -174,10 +174,10 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     if (process.exitValue() != 0) {
       pLogger.log(
           Level.WARNING,
-          "The invariant genreatino for VeriAbs returned a non-zero value, it is %d!",
+          "The invariant genreatino for VeriAbs returned a non-zero value.!",
           process.exitValue());
       throw new CPAException(
-          "The invariant genreatino for VeriAbs returned a non-zero value, it is %d!");
+          "The invariant genreatino for VeriAbs returned a non-zero value!");
     } else {
 
     // Since the cpachecker input does not like "-1*", replace them by a simple "-"
