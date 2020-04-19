@@ -164,6 +164,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
 
     Process process = builder.start();
+    pLogger.log(Level.INFO, "Starting The invariant generation for VeriAbs with timeout", pTimeout);
     int isFinished = process.waitFor();
     // After finishing the invariant generation script ensure that everything worked out as planned!
     if (isFinished != 0) {
