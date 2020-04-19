@@ -101,7 +101,8 @@ public class SeahornInvariantGenerationWrapper implements ExternalInvariantGener
         pLogger,
         pShutdownNotifier,
         configForSeahorn,
-        witnessFile);
+        witnessFile,
+        pTimeout);
   }
 
   @Override

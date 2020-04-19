@@ -66,6 +66,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
 import org.sosy_lab.common.Classes.UnexpectedCheckedException;
 import org.sosy_lab.common.LazyFutureTask;
 import org.sosy_lab.common.ShutdownManager;
@@ -536,6 +537,12 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
               pShutdownManager.getNotifier(),
                 path);
       extractor.extractCandidatesFromReachedSet(candidates, candidateGroupLocations);
+        pLogger.log(
+            Level.WARNING,
+            "Imported invariants  for ",
+            path.toString(),
+            " are ",
+            candidates.toString());
       }
     }
 

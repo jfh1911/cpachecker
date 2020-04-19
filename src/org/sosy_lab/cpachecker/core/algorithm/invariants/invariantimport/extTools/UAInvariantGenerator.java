@@ -95,7 +95,8 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
         pLogger,
         pShutdownNotifier,
         configForInvGen,
-        witnessFile);
+        witnessFile,
+        pTimeout);
 
   }
 
