@@ -39,7 +39,7 @@ public class UAInvToARGCPA extends ExternalInvToARGCPA {
     secure = true,
     name = "timeoutForInvariantExecution",
     description = "The timeout given to the invariant generators")
-  private int pTimeout = -1;
+  private int pTimeout;
 
   UAInvariantGenerator generator;
 
