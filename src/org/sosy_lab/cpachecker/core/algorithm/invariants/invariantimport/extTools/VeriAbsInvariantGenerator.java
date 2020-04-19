@@ -162,17 +162,12 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
         pPath.toFile().getAbsolutePath(),
         ABSOLUTE_PATH_TO_INV_FILE,
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
-    Process process = builder.start();
+        "/home/cppp/Documents/VeriAbs/scripts/");
 
-    if (pTimeout < 0) {
-      pTimeout = Integer.MAX_VALUE;
-    }
-    boolean isFinished = process.waitFor(pTimeout, TimeUnit.SECONDS);
-    if (!isFinished) {
-      process.destroy();
-    }
+    Process process = builder.start();
+    int isFinished = process.waitFor();
     // After finishing the invariant generation script ensure that everything worked out as planned!
-    if (process.exitValue() != 0) {
+    if (isFinished != 0) {
       pLogger.log(
           Level.WARNING,
           "The invariant genreatino for VeriAbs returned a non-zero value.!",
