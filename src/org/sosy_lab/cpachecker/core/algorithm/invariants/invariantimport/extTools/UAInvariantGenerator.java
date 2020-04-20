@@ -28,6 +28,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import javax.annotation.Nullable;
@@ -179,15 +180,17 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
         Level.INFO,
         "Starting The invariant generation for UltimateAUtomizer with timeout",
         pTimeout);
-    int isFinished = process.waitFor();
-    // After finishing the invariant generation script ensure that everything worked out as planned!
-    if (isFinished != 0) {
-      pLogger
-          .log(
-          Level.WARNING,
-          "The invariant generation for UltimateAUtomizer computed a result");
-    }
 
+    // After finishing the invariant generation script ensure that everything worked out as planned!
+    boolean isFinished = process.waitFor(pTimeout, TimeUnit.SECONDS);
+    if (!isFinished) {
+      pLogger.log(
+          Level.WARNING,
+          "Invariant generation for Ultimate AUtomizer timed out after",
+          pTimeout,
+          "seconds");
+      process.destroy();
+    }
     // After finishing the invariant generation script ensure that everything worked out as planned!
     if (process.exitValue() != 0) {
       pLogger.log(

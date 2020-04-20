@@ -27,6 +27,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
@@ -95,9 +96,15 @@ public class SeahornInvariantGenerator {
         absolutePathToInvFile,
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
     Process process = builder.start();
-    int isFinished = process.waitFor();
+    boolean isFinished = process.waitFor(pTimeout, TimeUnit.SECONDS);
     // After finishing the invariant generation script ensure that everything worked out as planned!
-    if (isFinished != 0) {
+    if (!isFinished ) {
+      pLogger.log(Level.WARNING,
+      "The invariant genreatino for SeaHorn timed out!");
+      process.destroy();
+    }
+
+     if( process.exitValue() != 0) {
       pLogger.log(
           Level.WARNING,
           "The invariant genreatino for SeaHorn returned a non-zero value!",
