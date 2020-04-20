@@ -86,7 +86,8 @@ public class InvariantInC2WitnessParser {
       LogManager pLogger,
       ShutdownNotifier pShutdownNotifier,
       Path pPath2SubConfig,
-      File witnessFile)
+      File witnessFile,
+      int pTimeout)
       throws CPAException {
 
     Algorithm currentAlgorithm;
@@ -98,6 +99,7 @@ public class InvariantInC2WitnessParser {
 
       builder.copyFrom(singleConfig);
       builder.setOption("analysis.generateExternalInvariants", "false");
+      builder.setOption("cpa.extinvgen.timeoutForInvariantExecution", Integer.toString(pTimeout));
       Configuration newConfig = builder.build();
 
       Collection<Statistics> stats = new ArrayList<>();

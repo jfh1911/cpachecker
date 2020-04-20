@@ -195,7 +195,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
             timeoutForInvariantExecution,
             startInvariantExecutionTimer,
             extInvGens,
-            true);
+            injectWitnesses);
 
   }
 

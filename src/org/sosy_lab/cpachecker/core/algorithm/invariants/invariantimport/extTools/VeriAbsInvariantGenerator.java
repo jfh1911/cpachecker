@@ -45,6 +45,7 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerators;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.InvGenCompRes;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
@@ -161,13 +162,16 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
         pPath.toFile().getAbsolutePath(),
         ABSOLUTE_PATH_TO_INV_FILE,
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
-    Process process = builder.start();
 
-    if (pTimeout < 0) {
-      pTimeout = Integer.MAX_VALUE;
-    }
+    Process process = builder.start();
+    pLogger.log(Level.INFO, "Starting The invariant generation for VeriAbs with timeout", pTimeout);
     boolean isFinished = process.waitFor(pTimeout, TimeUnit.SECONDS);
     if (!isFinished) {
+      pLogger.log(
+          Level.WARNING,
+          "Invariant generation for VeriAbs timed out after",
+          pTimeout,
+          "seconds");
       process.destroy();
     }
     // After finishing the invariant generation script ensure that everything worked out as planned!
@@ -248,8 +252,14 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       LogManager pLogger,
       ShutdownNotifier pShutdownManager,
       Configuration pConfig,
-      int pTimeout)
+      int pTimeout,
+      List<ExternalInvariantGenerators> pExtInvGens)
       {
+
+    if (pExtInvGens.parallelStream().anyMatch(p -> p.equals(ExternalInvariantGenerators.SEAHORN))) {
+      ABSOLUTE_PATH_TO_INV_FILE = "/home/jfh/Documents/seahorn/others/" + "witness_VeriAbs.graphml";
+    }
+
     return () -> {
       try {
       Path res =

@@ -37,7 +37,7 @@ import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.interfaces.CPAFactory;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-@Options(prefix = "coverisinv")
+@Options(prefix = "cpa.extinvgen")
 public class SeahornInvToARGCPA extends ExternalInvToARGCPA {
 
   @Option(

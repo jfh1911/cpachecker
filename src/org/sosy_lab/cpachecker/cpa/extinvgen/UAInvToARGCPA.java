@@ -32,14 +32,14 @@ import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.interfaces.CPAFactory;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
-@Options(prefix = "coverisinv")
+@Options(prefix = "cpa.extinvgen")
 public class UAInvToARGCPA extends ExternalInvToARGCPA {
 
   @Option(
     secure = true,
     name = "timeoutForInvariantExecution",
     description = "The timeout given to the invariant generators")
-  private int pTimeout = -1;
+  private int pTimeout;
 
   UAInvariantGenerator generator;
 

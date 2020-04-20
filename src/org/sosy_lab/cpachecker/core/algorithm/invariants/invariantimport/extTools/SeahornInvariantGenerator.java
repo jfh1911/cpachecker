@@ -96,15 +96,15 @@ public class SeahornInvariantGenerator {
         absolutePathToInvFile,
         PATH_TO_CPA_DIR + PATH_TO_SCRIPTS);
     Process process = builder.start();
-    if (pTimeout < 0) {
-      pTimeout = Integer.MAX_VALUE;
-    }
     boolean isFinished = process.waitFor(pTimeout, TimeUnit.SECONDS);
-    if (!isFinished) {
+    // After finishing the invariant generation script ensure that everything worked out as planned!
+    if (!isFinished ) {
+      pLogger.log(Level.WARNING,
+      "The invariant genreatino for SeaHorn timed out!");
       process.destroy();
     }
-    // After finishing the invariant generation script ensure that everything worked out as planned!
-    if (process.exitValue() != 0) {
+
+     if( process.exitValue() != 0) {
       pLogger.log(
           Level.WARNING,
           "The invariant genreatino for SeaHorn returned a non-zero value!",
