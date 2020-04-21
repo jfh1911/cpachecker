@@ -76,7 +76,6 @@ import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.exceptions.CounterexampleAnalysisFailed;
 import org.sosy_lab.cpachecker.exceptions.RefinementFailedException;
 import org.sosy_lab.cpachecker.util.AbstractStates;
-import org.sosy_lab.cpachecker.util.CPAs;
 import org.sosy_lab.cpachecker.util.Triple;
 
 @Options(prefix = "coverisinv")
@@ -343,9 +342,9 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
             if (shutdownMaster) {
             masterShutdownManager.requestShutdown("Invariant generation is finished");
-            CPAs.closeCpaIfPossible(master.getSecond(), logger);
+              // CPAs.closeCpaIfPossible(master.getSecond(), logger);
 
-            CPAs.closeIfPossible(master.getFirst(), logger);
+              // CPAs.closeIfPossible(master.getFirst(), logger);
 
             logger.log(Level.INFO, "Restarting the master analysis");
             // store the generated invariants for later use
@@ -423,7 +422,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       ConfigurationBuilder builder = Configuration.builder();
 
       builder.copyFrom(singleConfig);
-      if (!pPathToInvariant.isEmpty()) {
+      if (pPathToInvariant != null && !pPathToInvariant.isEmpty()) {
       builder.setOption(
           "invariantGeneration.kInduction.invariantsAutomatonFile",
           getPaths(pPathToInvariant));
@@ -473,7 +472,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       }
       throw e;
     }
-    pForwardingReachedSet.setDelegate(currentReached);
+    // pForwardingReachedSet.setDelegate(currentReached);
 
     AlgorithmStatus status = null;
     try {
