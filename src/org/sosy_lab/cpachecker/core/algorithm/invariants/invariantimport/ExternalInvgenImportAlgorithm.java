@@ -472,13 +472,14 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       }
       throw e;
     }
-    // pForwardingReachedSet.setDelegate(currentReached);
+
 
     AlgorithmStatus status = null;
     try {
       logger.log(Level.INFO, "Re-Starting analysis  ...");
       status = currentAlgorithm.run(currentReached);
       logger.log(Level.INFO, "An result was computed...");
+      pForwardingReachedSet.setDelegate(currentReached);
       // If the master is finished, kill all other running threads
       provider.getFutures().forEach(helper -> helper.cancel(true));
 
