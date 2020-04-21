@@ -189,6 +189,9 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     String content = new String(Files.readAllBytes(pathToWitness), StandardCharsets.UTF_8);
     while (content.contains("-1 * ")) {
       content = content.replace("-1 * ", "-");
+      }
+      while (content.contains("&amp;&amp;")) {
+        content = content.replace("&amp;&amp;", "&amp;");
     }
     Files.write(pathToWitness, content.getBytes(StandardCharsets.UTF_8));
 
