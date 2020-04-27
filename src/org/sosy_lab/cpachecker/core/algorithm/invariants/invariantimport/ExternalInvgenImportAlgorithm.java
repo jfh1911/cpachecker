@@ -35,6 +35,8 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -477,8 +479,16 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     AlgorithmStatus status = null;
     try {
       logger.log(Level.INFO, "Re-Starting analysis  ...");
+      Instant startOfReRun = Instant.now();
+
       status = currentAlgorithm.run(currentReached);
       logger.log(Level.INFO, "An result was computed...");
+      Instant finishReRun = Instant.now();
+
+      logger.log(
+          Level.INFO,
+          " Time take for the verification is: ",
+          Duration.between(startOfReRun, finishReRun).toSeconds());
       pForwardingReachedSet.setDelegate(currentReached);
       // If the master is finished, kill all other running threads
       provider.getFutures().forEach(helper -> helper.cancel(true));
