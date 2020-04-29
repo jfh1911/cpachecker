@@ -190,9 +190,9 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     while (content.contains("-1 * ")) {
       content = content.replace("-1 * ", "-");
       }
-      while (content.contains("&amp;&amp;")) {
-        content = content.replace("&amp;&amp;", "&amp;");
-    }
+      // while (content.contains("&amp;&amp;")) {
+      // content = content.replace("&amp;&amp;", "&amp;");
+      // }
     Files.write(pathToWitness, content.getBytes(StandardCharsets.UTF_8));
 
     return new File(ABSOLUTE_PATH_TO_INV_FILE);
