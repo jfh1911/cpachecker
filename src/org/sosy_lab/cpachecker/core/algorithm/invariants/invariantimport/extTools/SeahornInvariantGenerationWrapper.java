@@ -147,7 +147,8 @@ public class SeahornInvariantGenerationWrapper implements ExternalInvariantGener
       ShutdownNotifier pShutdownManager,
       Configuration pConfig,
       int pTimeout,
-      List<ExternalInvariantGenerators> pExtInvGens) {
+      List<ExternalInvariantGenerators> pExtInvGens,
+      boolean pOptimizeForPredicateAbstr) {
 
     return () -> {
       try {

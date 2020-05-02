@@ -75,6 +75,7 @@ public class ExternalInvariantProvider {
   private boolean waitForOthers = false;
   private AtomicBoolean shoudlShutdownTimeout = new AtomicBoolean(false);
   private ImmutableList<ListenableFuture<InvGenCompRes>> futures = ImmutableList.of();
+  private boolean optimizeForPredicateAbstr;
 
   public ExternalInvariantProvider(
       Configuration pConfig,
@@ -85,7 +86,8 @@ public class ExternalInvariantProvider {
       int pTimeoutForInvariantExecution,
       int pStartInvariantExecutionTimer,
       List<ExternalInvariantGenerators> pExtInvGens,
-      boolean pInjectWitnesses) {
+      boolean pInjectWitnesses,
+      boolean pOptimizeForPredicateAbstr) {
     super();
     // options = pOptions;
     computedPath = Collections.synchronizedList(new ArrayList<>());
@@ -102,7 +104,7 @@ public class ExternalInvariantProvider {
     extInvGens = pExtInvGens;
 
     waitForOthers = pInjectWitnesses;
-
+    optimizeForPredicateAbstr = pOptimizeForPredicateAbstr;
   }
 
   public boolean start(AtomicBoolean pShouldTerminate) {
@@ -164,7 +166,8 @@ public class ExternalInvariantProvider {
                 shutdownManager.getNotifier(),
                 config,
                 timeoutForInvariantExecution,
-                extInvGens));
+                extInvGens,
+                optimizeForPredicateAbstr));
       } catch (InvalidConfigurationException e) {
         logger.log(
             Level.INFO,

@@ -93,6 +93,11 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
   @Option(
     secure = true,
+    description = "Use optimization for predicate abstraction")
+  public boolean optimizeForPredicateAbstr = false;
+
+  @Option(
+    secure = true,
     description = "If one do not want to start imediatly with the invariant generation.")
   public int startInvariantExecutionTimer = -1;
 
@@ -196,7 +201,8 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
             timeoutForInvariantExecution,
             startInvariantExecutionTimer,
             extInvGens,
-            injectWitnesses);
+            injectWitnesses,
+            optimizeForPredicateAbstr);
 
   }
 
