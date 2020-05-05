@@ -121,7 +121,7 @@ public class ExternalInvariantProvider {
         }
       } catch (InterruptedException e) {
         // IF an error occures, we dont do anything and dont generate invariants.
-        logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
+        logger.log(Level.WARNING, "The inv gen was interrruped, continuing");
         hasFinished = false;
         return hasFinished;
 
