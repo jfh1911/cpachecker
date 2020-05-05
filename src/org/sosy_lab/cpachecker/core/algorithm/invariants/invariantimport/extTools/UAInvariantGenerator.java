@@ -263,7 +263,8 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
       ShutdownNotifier pShutdownManager,
       Configuration pConfig,
       int pTimeout,
-      List<ExternalInvariantGenerators> pExtInvGens) {
+      List<ExternalInvariantGenerators> pExtInvGens,
+      boolean pOptimizeForPredicateAbstr) {
 
     if (pExtInvGens.parallelStream().anyMatch(p -> p.equals(ExternalInvariantGenerators.SEAHORN))) {
       ABSOLUTE_PATH_TO_INV_FILE = "/home/jfh/Documents/seahorn/others/";

@@ -84,7 +84,8 @@ public interface ExternalInvariantGenerator {
       ShutdownNotifier pShutdownManager,
       Configuration pConfig,
       int pTimeout,
-      List<ExternalInvariantGenerators> pExtInvGens);
+      List<ExternalInvariantGenerators> pExtInvGens,
+      boolean pOptimizeForPredicateAbstr);
 
   /**
    *

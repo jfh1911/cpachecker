@@ -35,6 +35,8 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -76,7 +78,6 @@ import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.exceptions.CounterexampleAnalysisFailed;
 import org.sosy_lab.cpachecker.exceptions.RefinementFailedException;
 import org.sosy_lab.cpachecker.util.AbstractStates;
-import org.sosy_lab.cpachecker.util.CPAs;
 import org.sosy_lab.cpachecker.util.Triple;
 
 @Options(prefix = "coverisinv")
@@ -89,6 +90,11 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     secure = true,
     description = "Define, if a external invariant generation tool should be called in the initale step.")
   public List<ExternalInvariantGenerators> extInvGens = null;
+
+  @Option(
+    secure = true,
+    description = "Use optimization for predicate abstraction")
+  public boolean optimizeForPredicateAbstr = false;
 
   @Option(
     secure = true,
@@ -195,7 +201,8 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
             timeoutForInvariantExecution,
             startInvariantExecutionTimer,
             extInvGens,
-            injectWitnesses);
+            injectWitnesses,
+            optimizeForPredicateAbstr);
 
   }
 
@@ -343,9 +350,9 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
             if (shutdownMaster) {
             masterShutdownManager.requestShutdown("Invariant generation is finished");
-            CPAs.closeCpaIfPossible(master.getSecond(), logger);
+              // CPAs.closeCpaIfPossible(master.getSecond(), logger);
 
-            CPAs.closeIfPossible(master.getFirst(), logger);
+              // CPAs.closeIfPossible(master.getFirst(), logger);
 
             logger.log(Level.INFO, "Restarting the master analysis");
             // store the generated invariants for later use
@@ -423,7 +430,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       ConfigurationBuilder builder = Configuration.builder();
 
       builder.copyFrom(singleConfig);
-      if (!pPathToInvariant.isEmpty()) {
+      if (pPathToInvariant != null && !pPathToInvariant.isEmpty()) {
       builder.setOption(
           "invariantGeneration.kInduction.invariantsAutomatonFile",
           getPaths(pPathToInvariant));
@@ -473,13 +480,22 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       }
       throw e;
     }
-    pForwardingReachedSet.setDelegate(currentReached);
+
 
     AlgorithmStatus status = null;
     try {
       logger.log(Level.INFO, "Re-Starting analysis  ...");
+      Instant startOfReRun = Instant.now();
+
       status = currentAlgorithm.run(currentReached);
       logger.log(Level.INFO, "An result was computed...");
+      Instant finishReRun = Instant.now();
+
+      logger.log(
+          Level.INFO,
+          " Time take for the verification is: ",
+          Duration.between(startOfReRun, finishReRun).toSeconds());
+      pForwardingReachedSet.setDelegate(currentReached);
       // If the master is finished, kill all other running threads
       provider.getFutures().forEach(helper -> helper.cancel(true));
 

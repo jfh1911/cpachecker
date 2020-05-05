@@ -64,7 +64,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
   static final Level LOG_LEVEL = Level.INFO;
 
   private final String PATH_TO_CPA_DIR;
-  String ABSOLUTE_PATH_TO_INV_FILE = "/run/" + "witness.graphml";
+  String ABSOLUTE_PATH_TO_INV_FILE = "/run/" + "witness_va.graphml";
 
   public VeriAbsInvariantGenerator(Configuration pConfiguration)
       throws InvalidConfigurationException {
@@ -87,6 +87,20 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       Configuration pConfig,
       int pTimeout)
       throws CPAException {
+    return generateInvariant(
+        pCfa,
+        pLogger,
+        pTimeout,
+        false);
+  }
+
+  public File generateInvariant(
+      CFA pCfa,
+      LogManager pLogger,
+
+      int pTimeout,
+      boolean pOptimizeForPredicateAbstr)
+      throws CPAException {
 
     // Start VeriAbs:
     List<Path> sourceFiles = pCfa.getFileNames();
@@ -94,7 +108,7 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       throw new CPAException("Can onyl handle CFAs, where one source file is contained");
     }
     try {
-      return genInvs(sourceFiles.get(0), pLogger, pTimeout);
+      return genInvs(sourceFiles.get(0), pLogger, pTimeout, pOptimizeForPredicateAbstr);
     } catch (IOException | InterruptedException e) {
       throw new CPAException("", e);
     }
@@ -144,11 +158,11 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
     }
   }
 
-  private File genInvs(Path pPath, LogManager pLogger, long pTimeout)
-      throws IOException, InterruptedException, CPAException {
+  private File
+      genInvs(Path pPath, LogManager pLogger, long pTimeout, boolean pOptimizeForPredicateAbstr)
+          throws IOException, InterruptedException, CPAException {
 
     ProcessBuilder builder = new ProcessBuilder().inheritIO();
-
 
     pLogger.log(LOG_LEVEL, "Storing generated inv file at files at " + ABSOLUTE_PATH_TO_INV_FILE);
 
@@ -180,19 +194,24 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
           Level.WARNING,
           "The invariant genreatino for VeriAbs returned a non-zero value.!",
           process.exitValue());
-      throw new CPAException(
-          "The invariant genreatino for VeriAbs returned a non-zero value!");
+      throw new CPAException("The invariant genreatino for VeriAbs returned a non-zero value!");
     } else {
 
-    // Since the cpachecker input does not like "-1*", replace them by a simple "-"
-    Path pathToWitness = Path.of(ABSOLUTE_PATH_TO_INV_FILE);
-    String content = new String(Files.readAllBytes(pathToWitness), StandardCharsets.UTF_8);
-    while (content.contains("-1 * ")) {
-      content = content.replace("-1 * ", "-");
-    }
-    Files.write(pathToWitness, content.getBytes(StandardCharsets.UTF_8));
+      // Since the cpachecker input does not like "-1*", replace them by a simple "-"
+      Path pathToWitness = Path.of(ABSOLUTE_PATH_TO_INV_FILE);
+      String content = new String(Files.readAllBytes(pathToWitness), StandardCharsets.UTF_8);
+      while (content.contains("-1 * ")) {
+        content = content.replace("-1 * ", "-");
+      }
+      if (pOptimizeForPredicateAbstr) {
 
-    return new File(ABSOLUTE_PATH_TO_INV_FILE);
+        while (content.contains("&amp;&amp;")) {
+          content = content.replace("&amp;&amp;", "&amp;");
+        }
+      }
+      Files.write(pathToWitness, content.getBytes(StandardCharsets.UTF_8));
+
+      return new File(ABSOLUTE_PATH_TO_INV_FILE);
     }
   }
 
@@ -253,8 +272,8 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
       ShutdownNotifier pShutdownManager,
       Configuration pConfig,
       int pTimeout,
-      List<ExternalInvariantGenerators> pExtInvGens)
-      {
+      List<ExternalInvariantGenerators> pExtInvGens,
+      boolean pOptimizeForPredicateAbstr) {
 
     if (pExtInvGens.parallelStream().anyMatch(p -> p.equals(ExternalInvariantGenerators.SEAHORN))) {
       ABSOLUTE_PATH_TO_INV_FILE = "/home/jfh/Documents/seahorn/others/" + "witness_VeriAbs.graphml";
@@ -262,24 +281,23 @@ public class VeriAbsInvariantGenerator implements ExternalInvariantGenerator {
 
     return () -> {
       try {
-      Path res =
-          generateInvariant(
-              pCfa,
-              pTargetNodesToGenerateFor,
-              pSpecification,
-              pLogger,
-              pShutdownManager,
-                pConfig,
-                pTimeout).toPath();
+        Path res =
+            generateInvariant(
+                pCfa,
+                pLogger,
+                pTimeout,
+                pOptimizeForPredicateAbstr).toPath();
         pLogger.log(Level.WARNING, "Invariant generation finished for tool : VeriAbs", res);
-      if (!checkIfNonTrivial(pCfa, pConfig, pSpecification, pLogger, pShutdownManager, res)) {
-        pLogger.log(
-            Level.WARNING,
-            "The VeriAbs invariant generator only generates trivial invarinats, hence not returning anything");
-        return new InvGenCompRes( new CPAException(
-            "The VeriAbs invariant generator only generates trivial invarinats, hence not returning anything"),"VeriAbs");
-      }
-      return new InvGenCompRes(res, "VeriAbs");
+        if (!checkIfNonTrivial(pCfa, pConfig, pSpecification, pLogger, pShutdownManager, res)) {
+          pLogger.log(
+              Level.WARNING,
+              "The VeriAbs invariant generator only generates trivial invarinats, hence not returning anything");
+          return new InvGenCompRes(
+              new CPAException(
+                  "The VeriAbs invariant generator only generates trivial invarinats, hence not returning anything"),
+              "VeriAbs");
+        }
+        return new InvGenCompRes(res, "VeriAbs");
       } catch (CPAException e) {
         return new InvGenCompRes(e, "VeriAbs");
       }
