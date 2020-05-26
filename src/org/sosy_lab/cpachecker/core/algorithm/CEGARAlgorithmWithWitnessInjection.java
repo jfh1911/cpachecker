@@ -25,10 +25,7 @@ package org.sosy_lab.cpachecker.core.algorithm;
 
 import static com.google.common.base.Verify.verifyNotNull;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.ShutdownNotifier;
@@ -38,6 +35,7 @@ import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.configuration.Option;
 import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.WitnessInjectable;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
@@ -80,7 +78,7 @@ public class CEGARAlgorithmWithWitnessInjection extends CEGARAlgorithm {
     private final LogManager logger;
     private final Refiner refiner;
     @Nullable
-    private List<ListenableFuture<Path>> pathToWitnesses;
+    private ExternalInvariantsManager manager;
 
     public CEGARAlgorithmFactoryWithInjection(
         Algorithm pAlgorithm,
@@ -88,9 +86,9 @@ public class CEGARAlgorithmWithWitnessInjection extends CEGARAlgorithm {
         LogManager pLogger,
         Configuration pConfig,
         ShutdownNotifier pShutdownNotifier,
-        @Nullable List<ListenableFuture<Path>> pPathToWitnesses)
+        ExternalInvariantsManager pManager)
         throws InvalidConfigurationException {
-      this(() -> pAlgorithm, pCpa, pLogger, pConfig, pShutdownNotifier, pPathToWitnesses);
+      this(() -> pAlgorithm, pCpa, pLogger, pConfig, pShutdownNotifier, pManager);
     }
 
     public CEGARAlgorithmFactoryWithInjection(
@@ -99,14 +97,14 @@ public class CEGARAlgorithmWithWitnessInjection extends CEGARAlgorithm {
         LogManager pLogger,
         Configuration pConfig,
         ShutdownNotifier pShutdownNotifier,
-        @Nullable List<ListenableFuture<Path>> pPathToWitnesses)
+        ExternalInvariantsManager pManager)
         throws InvalidConfigurationException {
       pConfig.inject(this);
       algorithmFactory = pAlgorithmFactory;
       logger = pLogger;
       verifyNotNull(refinerFactory);
       refiner = refinerFactory.create(pCpa, pLogger, pShutdownNotifier);
-      pathToWitnesses = pPathToWitnesses;
+      manager = pManager;
 
     }
 
@@ -118,11 +116,11 @@ public class CEGARAlgorithmWithWitnessInjection extends CEGARAlgorithm {
           logger,
           globalRefinement,
           maxRefinementNum,
-          pathToWitnesses);
+          manager);
     }
   }
 
-  private final List<ListenableFuture<Path>> helperFutures;
+  private final ExternalInvariantsManager manager;
   private int numInjectedWitnesses = 0;
 
   /**
@@ -137,9 +135,9 @@ public class CEGARAlgorithmWithWitnessInjection extends CEGARAlgorithm {
       LogManager pLogger,
       boolean pGlobalRefinement,
       int pMaxRefinementNum,
-      @Nullable List<ListenableFuture<Path>> pPathToWitnesses) {
+      @Nullable ExternalInvariantsManager pManager) {
     super(pAlgorithm, pRefiner, pLogger, pGlobalRefinement, pMaxRefinementNum);
-    this.helperFutures = pPathToWitnesses;
+    this.manager = pManager;
 
   }
 
@@ -158,27 +156,19 @@ public class CEGARAlgorithmWithWitnessInjection extends CEGARAlgorithm {
         // if additional invariant generators are used, check if a new witness is generated:
 
         if (algorithm instanceof WitnessInjectable) {
-          while (numInjectedWitnesses < helperFutures.size()
-              && helperFutures.get(numInjectedWitnesses).isDone()) {
+          while (numInjectedWitnesses < manager.getNumberOfGeneratedWitnesses()
+              && manager.mayProduceInvariants()) {
 
             // inject the witnesses
-            Path pathToInvariant = null;
-            try {
-              pathToInvariant = helperFutures.get(numInjectedWitnesses).get();
-              logger.log(
-                  Level.INFO,
-                  "Injecting witneeses from path ",
-                  pathToInvariant,
-                  "for tool ",
-                  helperFutures.get(numInjectedWitnesses).toString());
-              if (pathToInvariant != null) {
-                ((WitnessInjectable) algorithm).inject(reached, pathToInvariant);
-              }
-            } catch (InterruptedException | ExecutionException e) {
-              logger.log(
-                  Level.WARNING,
-                  "a problem occured while injecting witnesses from  ",
-                  helperFutures.get(numInjectedWitnesses).toString());
+            Path pathToInvariant = manager.getGeneratedInvariants().get(numInjectedWitnesses);
+            logger.log(
+                Level.INFO,
+                "Injecting witneeses from path ",
+                pathToInvariant,
+                "for tool ",
+                manager.getProducerOfWitness(numInjectedWitnesses));
+            if (pathToInvariant != null) {
+              ((WitnessInjectable) algorithm).inject(reached, pathToInvariant);
             }
 
             // increase number of injected witnesses

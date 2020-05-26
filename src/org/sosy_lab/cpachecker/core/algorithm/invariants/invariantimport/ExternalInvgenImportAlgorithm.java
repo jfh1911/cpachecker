@@ -91,15 +91,16 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     description = "Define, if a external invariant generation tool should be called in the initale step.")
   public List<ExternalInvariantGenerators> extInvGens = null;
 
-  @Option(
-    secure = true,
-    description = "Use optimization for predicate abstraction")
+  @Option(secure = true, description = "Use optimization for predicate abstraction")
   public boolean optimizeForPredicateAbstr = false;
 
   @Option(
     secure = true,
     description = "If one do not want to start imediatly with the invariant generation.")
   public int startInvariantExecutionTimer = -1;
+
+  @Option(secure = true, description = "RestartMaster after invariants are generated")
+  public boolean restartMaster = true;
 
   @Option(secure = true, required = true, description = "TODO")
   @FileOption(FileOption.Type.OPTIONAL_INPUT_FILE)
@@ -119,7 +120,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
   private Collection<Statistics> stats;
 
   private List<Path> pathToGeneratedInvar;
-
+  ExternalInvariantsManager manager;
   private AggregatedReachedSetManager aggregatedReachedSetManager;
   protected static final int NUM_OF_THREATS_NEEDED = 2;
 
@@ -129,8 +130,6 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
   private @Nullable CFANode mainEntryNode;
   ShutdownManager masterShutdownManager;
   ShutdownManager slaveShutdownManager;
-
-  private boolean shutdownMaster = true;
 
   public ExternalInvgenImportAlgorithm(
       final Configuration pConfig,
@@ -159,17 +158,20 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     masterShutdownManager = ShutdownManager.createWithParent(shutdownNotifier);
     slaveShutdownManager = ShutdownManager.createWithParent(shutdownNotifier);
     stats = new HashSet<>();
-
     // Firstly, initialize the master analysis:
+    manager = new ExternalInvariantsManager(true);
+
     try {
       master =
           super.createAlgorithm(
               masterAnalysisconfigFiles,
+              "master",
               cfa.getMainFunction(),
               masterShutdownManager,
               aggregatedReachedSetManager.asView(),
               ImmutableSet.of("analysis.generateExternalInvariants"),
-              stats);
+              stats,
+              manager);
     } catch (InvalidConfigurationException e) {
       logger.log(
           Level.WARNING,
@@ -216,6 +218,105 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
     AtomicBoolean terminateInvGen = new AtomicBoolean(false);
 
+    Callable<ParallelInvGenResult> masterRunner = buildMasterRunner();
+    Callable<ParallelInvGenResult> invGenRunner = buildInvGenRunner(terminateInvGen);
+    List<ListenableFuture<ParallelInvGenResult>> helperFutures =
+        new ArrayList<>(NUM_OF_THREATS_NEEDED);
+
+    // Start the exucutino of master and helper
+    ListenableFuture<ParallelInvGenResult> masterFuture = exec.submit(masterRunner);
+    helperFutures.add(exec.submit(invGenRunner));
+
+    try {
+      handleFutureResults(masterFuture, helperFutures, terminateInvGen);
+
+    } finally {
+      // Wait some time so that all threads are shut down and we have a happens-before relation
+      // (necessary for statistics).
+      if (!awaitTermination(exec, 10, TimeUnit.SECONDS)) {
+        logger.log(Level.WARNING, "Not all threads are terminated although we have a result.");
+      }
+      // exec.shutdownNow();
+    }
+
+    if (finalResult != null) {
+      forwardingReachedSet.setDelegate(finalResult.getReached());
+      // shutdown the executor service,
+      exec.shutdown();
+      return finalResult.getStatus();
+    }
+    if (restartMaster) {
+
+      // restart with generated invaraints
+      shutdown.getNotifier().shutdownIfNecessary();
+      try {
+        retryWithGeneratedInvariants(pathToGeneratedInvar, shutdown, forwardingReachedSet);
+        if (finalResult != null) {
+          forwardingReachedSet.setDelegate(finalResult.getReached());
+          // shutdown the executor service,
+          exec.shutdown();
+          return finalResult.getStatus();
+        }
+      } catch (CPAException | InterruptedException | InvalidConfigurationException
+          | IOException e) {
+        logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
+      }
+    } else {
+      // Just inject the invariants in the running analysis
+      logger.log(Level.INFO, "Addind invariants");
+      provider.getComputedPath()
+          .parallelStream()
+          .forEach(r -> manager.addNewInvariant(r.getPathToInv(), r.getNameOfTool()));
+
+
+      try {
+        while (!masterFuture.isDone()) {
+          TimeUnit.SECONDS.sleep(1);
+        }
+        ParallelInvGenResult res = masterFuture.get();
+        terminateInvGen.set(true);
+
+        // Shutdown all running threads
+        masterFuture.cancel(true);
+        helperFutures.forEach(f -> f.cancel(true));
+        exec.shutdownNow();
+
+        forwardingReachedSet.setDelegate(res.reachedSet);
+        return res.getResult();
+
+      } catch (InterruptedException | ExecutionException e) {
+        logger.log(Level.WARNING, "Master analysis caused en error");
+        e.printStackTrace();
+      }
+
+    }
+    return AlgorithmStatus.UNSOUND_AND_PRECISE;
+  }
+
+  private Callable<ParallelInvGenResult> buildInvGenRunner(AtomicBoolean terminateInvGen) {
+    Callable<ParallelInvGenResult> invGenRunner = new Callable<>() {
+      @Override
+      public ParallelInvGenResult call() throws Exception {
+        provider.start(terminateInvGen);
+        if (provider.hasComputedInvariants()) {
+          // terminated.set(true);
+          logger.log(Level.WARNING, "The invariant generation finished successfully");
+          return new ParallelInvGenResult(
+              provider.getComputedPath()
+                  .parallelStream()
+                  .filter(r -> r.hasResult())
+                  .map(r -> r.getPathToInv())
+                  .collect(Collectors.toList()));
+        } else {
+          logger.log(Level.WARNING, "No invariants were generated!");
+          return new ParallelInvGenResult();
+        }
+      }
+    };
+    return invGenRunner;
+  }
+
+  private Callable<ParallelInvGenResult> buildMasterRunner() {
     Callable<ParallelInvGenResult> masterRunner = new Callable<>() {
       @Override
       public ParallelInvGenResult call() throws Exception {
@@ -243,70 +344,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
       }
     };
-
-    Callable<ParallelInvGenResult> invGenRunner = new Callable<>() {
-      @Override
-      public ParallelInvGenResult call() throws Exception {
-        provider.start(terminateInvGen);
-        if (provider.hasComputedInvariants()) {
-          // terminated.set(true);
-          logger.log(Level.WARNING, "The invariant generation finished successfully");
-          return new ParallelInvGenResult(
-              provider.getComputedPath()
-                  .parallelStream()
-                  .filter(r -> r.hasResult())
-                  .map(r -> r.getPathToInv())
-                  .collect(Collectors.toList()));
-        } else {
-          logger.log(Level.WARNING, "No invariants were generated!");
-          return new ParallelInvGenResult();
-        }
-      }
-    };
-    List<ListenableFuture<ParallelInvGenResult>> helperFutures = new ArrayList<>(NUM_OF_THREATS_NEEDED);
-
-    // Start the exucutino of master and helper
-    ListenableFuture<ParallelInvGenResult> masterFuture = exec.submit(masterRunner);
-    helperFutures.add(exec.submit(invGenRunner));
-
-    // shutdown the executor service,
-    exec.shutdown();
-
-    try {
-      handleFutureResults(masterFuture, helperFutures, terminateInvGen);
-
-    } finally {
-      // Wait some time so that all threads are shut down and we have a happens-before relation
-      // (necessary for statistics).
-      if (!awaitTermination(exec, 10, TimeUnit.SECONDS)) {
-        logger.log(Level.WARNING, "Not all threads are terminated although we have a result.");
-      }
-      exec.shutdownNow();
-    }
-
-    if (finalResult != null) {
-      forwardingReachedSet.setDelegate(finalResult.getReached());
-      return finalResult.getStatus();
-    }
-
-    // Kill the master
-
-    // restart with generated invaraints
-    shutdown.getNotifier().shutdownIfNecessary();
-    try {
-      retryWithGeneratedInvariants(
-          pathToGeneratedInvar,
-          shutdown,
-          forwardingReachedSet);
-      if (finalResult != null) {
-        forwardingReachedSet.setDelegate(finalResult.getReached());
-        return finalResult.getStatus();
-      }
-    } catch (CPAException | InterruptedException | InvalidConfigurationException | IOException e) {
-      logger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
-    }
-
-    return AlgorithmStatus.UNSOUND_AND_PRECISE;
+    return masterRunner;
   }
 
   private void handleFutureResults(
@@ -348,14 +386,14 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
           } else {
             // Stop the master analysis
 
-            if (shutdownMaster) {
-            masterShutdownManager.requestShutdown("Invariant generation is finished");
+            if (restartMaster) {
+              masterShutdownManager.requestShutdown("Invariant generation is finished");
               // CPAs.closeCpaIfPossible(master.getSecond(), logger);
 
               // CPAs.closeIfPossible(master.getFirst(), logger);
 
-            logger.log(Level.INFO, "Restarting the master analysis");
-            // store the generated invariants for later use
+              logger.log(Level.INFO, "Restarting the master analysis");
+              // store the generated invariants for later use
             }
             pathToGeneratedInvar = result.getPathToInvariant();
 
@@ -431,10 +469,11 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
 
       builder.copyFrom(singleConfig);
       if (pPathToInvariant != null && !pPathToInvariant.isEmpty()) {
-      builder.setOption(
-          "invariantGeneration.kInduction.invariantsAutomatonFile",
-          getPaths(pPathToInvariant));
-      builder.setOption("cpa.predicate.abstraction.initialPredicates", getPaths(pPathToInvariant));
+        builder.setOption(
+            "invariantGeneration.kInduction.invariantsAutomatonFile",
+            getPaths(pPathToInvariant));
+        builder
+            .setOption("cpa.predicate.abstraction.initialPredicates", getPaths(pPathToInvariant));
       }
       builder.setOption("analysis.injectGeneratedInvariants", Boolean.toString(injectWitnesses));
 
@@ -453,7 +492,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
               stats,
               // if no witnesses should be injected, just dont provide it to the new master
               // FIXME: update for witness injection
-              new ArrayList<>());
+              new DummyExternalInvariantsManager());
 
       currentAlgorithm = restartAlg.getFirst();
 
@@ -480,7 +519,6 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       }
       throw e;
     }
-
 
     AlgorithmStatus status = null;
     try {
@@ -531,13 +569,9 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       if (e instanceof CounterexampleAnalysisFailed || e instanceof RefinementFailedException) {
         // status = status.withPrecise(false);
       }
-      logger.log(
-          Level.WARNING,
-          "Attention: An error occured! ");
+      logger.log(Level.WARNING, "Attention: An error occured! ");
     } catch (InterruptedException e) {
-      logger.log(
-          Level.WARNING,
-          "Attention: the ananlysis was interrupted!");
+      logger.log(Level.WARNING, "Attention: the ananlysis was interrupted!");
     }
 
     // final CoreComponentsFactory coreComponents =

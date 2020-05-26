@@ -38,7 +38,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ListenableFuture;
 import java.io.PrintStream;
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -114,6 +113,7 @@ import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateI
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.EdgeFormulaNegation;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.ExpressionTreeLocationInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.TargetLocationCandidateInvariant;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
@@ -229,7 +229,7 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
       final ReachedSetFactory pReachedSetFactory,
       final TargetLocationProvider pTargetLocationProvider,
       final AggregatedReachedSets pAggregatedReachedSets,
-      List<ListenableFuture<Path>> pCompletableWitnesses)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
 
     KInductionInvariantGeneratorOptions options = new KInductionInvariantGeneratorOptions();
@@ -252,7 +252,7 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
             pTargetLocationProvider,
             specification),
         pAggregatedReachedSets,
-        pCompletableWitnesses);
+        pManager);
   }
 
   static KInductionInvariantGenerator create(
@@ -264,7 +264,7 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
       final ReachedSetFactory pReachedSetFactory,
       CandidateGenerator candidateGenerator,
       boolean pAsync,
-      List<ListenableFuture<Path>> pCompletableWitnesses)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
 
     return new KInductionInvariantGenerator(
@@ -277,7 +277,7 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
         pAsync,
         candidateGenerator,
         new AggregatedReachedSets(),
-        pCompletableWitnesses);
+        pManager);
   }
 
   private KInductionInvariantGenerator(
@@ -290,7 +290,7 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
       final boolean pAsync,
       final CandidateGenerator pCandidateGenerator,
       final AggregatedReachedSets pAggregatedReachedSets,
-      List<ListenableFuture<Path>> pCompletableWitnesses)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     logger = pLogger;
     shutdownManager = pShutdownNotifier;
@@ -379,7 +379,7 @@ public class KInductionInvariantGenerator extends AbstractInvariantGenerator
             stats,
             statisticsCandidateGenerator,
             pAggregatedReachedSets,
-            pCompletableWitnesses);
+            pManager);
   }
 
   @Override

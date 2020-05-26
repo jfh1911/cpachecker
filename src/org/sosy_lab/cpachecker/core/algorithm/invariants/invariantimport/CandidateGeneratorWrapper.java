@@ -20,11 +20,9 @@
 package org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport;
 
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ListenableFuture;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -32,7 +30,6 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
@@ -48,10 +45,10 @@ import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
 
 public class CandidateGeneratorWrapper implements CandidateGenerator {
 
-  private List<ListenableFuture<Path>> pendingInvs;
+  private ExternalInvariantsManager manager;
 
   // Start with 1, since first invariant is already injected initially
-  private int numberOfFinishedGenerators = 1;
+  private int numberOfFinishedGenerators = 0;
   private CandidateGenerator defaultGenerator;
   private List<CandidateInvariant> candidates;
   private Set<CandidateInvariant> foundInvariants;
@@ -62,7 +59,7 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
   private ShutdownNotifier pShutdownManager;
 
   public CandidateGeneratorWrapper(
-      List<ListenableFuture<Path>> pPendingInvs,
+      ExternalInvariantsManager pManager,
       CandidateGenerator pDefaultGenerator,
       LogManager pLogger,
       Configuration pPConfig,
@@ -70,7 +67,7 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
       CFA pCfa,
       ShutdownNotifier pPShutdownManager) {
     super();
-    pendingInvs = ImmutableList.copyOf(pPendingInvs);
+    manager = pManager;
     // pLogger.log(Level.WARNING, "wrapper obtained", pendingInvs.toString());
     defaultGenerator = pDefaultGenerator;
     logger = pLogger;
@@ -86,15 +83,22 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
   public boolean produceMoreCandidates() {
     boolean hasProducedNewCandidates = false;
     // check if new invgen finished
-    while (numberOfFinishedGenerators < pendingInvs.size()
-        && pendingInvs.get(numberOfFinishedGenerators).isDone()) {
+
+    logger.log(
+        Level.FINER,
+        "Asking for new invarinats, currently found",
+        numberOfFinishedGenerators,
+        "/",
+        manager.getNumberOfGeneratedWitnesses());
+    while (numberOfFinishedGenerators < manager.getNumberOfGeneratedWitnesses()
+        && manager.mayProduceInvariants()) {
 
       // inject the witnesses
       Path pathToInvariant;
       try {
-        pathToInvariant = pendingInvs.get(numberOfFinishedGenerators).get();
+        pathToInvariant = manager.getGeneratedInvariants().get(numberOfFinishedGenerators);
         logger.log(
-            Level.INFO,
+            Level.FINER,
             "Injecting witneeses from path ",
             pathToInvariant);
         final Set<CandidateInvariant> localCandidates = new LinkedHashSet<>();
@@ -112,7 +116,7 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
         extractor.extractCandidatesFromReachedSet(localCandidates, candidateGroupLocations);
         candidates.addAll(localCandidates);
         hasProducedNewCandidates = true;
-      } catch (InterruptedException | ExecutionException | InvalidConfigurationException
+      } catch (InterruptedException | InvalidConfigurationException
           | CPAException e) {
         logger.log(
             Level.WARNING,
@@ -128,9 +132,7 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
 
   @Override
   public boolean hasCandidatesAvailable() {
-    return defaultGenerator.hasCandidatesAvailable()
-        || pendingInvs.size() > numberOfFinishedGenerators
-        || !candidates.isEmpty();
+    return defaultGenerator.hasCandidatesAvailable() || !candidates.isEmpty();
   }
 
   @Override
@@ -149,7 +151,8 @@ public class CandidateGeneratorWrapper implements CandidateGenerator {
 
   @Override
   public Iterator<CandidateInvariant> iterator() {
-    return Iterators.concat(defaultGenerator.iterator(), candidates.iterator());
+    return
+        Iterators.concat(candidates.iterator(), defaultGenerator.iterator());
   }
 
 }

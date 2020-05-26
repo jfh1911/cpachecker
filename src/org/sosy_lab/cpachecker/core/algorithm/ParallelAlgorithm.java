@@ -71,6 +71,7 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.CPAcheckerResult.Result;
 import org.sosy_lab.cpachecker.core.CoreComponentsFactory;
 import org.sosy_lab.cpachecker.core.Specification;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
@@ -150,7 +151,7 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
       Specification pSpecification,
       CFA pCfa,
       AggregatedReachedSets pAggregatedReachedSets,
-      @Nullable List<ListenableFuture<Path>> pPathToWitnesses)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     config.inject(this);
 
@@ -168,7 +169,7 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
         ImmutableList.builder();
     for (AnnotatedValue<Path> p : configFiles) {
       analysesBuilder
-          .add(createParallelAnalysis(p, ++stats.noOfAlgorithmsUsed, pPathToWitnesses));
+          .add(createParallelAnalysis(p, ++stats.noOfAlgorithmsUsed, pManager));
     }
     analyses = analysesBuilder.build();
   }
@@ -310,7 +311,7 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
   private Callable<ParallelAnalysisResult> createParallelAnalysis(
       final AnnotatedValue<Path> pSingleConfigFileName,
       final int analysisNumber,
-      @Nullable List<ListenableFuture<Path>> pPathToWitnesses)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     final Path singleConfigFileName = pSingleConfigFileName.value();
     final boolean supplyReached;
@@ -360,7 +361,7 @@ public class ParallelAlgorithm implements Algorithm, StatisticsProvider {
     final ReachedSet reached = coreComponents.createReachedSet();
     final ConfigurableProgramAnalysis cpa = coreComponents.createCPA(cfa, specification);
     final Algorithm algorithm =
-        coreComponents.createAlgorithm(cpa, cfa, specification, pPathToWitnesses);
+        coreComponents.createAlgorithm(cpa, cfa, specification, pManager);
 
     AtomicBoolean terminated = new AtomicBoolean(false);
     StatisticsEntry statisticsEntry =

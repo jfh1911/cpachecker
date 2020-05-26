@@ -26,10 +26,7 @@ package org.sosy_lab.cpachecker.core;
 import static com.google.common.base.Verify.verifyNotNull;
 
 import com.google.common.base.Preconditions;
-import com.google.common.util.concurrent.ListenableFuture;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -66,6 +63,8 @@ import org.sosy_lab.cpachecker.core.algorithm.bmc.BMCAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.pdr.PdrAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.counterexamplecheck.CounterexampleCheckAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.impact.ImpactAlgorithm;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.DummyExternalInvariantsManager;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvgenImportAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.mpv.MPVAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.mpv.MPVReachedSet;
@@ -348,14 +347,14 @@ public class CoreComponentsFactory {
       final CFA cfa,
       final Specification pSpecification)
       throws InvalidConfigurationException, CPAException, InterruptedException {
-    return createAlgorithm(cpa, cfa, pSpecification, new ArrayList<>());
+    return createAlgorithm(cpa, cfa, pSpecification, new DummyExternalInvariantsManager());
   }
 
   public Algorithm createAlgorithm(
       final ConfigurableProgramAnalysis cpa,
       final CFA cfa,
       final Specification pSpecification,
-      @Nullable List<ListenableFuture<Path>> pPathToWitnesses)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     logger.log(Level.FINE, "Creating algorithms");
 
@@ -435,7 +434,7 @@ public class CoreComponentsFactory {
               specification,
               cfa,
               aggregatedReachedSets,
-              pPathToWitnesses);
+              pManager);
 
 
     } else {
@@ -472,7 +471,7 @@ public class CoreComponentsFactory {
                 logger,
                 config,
                 shutdownNotifier,
-                pPathToWitnesses).newInstance();
+                pManager).newInstance();
       } else if (useCEGAR) {
         algorithm =
             new CEGARAlgorithmFactory(algorithm, cpa, logger, config, shutdownNotifier)
@@ -512,7 +511,7 @@ public class CoreComponentsFactory {
                 cfa,
                 specification,
                 aggregatedReachedSets,
-                pPathToWitnesses);
+                pManager);
       }
 
       if (checkCounterexamples) {

@@ -25,11 +25,9 @@ package org.sosy_lab.cpachecker.core.algorithm.invariants;
 
 import static com.google.common.base.Preconditions.checkState;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import org.sosy_lab.common.ShutdownManager;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
@@ -41,6 +39,7 @@ import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.CandidateGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.reachedset.ReachedSetFactory;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 
@@ -72,8 +71,7 @@ public class KInductionInvariantChecker {
    * @param pCandidateGenerator the Candidate Generator (it's CandidateInvariants have to work with
    *        different solvers, as in most cases this check will use another solver than the caller
    *        of this method does.)
-   * @param pCompletableWitnesses list of path to witnesses, eventually provided by third party
-   *        tools
+   * @param pManager Mananger for the invariants may be generated
    * @throws InvalidConfigurationException is thrown if the configuration file for k-induction is
    *         not available
    * @throws CPAException may be thrown while building the CPAs used for this check
@@ -85,7 +83,7 @@ public class KInductionInvariantChecker {
       CFA pCfa,
       Specification specification,
       CandidateGenerator pCandidateGenerator,
-      List<ListenableFuture<Path>> pCompletableWitnesses)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     pConfig.inject(this);
     cfa = pCfa;
@@ -114,7 +112,7 @@ public class KInductionInvariantChecker {
             reached,
             pCandidateGenerator,
             false,
-            pCompletableWitnesses);
+            pManager);
   }
 
   /**

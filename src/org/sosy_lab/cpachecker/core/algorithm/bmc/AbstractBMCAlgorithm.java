@@ -38,9 +38,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.util.concurrent.ListenableFuture;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -88,6 +89,7 @@ import org.sosy_lab.cpachecker.core.algorithm.invariants.DoNothingInvariantGener
 import org.sosy_lab.cpachecker.core.algorithm.invariants.InvariantGenerator;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.KInductionInvariantGenerator;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.CandidateGeneratorWrapper;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
 import org.sosy_lab.cpachecker.core.interfaces.LoopIterationBounding;
@@ -217,7 +219,7 @@ abstract class AbstractBMCAlgorithm
   private final List<ConditionAdjustmentEventSubscriber> conditionAdjustmentEventSubscribers =
       new CopyOnWriteArrayList<>();
 
-  private  List<ListenableFuture<Path>> completableWitnesses;
+  private ExternalInvariantsManager manager;
 
   private Configuration config;
 
@@ -233,7 +235,7 @@ abstract class AbstractBMCAlgorithm
       BMCStatistics pBMCStatistics,
       boolean pIsInvariantGenerator,
       AggregatedReachedSets pAggregatedReachedSets,
-      List<ListenableFuture<Path>> pCompletableWitnesses)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
 
     pConfig.inject(this, AbstractBMCAlgorithm.class);
@@ -245,7 +247,7 @@ abstract class AbstractBMCAlgorithm
     reachedSetFactory = pReachedSetFactory;
     cfa = pCFA;
     specification = checkNotNull(pSpecification);
-    completableWitnesses = pCompletableWitnesses;
+    manager = pManager;
 
     shutdownNotifier = pShutdownManager.getNotifier();
     TestTargetCPA testCPA = CPAs.retrieveCPA(pCPA, TestTargetCPA.class);
@@ -332,7 +334,7 @@ abstract class AbstractBMCAlgorithm
             pSpecification,
             pAggregatedReachedSets,
             targetLocationProvider,
-            pCompletableWitnesses);
+            pManager);
     if (invariantGenerator instanceof ConditionAdjustmentEventSubscriber) {
       conditionAdjustmentEventSubscribers.add(
           (ConditionAdjustmentEventSubscriber) invariantGenerator);
@@ -346,7 +348,7 @@ abstract class AbstractBMCAlgorithm
     bfmgr = fmgr.getBooleanFormulaManager();
     pmgr = predCpa.getPathFormulaManager();
     abstractionStrategy = new PredicateAbstractionStrategy(cfa.getVarClassification());
-    completableWitnesses = pCompletableWitnesses;
+    manager = pManager;
 
   }
 
@@ -368,8 +370,9 @@ abstract class AbstractBMCAlgorithm
     // The set of candidate invariants that still need to be checked.
     // Successfully proven invariants are removed from the set.
     final CandidateGenerator candidateGenerator =
+
         new CandidateGeneratorWrapper(
-            completableWitnesses,
+            manager,
             getCandidateInvariants(),
             logger,
             config,
@@ -404,7 +407,9 @@ abstract class AbstractBMCAlgorithm
             .filter(not(IS_TARGET_STATE)) // target states may be abstraction states
             .anyMatch(PredicateAbstractState.CONTAINS_ABSTRACTION_STATE)) {
 
-          logger.log(Level.WARNING, "BMC algorithm does not work with abstractions. Could not check for satisfiability!");
+          logger.log(
+              Level.FINER,
+              "BMC algorithm does not work with abstractions. Could not check for satisfiability!");
           return status;
         }
         shutdownNotifier.shutdownIfNecessary();
@@ -421,7 +426,16 @@ abstract class AbstractBMCAlgorithm
           CandidateInvariant candidateInvariant = candidateInvariantIterator.next();
           // first check safety in k iterations
 
+          Instant start = Instant.now();
           boolean safe = boundedModelCheck(reachedSet, prover, candidateInvariant);
+          logger.log(
+              Level.FINER,
+              "BMC check for candidate",
+              candidateInvariant,
+              " took ",
+              Duration.between(start, Instant.now()),
+              " and the program is ",
+              safe ? " safe" : "unsafe");
           if (!safe) {
             if (candidateInvariant == TargetLocationCandidateInvariant.INSTANCE) {
               return AlgorithmStatus.UNSOUND_AND_PRECISE;
@@ -901,7 +915,7 @@ abstract class AbstractBMCAlgorithm
           Specification pSpecification,
           AggregatedReachedSets pAggregatedReachedSets,
           TargetLocationProvider pTargetLocationProvider,
-          List<ListenableFuture<Path>> pCompletableWitnesses)
+          ExternalInvariantsManager pManager)
           throws InvalidConfigurationException, CPAException, InterruptedException {
         return
             KInductionInvariantGenerator.create(
@@ -913,7 +927,7 @@ abstract class AbstractBMCAlgorithm
                 pReachedSetFactory,
                 pTargetLocationProvider,
         pAggregatedReachedSets,
-        pCompletableWitnesses);
+        pManager);
       }
     },
 
@@ -928,7 +942,7 @@ abstract class AbstractBMCAlgorithm
           Specification pSpecification,
           AggregatedReachedSets pAggregatedReachedSets,
           TargetLocationProvider pTargetLocationProvider,
-          List<ListenableFuture<Path>> pCompletableWitnesses) {
+          ExternalInvariantsManager pManager) {
         return new AbstractInvariantGenerator() {
 
           @Override
@@ -967,7 +981,7 @@ abstract class AbstractBMCAlgorithm
           Specification pSpecification,
           AggregatedReachedSets pAggregatedReachedSets,
           TargetLocationProvider pTargetLocationProvider,
-          List<ListenableFuture<Path>> pCompletableWitnesses) {
+          ExternalInvariantsManager pManager) {
         return new AbstractInvariantGenerator() {
 
           @Override
@@ -1007,7 +1021,7 @@ abstract class AbstractBMCAlgorithm
           Specification pSpecification,
           AggregatedReachedSets pAggregatedReachedSets,
           TargetLocationProvider pTargetLocationProvider,
-          List<ListenableFuture<Path>> pCompletableWitnesses) {
+          ExternalInvariantsManager pManager) {
         return new DoNothingInvariantGenerator();
       }
 
@@ -1022,7 +1036,7 @@ abstract class AbstractBMCAlgorithm
         Specification pSpecification,
         AggregatedReachedSets pAggregatedReachedSets,
         TargetLocationProvider pTargetLocationProvider,
-        List<ListenableFuture<Path>> pCompletableWitnesses)
+        ExternalInvariantsManager pManager)
         throws InvalidConfigurationException, CPAException, InterruptedException;
   }
 

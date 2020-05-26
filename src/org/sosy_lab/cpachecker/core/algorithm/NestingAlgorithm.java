@@ -22,7 +22,6 @@ package org.sosy_lab.cpachecker.core.algorithm;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.common.base.Splitter;
-import com.google.common.util.concurrent.ListenableFuture;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -42,6 +41,7 @@ import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.CoreComponentsFactory;
 import org.sosy_lab.cpachecker.core.Specification;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
@@ -115,13 +115,35 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
   }
 
   protected Triple<Algorithm, ConfigurableProgramAnalysis, ReachedSet> createAlgorithm(
+      Path singleConfigFileName,
+      String nameOfAnalysis,
+      CFANode mainFunction,
+      ShutdownManager singleShutdownManager,
+      AggregatedReachedSets aggregateReached,
+      Collection<String> ignoreOptions,
+      Collection<Statistics> stats,
+      ExternalInvariantsManager pManager)
+      throws InvalidConfigurationException, CPAException, IOException, InterruptedException {
+
+    Configuration singleConfig = buildSubConfig(singleConfigFileName, ignoreOptions);
+    return createAlgorithm(
+        singleConfig,
+        nameOfAnalysis,
+        mainFunction,
+        singleShutdownManager,
+        aggregateReached,
+        stats,
+        pManager);
+  }
+
+  protected Triple<Algorithm, ConfigurableProgramAnalysis, ReachedSet> createAlgorithm(
       Configuration singleConfig,
       String nameOfAnalysis,
       CFANode mainFunction,
       ShutdownManager singleShutdownManager,
       AggregatedReachedSets aggregateReached,
       Collection<Statistics> stats,
-      List<ListenableFuture<Path>> pPathToWitnesses)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
 
     LogManager singleLogger = logger.withComponentName("Analysis " + nameOfAnalysis);
@@ -138,7 +160,7 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
             aggregateReached);
     ConfigurableProgramAnalysis cpa = coreComponents.createCPA(cfa, specification);
     GlobalInfo.getInstance().setUpInfoFromCPA(cpa);
-    Algorithm algorithm = coreComponents.createAlgorithm(cpa, cfa, specification, pPathToWitnesses);
+    Algorithm algorithm = coreComponents.createAlgorithm(cpa, cfa, specification, pManager);
     ReachedSet reached = createInitialReachedSet(cpa, mainFunction, coreComponents, singleLogger);
 
     if (cpa instanceof StatisticsProvider) {
