@@ -9,9 +9,6 @@
 package org.sosy_lab.cpachecker.core.algorithm.bmc;
 
 import com.google.common.base.Verify;
-import com.google.common.util.concurrent.ListenableFuture;
-import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import org.sosy_lab.common.ShutdownManager;
@@ -25,6 +22,7 @@ import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateI
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.ExpressionTreeCandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.ExpressionTreeSupplier;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.InvariantSupplier;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
 import org.sosy_lab.cpachecker.core.reachedset.AggregatedReachedSets;
 import org.sosy_lab.cpachecker.core.reachedset.ReachedSetFactory;
@@ -60,7 +58,7 @@ public class BMCAlgorithmForInvariantGeneration extends AbstractBMCAlgorithm {
       BMCStatistics pBMCStatistics,
       CandidateGenerator pCandidateGenerator,
       AggregatedReachedSets pAggregatedReachedSets,
-      List<ListenableFuture<Path>> pHelperFutures)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     super(
         pAlgorithm,
@@ -74,7 +72,7 @@ public class BMCAlgorithmForInvariantGeneration extends AbstractBMCAlgorithm {
         pBMCStatistics,
         true /* invariant generator */,
         pAggregatedReachedSets,
-        pHelperFutures);
+        pManager);
     Verify.verify(checkIfInductionIsPossible(pCFA, pLogger));
     candidateGenerator = Objects.requireNonNull(pCandidateGenerator);
   }

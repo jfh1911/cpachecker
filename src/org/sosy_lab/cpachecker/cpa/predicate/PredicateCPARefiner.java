@@ -36,6 +36,7 @@ import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.CPAcheckerResult.Result;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.DummyExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.counterexample.CounterexampleInfo;
 import org.sosy_lab.cpachecker.core.interfaces.Statistics;
 import org.sosy_lab.cpachecker.core.interfaces.StatisticsProvider;
@@ -276,7 +277,12 @@ public class PredicateCPARefiner implements ARGBasedRefiner, StatisticsProvider 
 
       // find new invariants (this is a noop if no invariants should be used/generated)
       invariantsManager
-          .findInvariants(allStatesTrace, abstractionStatesTrace, pfmgr, solver, new ArrayList<>());
+          .findInvariants(
+              allStatesTrace,
+              abstractionStatesTrace,
+              pfmgr,
+              solver,
+              new DummyExternalInvariantsManager());
 
       CounterexampleTraceInfo counterexample =
           checkCounterexample(

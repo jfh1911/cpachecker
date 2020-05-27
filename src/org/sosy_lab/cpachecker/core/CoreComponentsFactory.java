@@ -50,6 +50,9 @@ import org.sosy_lab.cpachecker.core.algorithm.bmc.pdr.PdrAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.composition.CompositionAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.counterexamplecheck.CounterexampleCheckAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.impact.ImpactAlgorithm;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.DummyExternalInvariantsManager;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantsManager;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvgenImportAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.mpv.MPVAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.mpv.MPVReachedSet;
 import org.sosy_lab.cpachecker.core.algorithm.parallel_bam.ParallelBAMAlgorithm;
@@ -351,14 +354,14 @@ public class CoreComponentsFactory {
       final CFA cfa,
       final Specification pSpecification)
       throws InvalidConfigurationException, CPAException, InterruptedException {
-    return createAlgorithm(cpa, cfa, pSpecification, new ArrayList<>());
+    return createAlgorithm(cpa, cfa, pSpecification, new DummyExternalInvariantsManager());
   }
 
   public Algorithm createAlgorithm(
       final ConfigurableProgramAnalysis cpa,
       final CFA cfa,
       final Specification pSpecification,
-      @Nullable List<ListenableFuture<Path>> pPathToWitnesses)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     logger.log(Level.FINE, "Creating algorithms");
 
@@ -422,7 +425,7 @@ public class CoreComponentsFactory {
               specification,
               cfa,
               aggregatedReachedSets,
-              pPathToWitnesses);
+              pManager);
 
     } else if (useMPIProcessAlgorithm) {
       algorithm = new MPIPortfolioAlgorithm(config, logger, shutdownNotifier, specification);
@@ -461,7 +464,7 @@ public class CoreComponentsFactory {
                 logger,
                 config,
                 shutdownNotifier,
-                pPathToWitnesses).newInstance();
+                pManager).newInstance();
       } else if (useCEGAR) {
         algorithm =
             new CEGARAlgorithmFactory(algorithm, cpa, logger, config, shutdownNotifier)
@@ -501,7 +504,7 @@ public class CoreComponentsFactory {
                 cfa,
                 specification,
                 aggregatedReachedSets,
-                pPathToWitnesses);
+                pManager);
       }
 
       if (useIMC) {

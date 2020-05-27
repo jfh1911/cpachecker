@@ -15,7 +15,6 @@ import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ListenableFuture;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Writer;
@@ -48,6 +47,7 @@ import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateI
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.TargetLocationCandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.ExpressionTreeSupplier;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.KInductionInvariantGenerator;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.counterexample.CounterexampleInfo;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
@@ -124,7 +124,7 @@ public class BMCAlgorithm extends AbstractBMCAlgorithm implements Algorithm {
       CFA pCFA,
       final Specification specification,
       AggregatedReachedSets pAggregatedReachedSets,
-      List<ListenableFuture<Path>> pHelperFutures)
+      ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     super(
         pAlgorithm,
@@ -138,7 +138,7 @@ public class BMCAlgorithm extends AbstractBMCAlgorithm implements Algorithm {
         new BMCStatistics(),
         false /* no invariant generator */,
         pAggregatedReachedSets,
-        pHelperFutures);
+        pManager);
     pConfig.inject(this);
 
     cpa = pCPA;
