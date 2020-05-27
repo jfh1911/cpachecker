@@ -78,6 +78,7 @@ import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.exceptions.CounterexampleAnalysisFailed;
 import org.sosy_lab.cpachecker.exceptions.RefinementFailedException;
 import org.sosy_lab.cpachecker.util.AbstractStates;
+import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.Triple;
 
 @Options(prefix = "coverisinv")
@@ -162,6 +163,9 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     manager = new ExternalInvariantsManager(true);
 
     try {
+      List<Pair<String, String>> addInfos = new ArrayList<>();
+      addInfos.add(Pair.of("analysis.injectGeneratedInvariants", "true"));
+
       master =
           super.createAlgorithm(
               masterAnalysisconfigFiles,
@@ -171,7 +175,8 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
               aggregatedReachedSetManager.asView(),
               ImmutableSet.of("analysis.generateExternalInvariants"),
               stats,
-              manager);
+              manager,
+              addInfos);
     } catch (InvalidConfigurationException e) {
       logger.log(
           Level.WARNING,
