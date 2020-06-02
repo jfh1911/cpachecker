@@ -99,6 +99,8 @@ import org.sosy_lab.java_smt.api.SolverException;
 @Options(prefix = "cpa.predicate")
 public class PredicateAbstractionManager {
 
+  int counter = 0;
+
   static class Stats {
 
     public int numCallsAbstraction = 0; // total calls
@@ -451,12 +453,20 @@ public class PredicateAbstractionManager {
     long abstractionTime = TimeSpan.sum(stats.abstractionSolveTime.getLengthOfLastInterval(),
                                         stats.abstractionEnumTime.getLengthOfLastOuterInterval())
                                    .asMillis();
-    logger.log(Level.FINEST, "Computing abstraction took", abstractionTime, "ms");
+    if (abstractionTime > 1000) {
+    logger.log(Level.INFO, "Computing abstraction took", abstractionTime, "ms");
     logger.log(
-        Level.ALL,
+        Level.INFO,
         "Time spend to compute the full abstraction enumeration is",
         stats.abstractionEnumTime.getLengthOfLastTotalInterval().asMillis(),
-        "ms");
+          "ms");
+    } else {
+      counter++;
+      if (counter % 50 == 0) {
+        logger.log(Level.INFO, "Last 50 Abstractions were fast");
+      }
+
+    }
     logger.log(
         Level.ALL,
         "Time spend to compute inner is",
