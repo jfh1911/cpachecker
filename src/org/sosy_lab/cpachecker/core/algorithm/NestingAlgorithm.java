@@ -41,6 +41,7 @@ import org.sosy_lab.cpachecker.core.reachedset.AggregatedReachedSets;
 import org.sosy_lab.cpachecker.core.reachedset.ReachedSet;
 import org.sosy_lab.cpachecker.core.specification.Specification;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
+import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.Triple;
 import org.sosy_lab.cpachecker.util.globalinfo.GlobalInfo;
 import org.sosy_lab.cpachecker.util.resources.ResourceLimitChecker;
@@ -126,6 +127,29 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
         pManager);
   }
 
+  public Triple<Algorithm, ConfigurableProgramAnalysis, ReachedSet> createAlgorithm(
+      Path singleConfigFileName,
+      String nameOfAnalysis,
+      CFANode mainFunction,
+      ShutdownManager singleShutdownManager,
+      AggregatedReachedSets aggregateReached,
+      Collection<String> ignoreOptions,
+      Collection<Statistics> stats,
+      ExternalInvariantsManager pManager,
+      List<Pair<String, String>> pAddInfos)
+      throws IOException, InvalidConfigurationException, CPAException, InterruptedException {
+    Configuration singleConfig = buildSubConfig(singleConfigFileName, ignoreOptions, pAddInfos);
+    return createAlgorithm(
+        singleConfig,
+        nameOfAnalysis,
+        mainFunction,
+        singleShutdownManager,
+        aggregateReached,
+        stats,
+        pManager);
+
+  }
+
   protected Triple<Algorithm, ConfigurableProgramAnalysis, ReachedSet> createAlgorithm(
       Configuration singleConfig,
       String nameOfAnalysis,
@@ -165,6 +189,27 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
 
   protected Configuration
       buildSubConfig(Path singleConfigFileName, Collection<String> ignoreOptions)
+          throws IOException, InvalidConfigurationException {
+
+    ConfigurationBuilder singleConfigBuilder = Configuration.builder();
+    singleConfigBuilder.copyFrom(globalConfig);
+    for (String ignore : ignoreOptions) {
+      singleConfigBuilder.clearOption(ignore);
+    }
+
+    // TODO next line overrides existing options with options loaded from file.
+    // Perhaps we want to keep some global options like 'specification'?
+    singleConfigBuilder.loadFromFile(singleConfigFileName);
+
+    Configuration singleConfig = singleConfigBuilder.build();
+    checkConfigs(globalConfig, singleConfig, singleConfigFileName, logger);
+    return singleConfig;
+  }
+
+  protected Configuration buildSubConfig(
+      Path singleConfigFileName,
+      Collection<String> ignoreOptions,
+      List<Pair<String, String>> additionalSettings)
       throws IOException, InvalidConfigurationException {
 
     ConfigurationBuilder singleConfigBuilder = Configuration.builder();
@@ -172,6 +217,9 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
     for (String ignore : ignoreOptions) {
       singleConfigBuilder.clearOption(ignore);
     }
+
+    additionalSettings.stream()
+        .forEach(p -> singleConfigBuilder.setOption(p.getFirst(), p.getSecond()));
 
     // TODO next line overrides existing options with options loaded from file.
     // Perhaps we want to keep some global options like 'specification'?
@@ -234,7 +282,10 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
             "CFA option of a nested sub-configuration must also be present in the outer configuration!\n"
                 + String.format(
                     "inner config: \"%s = %s\" ; outer config: \"%s = %s\" ",
-                    key, value, key, global.get(key)));
+                    key,
+                    value,
+                    key,
+                    global.get(key)));
       }
     }
   }
@@ -249,5 +300,6 @@ public abstract class NestingAlgorithm implements Algorithm, StatisticsProvider 
     }
     return mp;
   }
+
 
 }

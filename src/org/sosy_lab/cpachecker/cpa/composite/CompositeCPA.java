@@ -14,6 +14,8 @@ import static com.google.common.collect.FluentIterable.from;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
@@ -23,6 +25,9 @@ import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.blocks.BlockPartitioning;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
+import org.sosy_lab.cpachecker.core.algorithm.CPAAlgorithm;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.WitnessInjectableCPA;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.WitnessInjector;
 import org.sosy_lab.cpachecker.core.defaults.AbstractCPAFactory;
 import org.sosy_lab.cpachecker.core.defaults.MergeSepOperator;
 import org.sosy_lab.cpachecker.core.defaults.SimplePrecisionAdjustment;
@@ -42,12 +47,14 @@ import org.sosy_lab.cpachecker.core.interfaces.StopOperator;
 import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.WrapperCPA;
 import org.sosy_lab.cpachecker.core.interfaces.pcc.ProofChecker;
+import org.sosy_lab.cpachecker.core.reachedset.ReachedSet;
 import org.sosy_lab.cpachecker.cpa.predicate.PredicateAbstractionManager;
 import org.sosy_lab.cpachecker.cpa.predicate.PredicateCPA;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
-public class CompositeCPA implements StatisticsProvider, WrapperCPA, ConfigurableProgramAnalysisWithBAM, ProofChecker {
+public class CompositeCPA implements StatisticsProvider, WrapperCPA,
+    ConfigurableProgramAnalysisWithBAM, ProofChecker, WitnessInjectableCPA {
 
   @Options(prefix="cpa.composite")
   private static class CompositeOptions {
@@ -134,6 +141,7 @@ public class CompositeCPA implements StatisticsProvider, WrapperCPA, Configurabl
   private final ImmutableList<ConfigurableProgramAnalysis> cpas;
   private final CFA cfa;
   private final CompositeOptions options;
+  private WitnessInjector witnessInjector;
 
   private CompositeCPA(
       CFA pCfa,
@@ -142,6 +150,16 @@ public class CompositeCPA implements StatisticsProvider, WrapperCPA, Configurabl
     this.cfa = pCfa;
     this.cpas = cpas;
     this.options = pOptions;
+
+    if (cpas.stream().anyMatch(c -> c instanceof WitnessInjectableCPA)) {
+      List<WitnessInjector> injectors = new ArrayList<>();
+      cpas.stream()
+          .filter(cpa -> cpa instanceof WitnessInjectableCPA)
+          .forEach(cpa -> injectors.add(((WitnessInjectableCPA) cpa).getWitnessInjector()));
+      witnessInjector = new MultipleWitnessInjector(injectors);
+    } else {
+      witnessInjector = new CPAAlgorithm.DummyWitnessInjector();
+    }
   }
 
   @Override
@@ -345,4 +363,29 @@ public class CompositeCPA implements StatisticsProvider, WrapperCPA, Configurabl
 
     return true;
   }
+
+  @Override
+  public WitnessInjector getWitnessInjector() {
+    return witnessInjector;
+  }
+
+  /**
+   * A wrapper class for several injectors
+   */
+  public static class MultipleWitnessInjector extends WitnessInjector {
+
+    List<WitnessInjector> childInjectors;
+
+    public MultipleWitnessInjector(List<WitnessInjector> pChildInjectors) {
+      super();
+      childInjectors = pChildInjectors;
+    }
+
+    @Override
+    public void inject(ReachedSet pCurrentReachSet, Path pPathToInvariant) {
+      childInjectors.forEach(in -> in.inject(pCurrentReachSet, pPathToInvariant));
+    }
+
+  }
+
 }

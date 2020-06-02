@@ -26,6 +26,10 @@ import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.blocks.BlockPartitioning;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
+import org.sosy_lab.cpachecker.core.Specification;
+import org.sosy_lab.cpachecker.core.algorithm.CPAAlgorithm;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.WitnessInjector;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.WitnessInjectableCPA;
 import org.sosy_lab.cpachecker.core.defaults.AbstractSingleWrapperCPA;
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.defaults.FlatLatticeDomain;
@@ -50,7 +54,7 @@ import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 
 @Options(prefix = "cpa.arg")
 public class ARGCPA extends AbstractSingleWrapperCPA
-    implements ConfigurableProgramAnalysisWithBAM, ProofChecker {
+    implements ConfigurableProgramAnalysisWithBAM, ProofChecker, WitnessInjectableCPA {
 
   public static CPAFactory factory() {
     return AutomaticCPAFactory.forType(ARGCPA.class);
@@ -94,6 +98,8 @@ public class ARGCPA extends AbstractSingleWrapperCPA
 
   private final ARGStatistics stats;
 
+  private WitnessInjector witnessInjector;
+
   private ARGCPA(
       ConfigurableProgramAnalysis cpa,
       Configuration config,
@@ -105,6 +111,11 @@ public class ARGCPA extends AbstractSingleWrapperCPA
     config.inject(this);
     this.logger = logger;
     stats = new ARGStatistics(config, logger, this, pSpecification, cfa);
+    if (cpa instanceof WitnessInjectableCPA) {
+      witnessInjector = ((WitnessInjectableCPA) cpa).getWitnessInjector();
+    } else {
+      witnessInjector =new  CPAAlgorithm.DummyWitnessInjector();
+    }
   }
 
   @Override
@@ -242,5 +253,12 @@ public class ARGCPA extends AbstractSingleWrapperCPA
     return ((ConfigurableProgramAnalysisWithBAM) getWrappedCpa())
         .isCoveredByRecursiveState(
             ((ARGState) state1).getWrappedState(), ((ARGState) state2).getWrappedState());
+  }
+
+
+  @Override
+  public WitnessInjector getWitnessInjector() {
+    // TODO Auto-generated method stub
+    return witnessInjector;
   }
 }
