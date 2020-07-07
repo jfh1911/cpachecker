@@ -72,6 +72,7 @@ import org.sosy_lab.cpachecker.core.algorithm.invariants.DoNothingInvariantGener
 import org.sosy_lab.cpachecker.core.algorithm.invariants.InvariantGenerator;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.KInductionInvariantGenerator;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.CandidateGeneratorWrapper;
+import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.DummyExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantsManager;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
@@ -336,6 +337,34 @@ abstract class AbstractBMCAlgorithm
     abstractionStrategy = new PredicateAbstractionStrategy(cfa.getVarClassification());
     manager = pManager;
 
+  }
+
+  public AbstractBMCAlgorithm(
+      Algorithm pAlgorithm,
+      ConfigurableProgramAnalysis pCPA,
+      Configuration pConfig,
+      LogManager pLogger,
+      ReachedSetFactory pReachedSetFactory,
+      ShutdownManager pShutdownManager,
+      CFA pCFA,
+      Specification pSpecification,
+      BMCStatistics pBmcStatistics,
+      boolean pB,
+      AggregatedReachedSets pAggregatedReachedSets)
+      throws InvalidConfigurationException, CPAException, InterruptedException {
+    this(
+        pAlgorithm,
+        pCPA,
+        pConfig,
+        pLogger,
+        pReachedSetFactory,
+        pShutdownManager,
+        pCFA,
+        pSpecification,
+        pBmcStatistics,
+        pB,
+        pAggregatedReachedSets,
+        new DummyExternalInvariantsManager());
   }
 
   static boolean checkIfInductionIsPossible(CFA cfa, LogManager logger) {

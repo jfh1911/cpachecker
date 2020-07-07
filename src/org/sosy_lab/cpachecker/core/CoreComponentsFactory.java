@@ -10,9 +10,6 @@ package org.sosy_lab.cpachecker.core;
 
 import static com.google.common.base.Verify.verifyNotNull;
 
-import com.google.common.base.Preconditions;
-import java.nio.file.Path;
-import java.util.Optional;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.ShutdownManager;
@@ -360,7 +357,7 @@ public class CoreComponentsFactory {
   public Algorithm createAlgorithm(
       final ConfigurableProgramAnalysis cpa,
       final CFA cfa,
-      final Specification pSpecification,
+      final Specification specification,
       ExternalInvariantsManager pManager)
       throws InvalidConfigurationException, CPAException, InterruptedException {
     logger.log(Level.FINE, "Creating algorithms");
@@ -415,7 +412,15 @@ public class CoreComponentsFactory {
             "Cannot use CBMC as analysis with more than one input file");
       }
       algorithm = new ExternalCBMCAlgorithm(cfa.getFileNames().get(0), config, logger);
-
+    } else if (useExternalInvariantGeneration) {
+      algorithm =
+          new ExternalInvgenImportAlgorithm(
+              config,
+              logger,
+              shutdownNotifier,
+              specification,
+              cfa,
+              aggregatedReachedSets);
     } else if (useParallelAlgorithm) {
       algorithm =
           new ParallelAlgorithm(
@@ -621,7 +626,8 @@ public class CoreComponentsFactory {
         || useRestartingAlgorithm
         || useHeuristicSelectionAlgorithm
         || useParallelAlgorithm
-        || asConditionalVerifier) {
+        || asConditionalVerifier
+        || useExternalInvariantGeneration) {
       // this algorithm needs an indirection so that it can change
       // the actual reached set instance on the fly
       if (memorizeReachedAfterRestart) {

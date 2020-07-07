@@ -34,11 +34,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.logging.Level;
 import org.sosy_lab.common.ShutdownManager;
 import org.sosy_lab.common.ShutdownNotifier;
@@ -47,9 +49,10 @@ import org.sosy_lab.common.configuration.ConfigurationBuilder;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
+import org.sosy_lab.cpachecker.cfa.ast.AExpression;
+import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.core.CoreComponentsFactory;
-import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.Algorithm;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
@@ -59,14 +62,21 @@ import org.sosy_lab.cpachecker.core.interfaces.Statistics;
 import org.sosy_lab.cpachecker.core.interfaces.StatisticsProvider;
 import org.sosy_lab.cpachecker.core.reachedset.AggregatedReachedSets;
 import org.sosy_lab.cpachecker.core.reachedset.ReachedSet;
+import org.sosy_lab.cpachecker.core.specification.Specification;
+import org.sosy_lab.cpachecker.cpa.arg.ARGCPA;
 import org.sosy_lab.cpachecker.cpa.arg.ARGState;
 import org.sosy_lab.cpachecker.cpa.arg.ARGUtils;
+import org.sosy_lab.cpachecker.cpa.arg.witnessexport.InvariantProvider;
 import org.sosy_lab.cpachecker.cpa.arg.witnessexport.Witness;
 import org.sosy_lab.cpachecker.cpa.arg.witnessexport.WitnessExporter;
 import org.sosy_lab.cpachecker.cpa.arg.witnessexport.WitnessToOutputFormatsUtils;
+import org.sosy_lab.cpachecker.cpa.composite.CompositeCPA;
+import org.sosy_lab.cpachecker.cpa.extinvgen.ExternalInvToARGCPA;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.BiPredicates;
 import org.sosy_lab.cpachecker.util.Triple;
+import org.sosy_lab.cpachecker.util.expressions.ExpressionTree;
+import org.sosy_lab.cpachecker.util.expressions.ExpressionTrees;
 import org.sosy_lab.cpachecker.util.globalinfo.GlobalInfo;
 import org.sosy_lab.cpachecker.util.resources.ResourceLimitChecker;
 
@@ -104,6 +114,7 @@ public class InvariantInC2WitnessParser {
 
       Collection<Statistics> stats = new ArrayList<>();
       CFANode node = pCfa.getMainFunction();
+      pLogger.log(Level.WARNING, "Starting creating witness");
       Triple<Algorithm, ConfigurableProgramAnalysis, ReachedSet> restartAlg =
           createAlgorithm(
               newConfig,
@@ -120,6 +131,7 @@ public class InvariantInC2WitnessParser {
       // currentCpa = restartAlg.getSecond();
       currentReached = restartAlg.getThird();
       currentAlgorithm.run(currentReached);
+      pLogger.log(Level.WARNING, "Finished  creating witness");
 
       // start the file, print the result (reached rset as arg to the witness file)
       ImmutableSet<ARGState> rootStates = ARGUtils.getRootStates(currentReached);
@@ -129,12 +141,45 @@ public class InvariantInC2WitnessParser {
             "SeaHorn: Could not determine ARG root for witness view, terminating");
       }
       ARGState rootState = rootStates.iterator().next();
+      pLogger.log(Level.WARNING, restartAlg.toString());
+      pLogger.log(
+          Level.WARNING,
+          "try to Obtained witness map",
+          restartAlg.getSecond().getClass(),
+          restartAlg.getSecond().toString());
+      final Map<CFANode, ExpressionTree<AExpression>> invMap = new HashMap<>();
+      ARGCPA argcpa = (ARGCPA) restartAlg.getSecond();
+
+      for (ConfigurableProgramAnalysis analysis : argcpa.getWrappedCPAs()) {
+        if (analysis instanceof ExternalInvToARGCPA) {
+          invMap.putAll(((ExternalInvToARGCPA) analysis).getGlobalInvMap());
+        }
+        else if (analysis instanceof CompositeCPA) {
+          CompositeCPA composite = (CompositeCPA) analysis;
+
+          for (ConfigurableProgramAnalysis ana : composite.getWrappedCPAs()) {
+            if (ana instanceof ExternalInvToARGCPA) {
+              invMap.putAll(((ExternalInvToARGCPA) ana).getGlobalInvMap());
+            }
+          }
+        }
+      }
+      if (invMap.isEmpty()) {
+        pLogger.log(Level.WARNING, "Can not extract list of loaded invariants!");
+        throw new CPAException("Can not extract list of loaded invariants!");
+      }
+
 
       WitnessExporter argWitnessExporter =
           new WitnessExporter(newConfig, pLogger, Specification.alwaysSatisfied(), pCfa);
+      InvariantProvider prov = new ExtInvariantProvider(invMap, pLogger);
       Witness witness =
           argWitnessExporter
-              .generateProofWitness(rootState, Predicates.alwaysTrue(), BiPredicates.alwaysTrue());
+              .generateProofWitness(
+                  rootState,
+                  Predicates.alwaysTrue(),
+                  BiPredicates.alwaysTrue(),
+                  prov);
 
       @SuppressWarnings("resource")
       BufferedWriter writer =
@@ -312,6 +357,41 @@ public class InvariantInC2WitnessParser {
       mp.put(split.get(0), split.get(1));
     }
     return mp;
+  }
+
+  public class ExtInvariantProvider implements InvariantProvider {
+
+    private Map<CFANode, ExpressionTree<AExpression>> invMap;
+    private LogManager pLogger;
+
+    public ExtInvariantProvider(
+        Map<CFANode, ExpressionTree<AExpression>> pInvMap,
+        LogManager pPLogger) {
+      super();
+      invMap = pInvMap;
+      pLogger = pPLogger;
+    }
+
+    @Override
+    public ExpressionTree<Object> provideInvariantFor(
+        CFAEdge pCFAEdge,
+        Optional<? extends Collection<? extends ARGState>> pStates) {
+
+      ExpressionTree<Object> result =
+          ExpressionTrees
+              .cast(invMap.getOrDefault(pCFAEdge.getSuccessor(), ExpressionTrees.getTrue()));
+      if (ExpressionTrees.getFalse().equals(result) && !pStates.isPresent()) {
+        return ExpressionTrees.getTrue();
+      }
+      pLogger.log(
+          Level.WARNING,
+          "Adding",
+          result.toString(),
+          " to N",
+          pCFAEdge.getSuccessor().getNodeNumber());
+      return result;
+    }
+
   }
 
 }

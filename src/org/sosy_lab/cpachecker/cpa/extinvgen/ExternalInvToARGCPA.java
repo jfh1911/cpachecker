@@ -40,7 +40,6 @@ import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdgeType;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.cfa.parser.Scope;
-import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.defaults.DelegateAbstractDomain;
 import org.sosy_lab.cpachecker.core.defaults.StopSepOperator;
@@ -53,6 +52,7 @@ import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.core.interfaces.StateSpacePartition;
 import org.sosy_lab.cpachecker.core.interfaces.StopOperator;
 import org.sosy_lab.cpachecker.core.interfaces.TransferRelation;
+import org.sosy_lab.cpachecker.core.specification.Specification;
 import org.sosy_lab.cpachecker.cpa.automaton.CParserUtils;
 import org.sosy_lab.cpachecker.cpa.automaton.CParserUtils.ParserTools;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
@@ -296,6 +296,10 @@ public abstract class ExternalInvToARGCPA implements ConfigurableProgramAnalysis
       }
 
 
+  }
+
+  public Map<CFANode, ExpressionTree<AExpression>> getGlobalInvMap() {
+    return globalInvMap;
   }
 
 //  private void cleanup(Map<Integer, Set<CFAEdge>> pLineToEdgesOfMain) {
