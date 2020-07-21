@@ -12,3 +12,4 @@ python3 Ultimate.py --spec $3unreach-call.prp --architecture 32bit --witness-dir
 #cat $2log.txt
 
 
+cp $2witness.graphml $2witness_ua.graphml

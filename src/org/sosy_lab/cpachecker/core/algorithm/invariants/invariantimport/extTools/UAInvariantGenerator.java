@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -41,14 +42,16 @@ import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
-import org.sosy_lab.cpachecker.core.Specification;
 import org.sosy_lab.cpachecker.core.algorithm.bmc.candidateinvariants.CandidateInvariant;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerator;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.ExternalInvariantGenerators;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.InvGenCompRes;
+import org.sosy_lab.cpachecker.core.specification.Specification;
+import org.sosy_lab.cpachecker.cpa.automaton.AutomatonGraphmlParser;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
+import org.sosy_lab.cpachecker.util.automaton.AutomatonGraphmlCommon.WitnessType;
 
 @Options(prefix = "invariantGeneration.wrapper")
 public class UAInvariantGenerator implements ExternalInvariantGenerator {
@@ -142,7 +145,7 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
     }
   }
 
-  public Multimap<Integer, Pair<String, String>>
+  public Pair<Optional<Multimap<Integer, Pair<String, String>>>, Optional<Path>>
       genInvsAndLoad(CFA pCfa, LogManager pLogger, int pTimeout) throws CPAException {
 
     // Start UA:
@@ -157,7 +160,7 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
     }
   }
 
-  private Multimap<Integer, Pair<String, String>>
+  private Pair<Optional<Multimap<Integer, Pair<String, String>>>, Optional<Path>>
       genInvs(Path pPath, LogManager pLogger, long pTimeout)
           throws IOException, InterruptedException {
 
@@ -199,10 +202,19 @@ public class UAInvariantGenerator implements ExternalInvariantGenerator {
           process.exitValue());
     }
 
+    try {
+      Path pathToUAWitness = new File(ABSOLUTE_PATH_TO_INV_FILE + "witness_ua.graphml").toPath();
+      if (AutomatonGraphmlParser.getWitnessType(pathToUAWitness) == WitnessType.VIOLATION_WITNESS) {
+        return Pair.of(Optional.empty(), Optional.of(pathToUAWitness));
+      }
+    } catch (InvalidConfigurationException | InterruptedException e) {
+
+    }
+
     // Since the cpachecker input does not like "-1*", replace them by a simple "-"
     Path pathToLogFile = Path.of(ABSOLUTE_PATH_TO_INV_FILE + "log.txt");
     UALogParser logParser = new UALogParser(pLogger);
-    return logParser.parseLog(pathToLogFile);
+    return Pair.of(Optional.of(logParser.parseLog(pathToLogFile)), Optional.empty());
 
   }
 

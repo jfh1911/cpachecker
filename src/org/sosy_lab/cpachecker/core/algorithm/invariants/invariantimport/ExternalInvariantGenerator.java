@@ -45,8 +45,10 @@ import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTool
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools.UAInvariantGenerator;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.invariantimport.extTools.VeriAbsInvariantGenerator;
 import org.sosy_lab.cpachecker.core.specification.Specification;
+import org.sosy_lab.cpachecker.cpa.automaton.AutomatonGraphmlParser;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.WitnessInvariantsExtractor;
+import org.sosy_lab.cpachecker.util.automaton.AutomatonGraphmlCommon.WitnessType;
 import org.sosy_lab.cpachecker.util.expressions.ExpressionTree;
 import org.sosy_lab.cpachecker.util.expressions.ExpressionTrees;
 
@@ -145,6 +147,12 @@ public interface ExternalInvariantGenerator {
         reader.close();
       } catch (IOException e) {
         // Nothing do to here, since only for debugging purposes
+      }
+
+      // Check in advance, if a path contains a violation witness, not containing an invariant by
+      // design
+      if (AutomatonGraphmlParser.getWitnessType(pRes) == WitnessType.VIOLATION_WITNESS) {
+        return true;
       }
 
       WitnessInvariantsExtractor extractor =

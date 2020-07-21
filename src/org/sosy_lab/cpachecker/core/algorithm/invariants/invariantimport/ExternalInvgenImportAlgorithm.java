@@ -57,6 +57,7 @@ import org.sosy_lab.common.configuration.FileOption;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.configuration.Option;
 import org.sosy_lab.common.configuration.Options;
+import org.sosy_lab.common.io.IO;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
@@ -73,6 +74,7 @@ import org.sosy_lab.cpachecker.core.reachedset.AggregatedReachedSets.AggregatedR
 import org.sosy_lab.cpachecker.core.reachedset.ForwardingReachedSet;
 import org.sosy_lab.cpachecker.core.reachedset.ReachedSet;
 import org.sosy_lab.cpachecker.core.specification.Specification;
+import org.sosy_lab.cpachecker.cpa.automaton.AutomatonGraphmlParser;
 import org.sosy_lab.cpachecker.exceptions.CPAEnabledAnalysisPropertyViolationException;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.exceptions.CounterexampleAnalysisFailed;
@@ -80,6 +82,7 @@ import org.sosy_lab.cpachecker.exceptions.RefinementFailedException;
 import org.sosy_lab.cpachecker.util.AbstractStates;
 import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.Triple;
+import org.sosy_lab.cpachecker.util.automaton.AutomatonGraphmlCommon.WitnessType;
 
 @Options(prefix = "coverisinv")
 public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
@@ -165,6 +168,7 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     try {
       List<Pair<String, String>> addInfos = new ArrayList<>();
       addInfos.add(Pair.of("analysis.injectGeneratedInvariants", "true"));
+      addInfos.add(Pair.of("cpa.loopbound.maxLoopIterations", Integer.toString(1)));
 
       master =
           super.createAlgorithm(
@@ -483,9 +487,19 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
       builder.setOption("analysis.injectGeneratedInvariants", Boolean.toString(injectWitnesses));
 
       builder.setOption("analysis.generateExternalInvariants", "false");
-      // builder.setOption("analysis.generateExternalInvariants", "false");
 
+      // Check, if the witnesses given contain an error witness. in this case, try to determine an
+      // appropriated bound for k using the CE given in the error witness and the the k as ddefault
+      // for the rerun in the k-analysis
+      if (containsErrorWitnesses(pPathToInvariant)) {
+        int appropriatedK = determineK(pPathToInvariant, singleConfig);
+        builder.clearOption("cpa.loopbound.maxLoopIterations");
+        builder.setOption("cpa.loopbound.maxLoopIterations", Integer.toString(appropriatedK));
+      }
+
+      // builder.setOption("analysis.generateExternalInvariants", "false");
       Configuration newConfig = builder.build();
+
 
       Triple<Algorithm, ConfigurableProgramAnalysis, ReachedSet> restartAlg =
           super.createAlgorithm(
@@ -700,6 +714,38 @@ public class ExternalInvgenImportAlgorithm extends NestingAlgorithm {
     // .collect(Collectors.toList()),
     // spec);
 
+  }
+
+  private int determineK(List<Path> pPathToInvariant, Configuration pConfig) {
+    ErrorWitnessEvaluator eval = new ErrorWitnessEvaluator(cfa, logger, shutdownNotifier);
+
+    return eval.determineK(pPathToInvariant, pConfig);
+
+  }
+
+  private boolean containsErrorWitnesses(List<Path> pPathToInvariant) {
+    logger.log(Level.WARNING, "checking for errorWitnesses");
+    for (Path path : pPathToInvariant) {
+      try {
+        IO.checkReadableFile(path);
+        if (AutomatonGraphmlParser.isGraphmlAutomatonFromConfiguration(path)
+            && AutomatonGraphmlParser.getWitnessType(path) == WitnessType.VIOLATION_WITNESS) {
+          logger.log(Level.WARNING, "checking succeds");
+          return true;
+        }
+      } catch (IOException e) {
+        logger.logUserException(Level.WARNING, e, "Could not read witnesses from file");
+      } catch (InvalidConfigurationException | InterruptedException e) {
+        logger.log(
+            Level.WARNING,
+            e,
+            "Could not process witness from path ",
+            path,
+            " hence ignoring it while searching for violation witnesses");
+        e.printStackTrace();
+      }
+    }
+    return false;
   }
 
   private String getPaths(List<Path> pPathToInvariant) {

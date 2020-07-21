@@ -19,6 +19,9 @@
  */
 package org.sosy_lab.cpachecker.cpa.extinvgen;
 
+import com.google.common.collect.Multimap;
+import java.nio.file.Path;
+import java.util.Optional;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
@@ -31,6 +34,7 @@ import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.interfaces.CPAFactory;
 import org.sosy_lab.cpachecker.core.specification.Specification;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
+import org.sosy_lab.cpachecker.util.Pair;
 
 @Options(prefix = "cpa.extinvgen")
 public class UAInvToARGCPA extends ExternalInvToARGCPA {
@@ -66,7 +70,13 @@ public class UAInvToARGCPA extends ExternalInvToARGCPA {
       throw new CPAException("Can onyl handle CFAs, where one source file is contained");
     }
     generator = new UAInvariantGenerator(pConfig);
-    super.injectAndParseInvariants(generator.genInvsAndLoad(pCfa, pLogger, pTimeout));
+    Pair<Optional<Multimap<Integer, Pair<String, String>>>, Optional<Path>> generatedInvsOrErrorWitness =
+        generator.genInvsAndLoad(pCfa, pLogger, pTimeout);
+    if (generatedInvsOrErrorWitness.getFirst().isPresent()) {
+      super.injectAndParseInvariants(generatedInvsOrErrorWitness.getFirst().get());
+    } else if (generatedInvsOrErrorWitness.getSecond().isPresent()) {
+      super.pathToInvar = generatedInvsOrErrorWitness.getSecond();
+    }
 
   }
 

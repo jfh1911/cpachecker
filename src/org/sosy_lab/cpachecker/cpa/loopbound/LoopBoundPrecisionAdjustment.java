@@ -280,7 +280,7 @@ public class LoopBoundPrecisionAdjustment implements PrecisionAdjustment {
         this.maxLoopIterationAdjusterFactory.getMaxLoopIterationAdjuster(this);
     if (maxLoopIterationAdjuster.canAdjust(getMaxLoopIterations())) {
       int adjustedMaxLoopIterations = maxLoopIterationAdjuster.adjust(getMaxLoopIterations());
-      logger.log(Level.INFO, "Adjusting maxLoopIterations to " + adjustedMaxLoopIterations);
+      logger.log(Level.WARNING, "Adjusting maxLoopIterations to " + adjustedMaxLoopIterations);
       setMaxLoopIterations(adjustedMaxLoopIterations);
       return true;
     } else if (maxLoopIterationAdjuster instanceof ExtInvAndIncrementalLoopIterationAdjuster) {

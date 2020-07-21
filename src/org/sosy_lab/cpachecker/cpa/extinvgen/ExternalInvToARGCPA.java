@@ -21,6 +21,7 @@ package org.sosy_lab.cpachecker.cpa.extinvgen;
 
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -82,6 +83,8 @@ public abstract class ExternalInvToARGCPA implements ConfigurableProgramAnalysis
   Specification specification;
 
   private AbstractDomain abstractDomain;
+
+  public Optional<Path> pathToInvar = Optional.empty();
 
   /**
    * Gets a factory for creating InvariantCPAs.
@@ -221,6 +224,7 @@ public abstract class ExternalInvToARGCPA implements ConfigurableProgramAnalysis
     return new ExternalInvToArgTransferRelation(globalInvMap, ExpressionTrees.getTrue());
   }
 
+
   @Override
   public MergeOperator getMergeOperator() {
     return new MergeOperator() {
@@ -242,6 +246,10 @@ public abstract class ExternalInvToARGCPA implements ConfigurableProgramAnalysis
   public AbstractState getInitialState(CFANode pNode, StateSpacePartition pPartition)
       throws InterruptedException {
     return new ExternalnvToArgState(globalInvMap, ExpressionTrees.getTrue(), pNode);
+  }
+
+  public Optional<Path> getPathToErrorWitness() {
+    return this.pathToInvar;
   }
 
   /**

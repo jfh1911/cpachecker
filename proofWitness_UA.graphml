@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+ <key attr.name="invariant" attr.type="string" for="node" id="invariant"/>
+ <key attr.name="invariant.scope" attr.type="string" for="node" id="invariant.scope"/>
+ <key attr.name="isEntryNode" attr.type="boolean" for="node" id="entry">
+  <default>false</default>
+ </key>
+ <key attr.name="enterLoopHead" attr.type="boolean" for="edge" id="enterLoopHead">
+  <default>false</default>
+ </key>
+ <key attr.name="sourcecodeLanguage" attr.type="string" for="graph" id="sourcecodelang"/>
+ <key attr.name="programFile" attr.type="string" for="graph" id="programfile"/>
+ <key attr.name="programHash" attr.type="string" for="graph" id="programhash"/>
+ <key attr.name="specification" attr.type="string" for="graph" id="specification"/>
+ <key attr.name="architecture" attr.type="string" for="graph" id="architecture"/>
+ <key attr.name="producer" attr.type="string" for="graph" id="producer"/>
+ <key attr.name="creationTime" attr.type="string" for="graph" id="creationtime"/>
+ <key attr.name="startline" attr.type="int" for="edge" id="startline"/>
+ <key attr.name="endline" attr.type="int" for="edge" id="endline"/>
+ <key attr.name="startoffset" attr.type="int" for="edge" id="startoffset"/>
+ <key attr.name="endoffset" attr.type="int" for="edge" id="endoffset"/>
+ <key attr.name="originFileName" attr.type="string" for="edge" id="originfile">
+  <default>/home/cppp/Documents/cpachecker/examples/loops-crafted--sumt2.c</default>
+ </key>
+ <key attr.name="control" attr.type="string" for="edge" id="control"/>
+ <key attr.name="enterFunction" attr.type="string" for="edge" id="enterFunction"/>
+ <key attr.name="returnFromFunction" attr.type="string" for="edge" id="returnFrom"/>
+ <key attr.name="witness-type" attr.type="string" for="graph" id="witness-type"/>
+ <key attr.name="inputWitnessHash" attr.type="string" for="graph" id="inputwitnesshash"/>
+ <graph edgedefault="directed">
+  <data key="witness-type">correctness_witness</data>
+  <data key="sourcecodelang">C</data>
+  <data key="producer">CPAchecker 1.9.2-svn / coinverify-kInduction-ua-0</data>
+  <data key="specification">TRUE</data>
+  <data key="programfile">/home/cppp/Documents/cpachecker/examples/loops-crafted--sumt2.c</data>
+  <data key="programhash">939895a37df54cbcd7f87832dc1beac304726e0b240d4be03554d3a8f50d4ba6</data>
+  <data key="architecture">32bit</data>
+  <data key="creationtime">2020-07-07T15:14:16+02:00</data>
+  <node id="N9">
+   <data key="entry">true</data>
+  </node>
+  <node id="N10"/>
+  <edge source="N9" target="N10">
+   <data key="startline">11</data>
+   <data key="endline">11</data>
+   <data key="startoffset">230</data>
+   <data key="endoffset">240</data>
+   <data key="enterFunction">main</data>
+  </edge>
+  <node id="N16"/>
+  <edge source="N10" target="N16">
+   <data key="startline">14</data>
+   <data key="endline">14</data>
+   <data key="startoffset">308</data>
+   <data key="endoffset">316</data>
+   <data key="control">condition-false</data>
+  </edge>
+  <node id="N17"/>
+  <edge source="N10" target="N17">
+   <data key="startline">14</data>
+   <data key="endline">14</data>
+   <data key="startoffset">308</data>
+   <data key="endoffset">316</data>
+   <data key="control">condition-true</data>
+  </edge>
+  <node id="N8"/>
+  <edge source="N17" target="N8">
+   <data key="startline">14</data>
+   <data key="endline">14</data>
+   <data key="startoffset">320</data>
+   <data key="endoffset">327</data>
+   <data key="returnFrom">main</data>
+  </edge>
+  <node id="N30">
+   <data key="invariant">((i + j) &lt;= l) &amp; (l &lt;= (i + j))</data>
+   <data key="invariant.scope">main</data>
+  </node>
+  <edge source="N16" target="N30">
+   <data key="enterLoopHead">true</data>
+   <data key="startline">17</data>
+   <data key="endline">17</data>
+   <data key="startoffset">350</data>
+   <data key="endoffset">352</data>
+  </edge>
+  <node id="N24">
+   <data key="invariant">((i + j) &lt;= l) &amp; (l &lt;= (i + j))</data>
+   <data key="invariant.scope">main</data>
+  </node>
+  <edge source="N30" target="N24">
+   <data key="startline">18</data>
+   <data key="endline">18</data>
+   <data key="startoffset">364</data>
+   <data key="endoffset">368</data>
+   <data key="control">condition-false</data>
+  </edge>
+  <node id="N23">
+   <data key="invariant">((i + j) &lt;= l) &amp; (l &lt;= (i + j))</data>
+   <data key="invariant.scope">main</data>
+  </node>
+  <edge source="N30" target="N23">
+   <data key="startline">18</data>
+   <data key="endline">18</data>
+   <data key="startoffset">364</data>
+   <data key="endoffset">368</data>
+   <data key="control">condition-true</data>
+  </edge>
+  <node id="N27"/>
+  <edge source="N23" target="N27">
+   <data key="startline">20</data>
+   <data key="endline">20</data>
+   <data key="startoffset">384</data>
+   <data key="endoffset">386</data>
+   <data key="control">condition-false</data>
+  </edge>
+  <edge source="N23" target="N27">
+   <data key="startline">20</data>
+   <data key="endline">20</data>
+   <data key="startoffset">384</data>
+   <data key="endoffset">386</data>
+   <data key="control">condition-true</data>
+  </edge>
+  <edge source="N27" target="N30">
+   <data key="enterLoopHead">true</data>
+   <data key="startline">24</data>
+   <data key="endline">24</data>
+   <data key="startoffset">432</data>
+   <data key="endoffset">438</data>
+  </edge>
+  <node id="N1"/>
+  <edge source="N24" target="N1">
+   <data key="startline">26</data>
+   <data key="endline">26</data>
+   <data key="startoffset">447</data>
+   <data key="endoffset">474</data>
+   <data key="enterFunction">__VERIFIER_assert</data>
+  </edge>
+  <node id="N4"/>
+  <edge source="N1" target="N4">
+   <data key="startline">4</data>
+   <data key="endline">4</data>
+   <data key="startoffset">115</data>
+   <data key="endoffset">118</data>
+   <data key="control">condition-true</data>
+  </edge>
+  <edge source="N1" target="N4">
+   <data key="startline">4</data>
+   <data key="endline">4</data>
+   <data key="startoffset">115</data>
+   <data key="endoffset">118</data>
+   <data key="control">condition-false</data>
+  </edge>
+  <node id="N0"/>
+  <edge source="N4" target="N0">
+   <data key="startline">7</data>
+   <data key="endline">7</data>
+   <data key="startoffset">161</data>
+   <data key="endoffset">167</data>
+   <data key="returnFrom">__VERIFIER_assert</data>
+  </edge>
+  <node id="N31"/>
+  <edge source="N0" target="N31">
+   <data key="startline">26</data>
+   <data key="endline">26</data>
+   <data key="startoffset">447</data>
+   <data key="endoffset">476</data>
+  </edge>
+  <edge source="N31" target="N8">
+   <data key="startline">27</data>
+   <data key="endline">27</data>
+   <data key="startoffset">480</data>
+   <data key="endoffset">487</data>
+   <data key="returnFrom">main</data>
+  </edge>
+ </graph>
+</graphml>
