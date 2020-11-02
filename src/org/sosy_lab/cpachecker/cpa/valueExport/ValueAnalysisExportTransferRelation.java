@@ -182,18 +182,18 @@ public class ValueAnalysisExportTransferRelation
             lines.add(builder.toString());
             builder = new StringBuilder();
 
-            builder = builder.append("(");
+            builder = builder.append("## ");
             for (Entry<MemoryLocation, ValueAndType> ass : info.getAssignments().entrySet()) {
               builder = builder.append(ass.getKey().getIdentifier()).append(",");
             }
 
             // Remove last ","
             builder = builder.deleteCharAt(builder.length() - 1);
-            builder = builder.append(")");
+
             lines.add(builder.toString());
             builder = new StringBuilder();
           }
-          builder = builder.append("(");
+
           for (Entry<MemoryLocation, ValueAndType> ass : info.getAssignments().entrySet()) {
             if (ass.getValue() != null
                 && ass.getValue().getValue() != null
@@ -205,7 +205,7 @@ public class ValueAnalysisExportTransferRelation
 
           // Remove last ","
           builder = builder.deleteCharAt(builder.length() - 1);
-          builder = builder.append(")");
+
           lines.add(builder.toString());
           builder = new StringBuilder();
           contentCreated = true;
@@ -232,7 +232,7 @@ public class ValueAnalysisExportTransferRelation
   private List<String> printVariableInformations(ValueAnalysisInformation pInfo) {
     List<String> lines = new ArrayList<>();
     StringBuilder information = new StringBuilder();
-    information = information.append("(Varname, type, isUnsinged, isConstant, isRandomValue)");
+    information = information.append("## Varname, type, isUnsinged, isConstant, isRandomValue");
     lines.add(information.toString());
     information = new StringBuilder();
     Set<CFAEdge> edges = new HashSet<>();
@@ -264,7 +264,7 @@ public class ValueAnalysisExportTransferRelation
 
         information =
             information.append(
-                "(" + entry.getKey().getIdentifier() + "," + entry.getValue().getType() + ",");
+                entry.getKey().getIdentifier() + "," + entry.getValue().getType() + ",");
         if (entry.getValue().getType() instanceof CSimpleType) {
           CSimpleType t = (CSimpleType) entry.getValue().getType();
           boolean isConst =
@@ -275,9 +275,8 @@ public class ValueAnalysisExportTransferRelation
         }
 
         information =
-            information
-                .append(varsWithRandomValueAssignedTo.contains(entry.getKey().getIdentifier()))
-                .append(")");
+            information.append(
+                varsWithRandomValueAssignedTo.contains(entry.getKey().getIdentifier()));
         lines.add(information.toString());
         information = new StringBuilder();
       }
