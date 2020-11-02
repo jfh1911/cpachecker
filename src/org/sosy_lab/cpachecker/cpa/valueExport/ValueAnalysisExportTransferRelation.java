@@ -8,6 +8,7 @@
 
 package org.sosy_lab.cpachecker.cpa.valueExport;
 
+import com.google.common.collect.Sets;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -28,8 +29,11 @@ import org.sosy_lab.cpachecker.cfa.ast.AExpression;
 import org.sosy_lab.cpachecker.cfa.ast.AFunctionCall;
 import org.sosy_lab.cpachecker.cfa.ast.AParameterDeclaration;
 import org.sosy_lab.cpachecker.cfa.ast.AStatement;
+import org.sosy_lab.cpachecker.cfa.ast.c.CAssignment;
 import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCallAssignmentStatement;
+import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CStatement;
+import org.sosy_lab.cpachecker.cfa.ast.c.CVariableDeclaration;
 import org.sosy_lab.cpachecker.cfa.model.ADeclarationEdge;
 import org.sosy_lab.cpachecker.cfa.model.AReturnStatementEdge;
 import org.sosy_lab.cpachecker.cfa.model.AStatementEdge;
@@ -40,6 +44,7 @@ import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.cfa.model.FunctionCallEdge;
 import org.sosy_lab.cpachecker.cfa.model.FunctionReturnEdge;
 import org.sosy_lab.cpachecker.cfa.model.FunctionSummaryEdge;
+import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CFunctionSummaryEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CStatementEdge;
 import org.sosy_lab.cpachecker.cfa.types.c.CSimpleType;
@@ -238,7 +243,7 @@ public class ValueAnalysisExportTransferRelation
     }
 
     Set<String> varsWithRandomValueAssignedTo = new HashSet<>();
-
+    Set<String> varsWithUnchangedValue = computeUnchagnedVars(edges);
     for (CFAEdge e : edges) {
       if (e instanceof CStatementEdge) {
         CStatement statement = ((CStatementEdge) e).getStatement();
@@ -262,7 +267,9 @@ public class ValueAnalysisExportTransferRelation
                 "(" + entry.getKey().getIdentifier() + "," + entry.getValue().getType() + ",");
         if (entry.getValue().getType() instanceof CSimpleType) {
           CSimpleType t = (CSimpleType) entry.getValue().getType();
-          information = information.append(t.isUnsigned() + "," + t.isConst() + ",");
+          boolean isConst =
+              t.isConst() || varsWithUnchangedValue.contains(entry.getKey().getIdentifier());
+          information = information.append(t.isUnsigned() + "," + isConst + ",");
         } else {
           information = information.append("?,?,");
         }
@@ -276,5 +283,28 @@ public class ValueAnalysisExportTransferRelation
       }
     }
     return lines;
+  }
+
+  private Set<String> computeUnchagnedVars(Set<CFAEdge> pEdges) {
+    Set<String> nonConstVars = new HashSet<>();
+    Set<String> allVars = new HashSet<>();
+    for (CFAEdge e : pEdges) {
+      if (e instanceof CDeclarationEdge) {
+        CDeclarationEdge ce = (CDeclarationEdge) e;
+        if (ce.getDeclaration() instanceof CVariableDeclaration) {
+          allVars.add(((CVariableDeclaration) ce.getDeclaration()).getName());
+        }
+      } else if (e instanceof CStatementEdge) {
+        CStatementEdge stmt = (CStatementEdge) e;
+        if (stmt.getStatement() instanceof CAssignment) {
+          CAssignment assign = (CAssignment) stmt.getStatement();
+          if (assign.getLeftHandSide() instanceof CIdExpression) {
+            nonConstVars.add(((CIdExpression) assign.getLeftHandSide()).getName());
+          }
+        }
+      }
+    }
+    // Constant = allVars - nonConstantVars
+    return Sets.difference(allVars, nonConstVars);
   }
 }
