@@ -182,7 +182,7 @@ public class ValueAnalysisExportTransferRelation
             lines.add(builder.toString());
             builder = new StringBuilder();
 
-            builder = builder.append("## ");
+            builder = builder.append("##");
             for (Entry<MemoryLocation, ValueAndType> ass : info.getAssignments().entrySet()) {
               builder = builder.append(ass.getKey().getIdentifier()).append(",");
             }
