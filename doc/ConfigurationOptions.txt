@@ -3255,6 +3255,14 @@ cpa.value.trackJavaArrayValues = true
 cpa.value.unknownValueHandling = DISCARD
   enum:     [DISCARD, INTRODUCE_SYMBOLIC]
 
+# Enable storing the variable values.
+cpa.valueExport.storeVariableValues = false
+
+# Create a csv file that contains the values for all program variables. The
+# ordering is saved within the first row. Moreover, the information, if the
+# variable is initally assigned by a random function is stored.
+cpa.valueExport.variableValuesCsvFile = "output/variables.csv").toPath(
+
 # Specify simple custom instruction by specifying the binary operator op. All
 # simple cis are of the form r = x op y. Leave empty (default) if you specify
 # a more complex custom instruction within code.
@@ -3445,6 +3453,41 @@ imc.removeUnreachableStopStates = false
 
 # enable the Forced Covering optimization
 impact.useForcedCovering = true
+
+# If adaptTimeLimits is set and all configurations support progress reports,
+# in each cycle the time limits per configuration are newly calculated based
+# on the progress
+interleavedAlgorithm.adaptTimeLimits = no default value
+
+# where to store initial condition, when generated
+interleavedAlgorithm.condition.file = no default value
+
+# list of files with configurations to use, which are optionally suffixed
+# according to one of the followig schemes:either ::MODE or ::MODE_LIMIT,
+# where MODE and LIMIT are place holders.MODE may take one of the following
+# values continue (i.e., continue analysis with same CPA and reached set),
+# reuse-precision (i.e., reuse the aggregation of the precisions from the
+# previous analysis run), noreuse (i.e., start from scratch).LIMIT is a
+# positive integer number specifying the time limit of the analysis in each
+# round.If no (correct) limit is given a default limit is used.
+interleavedAlgorithm.configFiles = no default value
+
+# Whether or not to create an initial condition, that excludes no paths,
+# before first analysis is run.Required when first analysis uses condition
+# from conditional model checking
+interleavedAlgorithm.initCondition = no default value
+
+# print the statistics of each component of the interleaved algorithm
+# directly after the component's computation is finished
+interleavedAlgorithm.intermediateStatistics = no default value
+  enum:     [EXECUTE, NONE, PRINT]
+
+# Enable when interleaved algorithm is used to check a specification
+interleavedAlgorithm.propertyChecked = no default value
+
+# let each analysis part of the interleaved algorithm write output files and
+# not only the last one that is executed
+interleavedAlgorithm.writeIntermediateOutputFiles = no default value
 
 # Configuration file for the K-Induction algorithm for checking candidates on
 # invariance.

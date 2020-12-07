@@ -10,6 +10,7 @@ package org.sosy_lab.cpachecker.cpa.valueExport;
 
 import com.google.common.collect.Sets;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -66,6 +67,8 @@ public class ValueAnalysisExportTransferRelation
 
   private static final String VERIFIER_NONDET = "__VERIFIER_nondet_";
 
+  private static final String CPACHECKER_TEMP = "__CPAchecker_TMP";
+
   private Path variableValuesCsvFile = null;
 
   private boolean storeVariableValues = false;
@@ -75,8 +78,6 @@ public class ValueAnalysisExportTransferRelation
   private boolean isFirstState = true;
   private CFA cfa;
 
-  private boolean contentCreated = false;
-
   public ValueAnalysisExportTransferRelation(
       LogManager pLogger, Path variableValuesCsvFile, boolean storeVariableValues, CFA pCfa) {
 
@@ -84,6 +85,11 @@ public class ValueAnalysisExportTransferRelation
     this.variableValuesCsvFile = variableValuesCsvFile;
     this.storeVariableValues = storeVariableValues;
     this.cfa = pCfa;
+    try {
+      FileChannel.open(variableValuesCsvFile, StandardOpenOption.WRITE).truncate(0).close();
+    } catch (IOException e) {
+      logger.log(Level.WARNING, "Could not create csv file, as the file doe snot exists");
+    }
   }
 
   @Override
@@ -165,66 +171,74 @@ public class ValueAnalysisExportTransferRelation
     final Collection<AbstractState> postProcessedResult = new ArrayList<>(1);
     postProcessedResult.add(pElement);
 
-    if (storeVariableValues) {
-      List<String> lines = new ArrayList<>();
-      StringBuilder builder = new StringBuilder();
-      for (AbstractState other : pElements) {
-        if (other instanceof ValueAnalysisState
-            && pCfaEdge != null
-            && pCfaEdge.getPredecessor() != null
-            && pCfaEdge.getPredecessor().isLoopStart()
-            && !postProcessedResult.isEmpty()) {
+        if (storeVariableValues) {
+          List<String> lines = new ArrayList<>();
+          StringBuilder builder = new StringBuilder();
+          for (AbstractState other : pElements) {
+            if (other instanceof ValueAnalysisState
+                && pCfaEdge != null
+                && pCfaEdge.getPredecessor() != null
+                && pCfaEdge.getPredecessor().isLoopStart()
+                && !postProcessedResult.isEmpty()) {
 
-          ValueAnalysisState s = (ValueAnalysisState) other;
-          ValueAnalysisInformation info = s.getInformation();
-          if (isFirstState) {
-            lines.addAll(printVariableInformations(info));
-            lines.add(builder.toString());
-            builder = new StringBuilder();
+              // We are at a loop head
 
-            builder = builder.append("##");
-            for (Entry<MemoryLocation, ValueAndType> ass : info.getAssignments().entrySet()) {
-              builder = builder.append(ass.getKey().getIdentifier()).append(",");
+              ValueAnalysisState s = (ValueAnalysisState) other;
+              ValueAnalysisInformation info = s.getInformation();
+              if (isFirstState) {
+                lines.addAll(printVariableInformations(info));
+                lines.add(builder.toString());
+                builder = new StringBuilder();
+
+                builder = builder.append("##");
+                for (Entry<MemoryLocation, ValueAndType> ass : info.getAssignments().entrySet()) {
+                  if (!ass.getKey().getIdentifier().startsWith(CPACHECKER_TEMP)) {
+                    builder = builder.append(ass.getKey().getIdentifier()).append(",");
+                  }
+                }
+                // Remove last ","
+                builder = builder.deleteCharAt(builder.length() - 1);
+                lines.add(builder.toString());
+
+                try {
+                  Files.write(variableValuesCsvFile, lines, StandardCharsets.UTF_8);
+                  lines.clear();
+                  // ,StandardOpenOption.TRUNCATE_EXISiTING);
+                  isFirstState = false;
+
+                } catch (IOException e) {
+                  logger.log(Level.WARNING, "Could not create csv file, as the file does not exists");
+                }
+              }
+              builder = new StringBuilder();
+              for (Entry<MemoryLocation, ValueAndType> ass : info.getAssignments().entrySet()) {
+                if (ass.getValue() != null
+                    && ass.getValue().getValue() != null
+                    && ass.getValue().getValue() instanceof NumericValue
+                    && !ass.getKey().getIdentifier().startsWith(CPACHECKER_TEMP)) {
+                  Number num = ((NumericValue) ass.getValue().getValue()).getNumber();
+                  builder = builder.append(num.intValue()).append(",");
+                }
+              }
+
+              // Remove last ","
+              if (builder.lastIndexOf(",") > 0) {
+                builder = builder.deleteCharAt(builder.length() - 1);
+              }
+
+              lines.add(builder.toString());
+              builder = new StringBuilder();
+
+              try {
+            Files.write(
+                variableValuesCsvFile, lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+
+              } catch (IOException e) {
+            logger.log(Level.WARNING, "Could not create csv file, as the file does not exists");
+              }
             }
-
-            // Remove last ","
-            builder = builder.deleteCharAt(builder.length() - 1);
-
-            lines.add(builder.toString());
-            builder = new StringBuilder();
           }
-
-          for (Entry<MemoryLocation, ValueAndType> ass : info.getAssignments().entrySet()) {
-            if (ass.getValue() != null
-                && ass.getValue().getValue() != null
-                && ass.getValue().getValue() instanceof NumericValue) {
-              Number num = ((NumericValue) ass.getValue().getValue()).getNumber();
-              builder = builder.append(num.intValue()).append(",");
-            }
-          }
-
-          // Remove last ","
-          builder = builder.deleteCharAt(builder.length() - 1);
-
-          lines.add(builder.toString());
-          builder = new StringBuilder();
-          contentCreated = true;
-          System.out.println(lines);
         }
-      }
-      try {
-        if (contentCreated && isFirstState) {
-          Files.write(variableValuesCsvFile, lines, StandardCharsets.UTF_8);
-          isFirstState = false;
-        } else if (contentCreated) {
-          Files.write(
-              variableValuesCsvFile, lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
-        }
-
-      } catch (IOException e) {
-        logger.log(Level.WARNING, "Could not create csv file, as the file doe snot exists");
-      }
-    }
 
     return postProcessedResult;
   }
