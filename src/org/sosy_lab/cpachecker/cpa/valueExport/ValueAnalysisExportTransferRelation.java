@@ -72,7 +72,7 @@ public class ValueAnalysisExportTransferRelation
 
   private static final String ID_HEADER = "ID";
   private Path variableValuesCsvFile = null;
-  private AtomicInteger id_counter = new AtomicInteger(1);
+  private AtomicInteger id_counter;
   private boolean storeVariableValues = false;
 
   private final LogManagerWithoutDuplicates logger;
@@ -81,12 +81,17 @@ public class ValueAnalysisExportTransferRelation
   private CFA cfa;
 
   public ValueAnalysisExportTransferRelation(
-      LogManager pLogger, Path variableValuesCsvFile, boolean storeVariableValues, CFA pCfa) {
+      LogManager pLogger,
+      Path variableValuesCsvFile,
+      boolean storeVariableValues,
+      CFA pCfa,
+      int pFirstID) {
 
     logger = new LogManagerWithoutDuplicates(pLogger);
     this.variableValuesCsvFile = variableValuesCsvFile;
     this.storeVariableValues = storeVariableValues;
     this.cfa = pCfa;
+    this.id_counter = new AtomicInteger(pFirstID);
     try {
       FileChannel.open(variableValuesCsvFile, StandardOpenOption.WRITE).truncate(0).close();
     } catch (IOException e) {

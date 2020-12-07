@@ -41,8 +41,13 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
   @FileOption(FileOption.Type.OPTIONAL_INPUT_FILE)
   private Path variableValuesCsvFile = new File("output/variables.csv").toPath();
 
+
+
   @Option(secure = true, description = "Enable storing the variable values.")
   private boolean storeVariableValues = false;
+
+  @Option(secure = true, description = "ID to starti with at data-generation.")
+  private int firstID = 1;
 
   public static CPAFactory factory() {
     return AutomaticCPAFactory.forType(ValueAnalysisExportCPA.class);
@@ -73,7 +78,7 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
   @Override
   public ValueAnalysisExportTransferRelation getTransferRelation() {
     return new ValueAnalysisExportTransferRelation(
-        logger, variableValuesCsvFile, storeVariableValues, cfa);
+        logger, variableValuesCsvFile, storeVariableValues, cfa, firstID);
   }
 
   @Override
