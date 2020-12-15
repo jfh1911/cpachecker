@@ -201,7 +201,8 @@ public class ValueAnalysisExportTransferRelation
             builder = builder.append(ID_HEADER + ",");
             for (Entry<MemoryLocation, ValueAndType> ass : info.getAssignments().entrySet()) {
               if (!ass.getKey().getIdentifier().startsWith(CPACHECKER_TEMP)) {
-                builder = builder.append(ass.getKey().getIdentifier()).append(",");
+
+                builder = builder.append("|" + ass.getKey().getAsSimpleString() + "|").append(",");
               }
             }
             // Remove last ","
@@ -295,7 +296,12 @@ public class ValueAnalysisExportTransferRelation
 
         information =
             information.append(
-                entry.getKey().getIdentifier() + "," + entry.getValue().getType() + ",");
+                "|"
+                    + entry.getKey().getAsSimpleString()
+                    + "|"
+                    + ","
+                    + entry.getValue().getType()
+                    + ",");
         if (entry.getValue().getType() instanceof CSimpleType) {
           CSimpleType t = (CSimpleType) entry.getValue().getType();
           boolean isConst =
