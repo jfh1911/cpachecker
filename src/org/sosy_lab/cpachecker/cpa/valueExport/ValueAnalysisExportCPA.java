@@ -8,10 +8,7 @@
 
 package org.sosy_lab.cpachecker.cpa.valueExport;
 
-import java.io.File;
-import java.nio.file.Path;
 import org.sosy_lab.common.configuration.Configuration;
-import org.sosy_lab.common.configuration.FileOption;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.configuration.Option;
 import org.sosy_lab.common.configuration.Options;
@@ -37,11 +34,9 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
       secure = true,
       description =
           "Create a csv file that contains the values for all program variables. The ordering is saved within the "
-              + "first row. Moreover, the information, if the variable is initally assigned by a random function is stored.")
-  @FileOption(FileOption.Type.OPTIONAL_INPUT_FILE)
-  private Path variableValuesCsvFile = new File("output/variables.csv").toPath();
-
-
+              + "first row. Moreover, the information, if the variable is initally assigned by a random function is stored. "
+              + "The type ending '.csv' is added auztomatically.")
+  private String variableValuesCsvFile = "output/variables";
 
   @Option(secure = true, description = "Enable storing the variable values.")
   private boolean storeVariableValues = false;

@@ -3263,8 +3263,9 @@ cpa.valueExport.storeVariableValues = false
 
 # Create a csv file that contains the values for all program variables. The
 # ordering is saved within the first row. Moreover, the information, if the
-# variable is initally assigned by a random function is stored.
-cpa.valueExport.variableValuesCsvFile = "output/variables.csv").toPath(
+# variable is initally assigned by a random function is stored. The type
+# ending '.csv' is added auztomatically.
+cpa.valueExport.variableValuesCsvFile = "output/variables"
 
 # Specify simple custom instruction by specifying the binary operator op. All
 # simple cis are of the form r = x op y. Leave empty (default) if you specify

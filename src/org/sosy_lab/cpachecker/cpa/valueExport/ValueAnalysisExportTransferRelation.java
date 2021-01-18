@@ -8,18 +8,20 @@
 
 package org.sosy_lab.cpachecker.cpa.valueExport;
 
+import com.google.common.base.Charsets;
 import com.google.common.collect.Sets;
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map.Entry;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -44,11 +46,14 @@ import org.sosy_lab.cpachecker.cfa.model.BlankEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.cfa.model.FunctionCallEdge;
+import org.sosy_lab.cpachecker.cfa.model.FunctionExitNode;
 import org.sosy_lab.cpachecker.cfa.model.FunctionReturnEdge;
 import org.sosy_lab.cpachecker.cfa.model.FunctionSummaryEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
+import org.sosy_lab.cpachecker.cfa.model.c.CFunctionEntryNode;
 import org.sosy_lab.cpachecker.cfa.model.c.CFunctionSummaryEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CStatementEdge;
+import org.sosy_lab.cpachecker.cfa.types.Type;
 import org.sosy_lab.cpachecker.cfa.types.c.CSimpleType;
 import org.sosy_lab.cpachecker.core.defaults.ForwardingTransferRelation;
 import org.sosy_lab.cpachecker.core.defaults.SingletonPrecision;
@@ -56,10 +61,9 @@ import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.Precision;
 import org.sosy_lab.cpachecker.cpa.value.ValueAnalysisInformation;
 import org.sosy_lab.cpachecker.cpa.value.ValueAnalysisState;
-import org.sosy_lab.cpachecker.cpa.value.ValueAnalysisState.ValueAndType;
-import org.sosy_lab.cpachecker.cpa.value.type.NumericValue;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
+import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.states.MemoryLocation;
 
 public class ValueAnalysisExportTransferRelation
@@ -68,35 +72,28 @@ public class ValueAnalysisExportTransferRelation
 
   private static final String VERIFIER_NONDET = "__VERIFIER_nondet_";
 
-  private static final String CPACHECKER_TEMP = "__CPAchecker_TMP";
-
-  private static final String ID_HEADER = "ID";
-  private Path variableValuesCsvFile = null;
+  private String variableValuesCsvFilePath = null;
   private AtomicInteger id_counter;
   private boolean storeVariableValues = false;
 
   private final LogManagerWithoutDuplicates logger;
-
-  private boolean isFirstState = true;
   private CFA cfa;
+
+  private Map<String, ExportStateStorage> exportStates;
 
   public ValueAnalysisExportTransferRelation(
       LogManager pLogger,
-      Path variableValuesCsvFile,
+      String variableValuesCsvFile,
       boolean storeVariableValues,
       CFA pCfa,
       int pFirstID) {
 
     logger = new LogManagerWithoutDuplicates(pLogger);
-    this.variableValuesCsvFile = variableValuesCsvFile;
+    this.variableValuesCsvFilePath = variableValuesCsvFile;
     this.storeVariableValues = storeVariableValues;
     this.cfa = pCfa;
     this.id_counter = new AtomicInteger(pFirstID);
-    try {
-      FileChannel.open(variableValuesCsvFile, StandardOpenOption.WRITE).truncate(0).close();
-    } catch (IOException e) {
-      logger.log(Level.WARNING, "Could not create csv file, as the file doe snot exists");
-    }
+    exportStates = new HashMap<>();
   }
 
   @Override
@@ -179,89 +176,72 @@ public class ValueAnalysisExportTransferRelation
     postProcessedResult.add(pElement);
 
     if (storeVariableValues) {
-      List<String> lines = new ArrayList<>();
-      StringBuilder builder = new StringBuilder();
-      for (AbstractState other : pElements) {
-        if (other instanceof ValueAnalysisState
-            && pCfaEdge != null
-            && pCfaEdge.getPredecessor() != null
-            && pCfaEdge.getPredecessor().isLoopStart()
-            && !postProcessedResult.isEmpty()) {
+      //      List<String> lines = new ArrayList<>();
+      //      StringBuilder builder = new StringBuilder();
+      if (pCfaEdge != null && pCfaEdge.getPredecessor() != null) {
 
-          // We are at a loop head
+        // Now, we can do something
+        CFANode node = pCfaEdge.getPredecessor();
+        if (pCfaEdge.getPredecessor() instanceof CFunctionEntryNode) {
+          // We are entering a new function, hence create a new ExportState for the function
+          exportStates.put(node.getFunctionName(), new ExportStateStorage(node.getFunctionName()));
+        }
+        if (pCfaEdge.getPredecessor() instanceof FunctionExitNode
+            || (pCfaEdge.getSuccessor() != null
+                && pCfaEdge.getSuccessor() instanceof FunctionExitNode
+                && cfa.getMainFunction()
+                    .getFunctionName()
+                    .equals(pCfaEdge.getSuccessor().getFunctionName()))) {
+          // We are exiting a function, hence store all states computed for this function
+          storeStates(exportStates.get(node.getFunctionName()), node.getFunctionName());
+        }
+        for (AbstractState other : pElements) {
+          if (other instanceof ValueAnalysisState
+              && pCfaEdge.getPredecessor().isLoopStart()
+              && !postProcessedResult.isEmpty()) {
 
-          ValueAnalysisState s = (ValueAnalysisState) other;
-          ValueAnalysisInformation info = s.getInformation();
-          if (isFirstState) {
-            lines.addAll(printVariableInformations(info));
-            lines.add(builder.toString());
-            builder = new StringBuilder();
+            // We are at a loop head
 
-            builder = builder.append("##");
-            builder = builder.append(ID_HEADER + ",");
-            for (Entry<MemoryLocation, ValueAndType> ass : info.getAssignments().entrySet()) {
-              if (!ass.getKey().getIdentifier().startsWith(CPACHECKER_TEMP)) {
-
-                builder = builder.append("|" + ass.getKey().getAsSimpleString() + "|").append(",");
-              }
-            }
-            // Remove last ","
-
-              // Remove last ","
-              if (builder.lastIndexOf(",") > 0) {
-                builder = builder.deleteCharAt(builder.length() - 1);
-              }
-            lines.add(builder.toString());
-
-            try {
-              Files.write(variableValuesCsvFile, lines, StandardCharsets.UTF_8);
-              lines.clear();
-              // ,StandardOpenOption.TRUNCATE_EXISiTING);
-              isFirstState = false;
-
-            } catch (IOException e) {
-              logger.log(Level.WARNING, "Could not create csv file, as the file does not exists");
-            }
-          }
-          builder = new StringBuilder();
-
-          // Firstly, append the id
-          builder =
-              builder.append(pCfaEdge.getLineNumber() + "-" + id_counter.getAndIncrement() + ",");
-
-          for (Entry<MemoryLocation, ValueAndType> ass : info.getAssignments().entrySet()) {
-            if (ass.getValue() != null
-                && ass.getValue().getValue() != null
-                && ass.getValue().getValue() instanceof NumericValue
-                && !ass.getKey().getIdentifier().startsWith(CPACHECKER_TEMP)) {
-              Number num = ((NumericValue) ass.getValue().getValue()).getNumber();
-              builder = builder.append(num.intValue()).append(",");
-            }
-          }
-
-          // Remove last ","
-          if (builder.lastIndexOf(",") > 0) {
-            builder = builder.deleteCharAt(builder.length() - 1);
-          }
-
-          lines.add(builder.toString());
-          builder = new StringBuilder();
-
-          try {
-            Files.write(
-                variableValuesCsvFile, lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
-
-          } catch (IOException e) {
-            logger.log(Level.WARNING, "Could not create csv file, as the file does not exists");
+            ValueAnalysisInformation info = ((ValueAnalysisState) other).getInformation();
+            ExportStateStorage currentState = exportStates.get(node.getFunctionName());
+            currentState.addNewState(info, pCfaEdge.getLineNumber());
           }
         }
       }
     }
-
     return postProcessedResult;
   }
 
-  private List<String> printVariableInformations(ValueAnalysisInformation pInfo) {
+  private void storeStates(ExportStateStorage pExportStateStorage, String pFunctionName) {
+    if (!pExportStateStorage.isEmpty()) {
+      Path currentFile =
+          new File(variableValuesCsvFilePath + "§" + pFunctionName + ".csv").toPath();
+      try {
+        // Clean the file
+        FileChannel.open(currentFile, StandardOpenOption.WRITE).truncate(0).close();
+      } catch (IOException e) {
+        // NOthing to do here, assuming that the file does not exists
+      }
+
+      try {
+        // get Header
+        List<String> information =
+            printVariableInformations(
+                pExportStateStorage.getLocationsUsedInMethod(), pFunctionName);
+        information.add("");
+        // Get the body
+        information.addAll(pExportStateStorage.printBody(id_counter));
+
+        // Write the information to the file
+        Files.write(currentFile, information, Charsets.UTF_8);
+      } catch (IOException e) {
+        logger.log(Level.WARNING, "Could not create csv file, as the file does not exists");
+      }
+    }
+  }
+
+  private List<String> printVariableInformations(
+      List<Pair<MemoryLocation, Type>> pList, String pFunctionName) {
     List<String> lines = new ArrayList<>();
     StringBuilder information = new StringBuilder();
     information = information.append("## Varname, type, isUnsinged, isConstant, isRandomValue");
@@ -269,13 +249,16 @@ public class ValueAnalysisExportTransferRelation
     information = new StringBuilder();
     Set<CFAEdge> edges = new HashSet<>();
     for (CFANode n : cfa.getAllNodes()) {
-      for (int i = 0; i < n.getNumEnteringEdges(); i++) {
-        edges.add(n.getEnteringEdge(i));
+      if (n.getFunctionName().equals(pFunctionName)) {
+        for (int i = 0; i < n.getNumEnteringEdges(); i++) {
+          edges.add(n.getEnteringEdge(i));
+        }
       }
     }
+    Set<String> varsWithUnchangedValue = computeUnchagnedVars(edges);
 
     Set<String> varsWithRandomValueAssignedTo = new HashSet<>();
-    Set<String> varsWithUnchangedValue = computeUnchagnedVars(edges);
+
     for (CFAEdge e : edges) {
       if (e instanceof CStatementEdge) {
         CStatement statement = ((CStatementEdge) e).getStatement();
@@ -289,34 +272,25 @@ public class ValueAnalysisExportTransferRelation
       }
     }
 
-    for (Entry<MemoryLocation, ValueAndType> entry : pInfo.getAssignments().entrySet()) {
-      if (entry.getValue() != null
-          && entry.getValue().getValue() != null
-          && entry.getValue().getValue() instanceof NumericValue) {
+    for (Pair<MemoryLocation, Type> entry : pList) {
 
-        information =
-            information.append(
-                "|"
-                    + entry.getKey().getAsSimpleString()
-                    + "|"
-                    + ","
-                    + entry.getValue().getType()
-                    + ",");
-        if (entry.getValue().getType() instanceof CSimpleType) {
-          CSimpleType t = (CSimpleType) entry.getValue().getType();
-          boolean isConst =
-              t.isConst() || varsWithUnchangedValue.contains(entry.getKey().getIdentifier());
-          information = information.append(t.isUnsigned() + "," + isConst + ",");
-        } else {
-          information = information.append("?,?,");
-        }
-
-        information =
-            information.append(
-                varsWithRandomValueAssignedTo.contains(entry.getKey().getIdentifier()));
-        lines.add(information.toString());
-        information = new StringBuilder();
+      information =
+          information.append(
+              "|" + entry.getFirst().getAsSimpleString() + "|" + "," + entry.getSecond() + ",");
+      if (entry.getSecond() instanceof CSimpleType) {
+        CSimpleType t = (CSimpleType) entry.getSecond();
+        boolean isConst =
+            t.isConst() || varsWithUnchangedValue.contains(entry.getFirst().getIdentifier());
+        information = information.append(t.isUnsigned() + "," + isConst + ",");
+      } else {
+        information = information.append("?,?,");
       }
+
+      information =
+          information.append(
+              varsWithRandomValueAssignedTo.contains(entry.getFirst().getIdentifier()));
+      lines.add(information.toString());
+      information = new StringBuilder();
     }
     return lines;
   }
