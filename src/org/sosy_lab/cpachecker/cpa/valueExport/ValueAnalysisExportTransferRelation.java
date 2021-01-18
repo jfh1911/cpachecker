@@ -34,7 +34,11 @@ import org.sosy_lab.cpachecker.cfa.ast.AFunctionCall;
 import org.sosy_lab.cpachecker.cfa.ast.AParameterDeclaration;
 import org.sosy_lab.cpachecker.cfa.ast.AStatement;
 import org.sosy_lab.cpachecker.cfa.ast.c.CAssignment;
+import org.sosy_lab.cpachecker.cfa.ast.c.CBinaryExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCall;
 import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCallAssignmentStatement;
+import org.sosy_lab.cpachecker.cfa.ast.c.CFunctionCallExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.ast.c.CStatement;
 import org.sosy_lab.cpachecker.cfa.ast.c.CVariableDeclaration;
@@ -52,6 +56,7 @@ import org.sosy_lab.cpachecker.cfa.model.FunctionSummaryEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CFunctionEntryNode;
 import org.sosy_lab.cpachecker.cfa.model.c.CFunctionSummaryEdge;
+import org.sosy_lab.cpachecker.cfa.model.c.CFunctionSummaryStatementEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CStatementEdge;
 import org.sosy_lab.cpachecker.cfa.types.Type;
 import org.sosy_lab.cpachecker.cfa.types.c.CSimpleType;
@@ -71,6 +76,7 @@ public class ValueAnalysisExportTransferRelation
         ValueAnalysisExportState, ValueAnalysisExportState, SingletonPrecision> {
 
   private static final String VERIFIER_NONDET = "__VERIFIER_nondet_";
+  private static final String VERIFIER_ASSERT = "__VERIFIER_assert";
 
   private String variableValuesCsvFilePath = null;
   private AtomicInteger id_counter;
@@ -306,7 +312,24 @@ public class ValueAnalysisExportTransferRelation
         }
       } else if (e instanceof CStatementEdge) {
         CStatementEdge stmt = (CStatementEdge) e;
+        if (e instanceof CFunctionSummaryStatementEdge) {
+          CFunctionCall call = ((CFunctionSummaryStatementEdge) e).getFunctionCall();
+          CFunctionCallExpression expr = call.getFunctionCallExpression();
+          if (expr.getDeclaration().getName().equals(VERIFIER_ASSERT)) {
+            List<CExpression> params =
+                ((CFunctionSummaryStatementEdge) e)
+                    .getFunctionCall()
+                    .getFunctionCallExpression()
+                    .getParameterExpressions();
+
+            for (CExpression param : params) {
+              nonConstVars.addAll(stripExpression(param));
+            }
+
+          }
+        }
         if (stmt.getStatement() instanceof CAssignment) {
+
           CAssignment assign = (CAssignment) stmt.getStatement();
           if (assign.getLeftHandSide() instanceof CIdExpression) {
             nonConstVars.add(((CIdExpression) assign.getLeftHandSide()).getName());
@@ -316,5 +339,17 @@ public class ValueAnalysisExportTransferRelation
     }
     // Constant = allVars - nonConstantVars
     return Sets.difference(allVars, nonConstVars);
+  }
+
+  private Set<String> stripExpression(CExpression pParam) {
+    Set<String> varsPresent = new HashSet<>();
+    if (pParam instanceof CBinaryExpression) {
+      CBinaryExpression binary = (CBinaryExpression) pParam;
+      varsPresent.addAll(stripExpression(binary.getOperand1()));
+      varsPresent.addAll(stripExpression(binary.getOperand2()));
+    } else if (pParam instanceof CIdExpression) {
+      return Sets.newHashSet(((CIdExpression) pParam).getName());
+    }
+    return varsPresent;
   }
 }
