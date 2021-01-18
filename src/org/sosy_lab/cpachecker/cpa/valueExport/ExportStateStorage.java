@@ -93,9 +93,9 @@ public class ExportStateStorage {
     builder = builder.append(ID_HEADER + ",");
 
     for (Pair<MemoryLocation, Type> var : this.locationsUsedInMethodOrdered) {
-      if (!var.getFirst().getIdentifier().startsWith(CPACHECKER_TEMP)) {
+
         builder = builder.append("|" + var.getFirst().getAsSimpleString() + "|").append(",");
-      }
+
     }
     // Remove last ","
     if (builder.lastIndexOf(",") > 0) {
@@ -111,7 +111,7 @@ public class ExportStateStorage {
       StringBuilder builder = new StringBuilder();
       builder = builder.append(state.getKey() + "-" + id_counter.getAndIncrement() + ",");
 
-      for (Pair<MemoryLocation, Type> loc : this.locationsUsedInMethod) {
+      for (Pair<MemoryLocation, Type> loc : this.locationsUsedInMethodOrdered) {
         Number value = state.getValue().getOrDefault(loc.getFirst(), 0);
         builder = builder.append(value.intValue()).append(",");
       }
