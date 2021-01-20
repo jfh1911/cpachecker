@@ -31,16 +31,21 @@ public class ExportStateStorage {
 
   private static final String ID_HEADER = "ID";
 
+
+
   String methodName;
   Set<Pair<MemoryLocation, Type>> locationsUsedInMethod;
   Multimap<Integer, Map<MemoryLocation, Number>> lineNumberToState;
   List<Pair<MemoryLocation, Type>> locationsUsedInMethodOrdered;
 
-  public ExportStateStorage(String pMethodName) {
+  private String default_for_unknown;
+
+  public ExportStateStorage(String pMethodName, String default_for_unknown) {
     this.methodName = pMethodName;
     this.lineNumberToState = ArrayListMultimap.create();
     this.locationsUsedInMethod = new HashSet<>();
     this.locationsUsedInMethodOrdered = new ArrayList<>();
+    this.default_for_unknown = default_for_unknown;
   }
 
   public boolean isEmpty() {
@@ -112,8 +117,12 @@ public class ExportStateStorage {
       builder = builder.append(state.getKey() + "-" + id_counter.getAndIncrement() + ",");
 
       for (Pair<MemoryLocation, Type> loc : this.locationsUsedInMethodOrdered) {
-        Number value = state.getValue().getOrDefault(loc.getFirst(), 0);
-        builder = builder.append(value.intValue()).append(",");
+        Number value = state.getValue().get(loc.getFirst());
+        if (value != null) {
+          builder = builder.append(value.intValue()).append(",");
+        } else {
+          builder = builder.append(this.default_for_unknown).append(",");
+        }
       }
       if (builder.lastIndexOf(",") > 0) {
         builder = builder.deleteCharAt(builder.length() - 1);

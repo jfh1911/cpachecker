@@ -86,13 +86,14 @@ public class ValueAnalysisExportTransferRelation
   private CFA cfa;
 
   private Map<String, ExportStateStorage> exportStates;
+  private String defaultValueForUndefined;
 
   public ValueAnalysisExportTransferRelation(
       LogManager pLogger,
       String variableValuesCsvFile,
       boolean storeVariableValues,
       CFA pCfa,
-      int pFirstID) {
+      int pFirstID, String defaultValueForUndefined) {
 
     logger = new LogManagerWithoutDuplicates(pLogger);
     this.variableValuesCsvFilePath = variableValuesCsvFile;
@@ -100,6 +101,7 @@ public class ValueAnalysisExportTransferRelation
     this.cfa = pCfa;
     this.id_counter = new AtomicInteger(pFirstID);
     exportStates = new HashMap<>();
+    this.defaultValueForUndefined = defaultValueForUndefined;
   }
 
   @Override
@@ -190,7 +192,7 @@ public class ValueAnalysisExportTransferRelation
         CFANode node = pCfaEdge.getPredecessor();
         if (pCfaEdge.getPredecessor() instanceof CFunctionEntryNode) {
           // We are entering a new function, hence create a new ExportState for the function
-          exportStates.put(node.getFunctionName(), new ExportStateStorage(node.getFunctionName()));
+          exportStates.put(node.getFunctionName(), new ExportStateStorage(node.getFunctionName(), defaultValueForUndefined));
         }
         if (pCfaEdge.getPredecessor() instanceof FunctionExitNode
             || (pCfaEdge.getSuccessor() != null

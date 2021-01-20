@@ -41,8 +41,14 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
   @Option(secure = true, description = "Enable storing the variable values.")
   private boolean storeVariableValues = false;
 
-  @Option(secure = true, description = "ID to starti with at data-generation.")
+  @Option(secure = true, description = "ID to start with at data-generation.")
   private int firstID = 1;
+
+  @Option(
+      secure = true,
+      description =
+          "Default Value for unknown values (variable values that are undefined) at exported file. By default '?'.")
+  private String defaultForUndefined = "?";
 
   public static CPAFactory factory() {
     return AutomaticCPAFactory.forType(ValueAnalysisExportCPA.class);
@@ -73,7 +79,7 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
   @Override
   public ValueAnalysisExportTransferRelation getTransferRelation() {
     return new ValueAnalysisExportTransferRelation(
-        logger, variableValuesCsvFile, storeVariableValues, cfa, firstID);
+        logger, variableValuesCsvFile, storeVariableValues, cfa, firstID, defaultForUndefined);
   }
 
   @Override
