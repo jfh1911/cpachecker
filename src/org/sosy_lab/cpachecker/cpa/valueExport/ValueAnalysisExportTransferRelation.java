@@ -68,6 +68,8 @@ import org.sosy_lab.cpachecker.cpa.value.ValueAnalysisInformation;
 import org.sosy_lab.cpachecker.cpa.value.ValueAnalysisState;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
+import org.sosy_lab.cpachecker.util.LoopStructure;
+import org.sosy_lab.cpachecker.util.LoopStructure.Loop;
 import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.states.MemoryLocation;
 
@@ -87,6 +89,7 @@ public class ValueAnalysisExportTransferRelation
 
   private Map<String, ExportStateStorage> exportStates;
   private String defaultValueForUndefined;
+  private Map<Integer, Set<String>> varsAssignedInLoop;
 
   public ValueAnalysisExportTransferRelation(
       LogManager pLogger,
@@ -102,6 +105,60 @@ public class ValueAnalysisExportTransferRelation
     this.id_counter = new AtomicInteger(pFirstID);
     exportStates = new HashMap<>();
     this.defaultValueForUndefined = defaultValueForUndefined;
+    // Compute a coarse approximation of variables changed within the loop
+    this.varsAssignedInLoop = computeVarsAssingeedInLoop();
+  }
+
+  private Map<Integer, Set<String>> computeVarsAssingeedInLoop() {
+    Map<Integer, Set<String>> mapping = new HashMap<>();
+
+    if (this.cfa.getLoopStructure().isPresent()) {
+      LoopStructure loopStrcutre = cfa.getLoopStructure().get();
+      for (Loop loop : loopStrcutre.getAllLoops()) {
+        Set<String> modifiedVars = new HashSet<>();
+
+        for (CFANode looped : loop.getLoopNodes()){
+            for( int i=0; i < looped.getNumLeavingEdges(); i++) {CFAEdge e = looped.getLeavingEdge(i);
+              if (e instanceof CStatementEdge) {
+              CStatementEdge stmt = (CStatementEdge) e;
+              if (e instanceof CFunctionSummaryStatementEdge) {
+                CFunctionCall call = ((CFunctionSummaryStatementEdge) e).getFunctionCall();
+                CFunctionCallExpression expr = call.getFunctionCallExpression();
+                if (expr.getDeclaration().getName().equals(VERIFIER_ASSERT)) {
+                  List<CExpression> params =
+                      ((CFunctionSummaryStatementEdge) e)
+                          .getFunctionCall()
+                          .getFunctionCallExpression()
+                          .getParameterExpressions();
+                  for (CExpression param : params) {
+                    modifiedVars.addAll(stripExpression(param));
+                  }
+                }
+              }
+              if (stmt.getStatement() instanceof CAssignment) {
+
+                CAssignment assign = (CAssignment) stmt.getStatement();
+                if (assign.getLeftHandSide() instanceof CIdExpression) {
+                  CIdExpression temp = (CIdExpression) assign.getLeftHandSide();
+                  modifiedVars.add(temp.toQualifiedASTString().replace("__", "::"));
+                }
+              }
+            }
+            }
+        }
+        for (CFANode loopHead : loop.getLoopHeads()) {
+          int linenumber = loopHead.getLeavingEdge(0).getLineNumber();
+          if (mapping.containsKey(linenumber)) {
+            Set<String> tempList = mapping.get(linenumber);
+            tempList.addAll(modifiedVars);
+            mapping.put(linenumber, tempList);
+          } else {
+            mapping.put(linenumber, modifiedVars);
+          }
+        }
+      }
+    }
+    return mapping;
   }
 
   @Override
@@ -238,7 +295,7 @@ public class ValueAnalysisExportTransferRelation
                 pExportStateStorage.getLocationsUsedInMethod(), pFunctionName);
         information.add("");
         // Get the body
-        information.addAll(pExportStateStorage.printBody(id_counter));
+        information.addAll(pExportStateStorage.printBody(id_counter, this.varsAssignedInLoop));
 
         // Write the information to the file
         Files.write(currentFile, information, Charsets.UTF_8);

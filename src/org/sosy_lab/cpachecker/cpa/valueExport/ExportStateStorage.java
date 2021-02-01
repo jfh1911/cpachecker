@@ -109,10 +109,12 @@ public class ExportStateStorage {
     return builder.toString();
   }
 
-  public List<String> printAllStates(AtomicInteger id_counter) {
+  public List<String> printAllStates(
+      AtomicInteger id_counter, Map<Integer, Set<String>> pVarsAssignedInLoop) {
     List<String> states = new ArrayList<>();
 
     for (Entry<Integer, Map<MemoryLocation, Number>> state : this.lineNumberToState.entries()) {
+      List<String> varsPrinted = new ArrayList<>();
       StringBuilder builder = new StringBuilder();
       builder = builder.append(state.getKey() + "-" + id_counter.getAndIncrement() + ",");
 
@@ -123,9 +125,23 @@ public class ExportStateStorage {
         } else {
           builder = builder.append(this.default_for_unknown).append(",");
         }
+        varsPrinted.add(loc.getFirst().getAsSimpleString());
       }
       if (builder.lastIndexOf(",") > 0) {
-        builder = builder.deleteCharAt(builder.length() - 1);
+        // Now, print the encoding, which variables are modified within the loop
+        if(pVarsAssignedInLoop.containsKey(state.getKey())) {
+          Set<String> modified = pVarsAssignedInLoop.get(state.getKey());
+          builder = builder.append("[");
+          for(String var : varsPrinted) {
+            builder = builder.append(modified.contains(var) ? "1" : "0").append(";");
+          }
+          if (builder.lastIndexOf(";") > 0) {
+            builder = builder.deleteCharAt(builder.length() - 1);
+          }
+          builder = builder.append("]");
+        } else {
+          builder = builder.deleteCharAt(builder.length() - 1);
+        }
       }
 
       states.add(builder.toString());
@@ -134,13 +150,12 @@ public class ExportStateStorage {
     return states;
   }
 
-
-
-  public List<String> printBody(AtomicInteger id_counter) {
+  public List<String> printBody(
+      AtomicInteger id_counter, Map<Integer, Set<String>> pVarsAssignedInLoop) {
     List<String> body = new ArrayList<>();
 
     body.add(printFirst());
-    body.addAll(printAllStates(id_counter));
+    body.addAll(printAllStates(id_counter, pVarsAssignedInLoop));
     return body;
   }
 

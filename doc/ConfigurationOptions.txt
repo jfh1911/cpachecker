@@ -3255,7 +3255,11 @@ cpa.value.trackJavaArrayValues = true
 cpa.value.unknownValueHandling = DISCARD
   enum:     [DISCARD, INTRODUCE_SYMBOLIC]
 
-# ID to starti with at data-generation.
+# Default Value for unknown values (variable values that are undefined) at
+# exported file. By default '?'.
+cpa.valueExport.defaultForUndefined = "?"
+
+# ID to start with at data-generation.
 cpa.valueExport.firstID = 1
 
 # Enable storing the variable values.
