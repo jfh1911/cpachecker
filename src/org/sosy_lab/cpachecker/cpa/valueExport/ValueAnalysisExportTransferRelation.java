@@ -90,13 +90,17 @@ public class ValueAnalysisExportTransferRelation
   private Map<String, ExportStateStorage> exportStates;
   private String defaultValueForUndefined;
   private Map<Integer, Set<String>> varsAssignedInLoop;
+  private boolean exportAfter50Iterations;
+  private int counter = 0;
 
   public ValueAnalysisExportTransferRelation(
       LogManager pLogger,
       String variableValuesCsvFile,
       boolean storeVariableValues,
       CFA pCfa,
-      int pFirstID, String defaultValueForUndefined) {
+      int pFirstID,
+      String defaultValueForUndefined,
+      boolean pExportAfter50Iterations) {
 
     logger = new LogManagerWithoutDuplicates(pLogger);
     this.variableValuesCsvFilePath = variableValuesCsvFile;
@@ -107,59 +111,10 @@ public class ValueAnalysisExportTransferRelation
     this.defaultValueForUndefined = defaultValueForUndefined;
     // Compute a coarse approximation of variables changed within the loop
     this.varsAssignedInLoop = computeVarsAssingeedInLoop();
+    this.exportAfter50Iterations = pExportAfter50Iterations;
   }
 
-  private Map<Integer, Set<String>> computeVarsAssingeedInLoop() {
-    Map<Integer, Set<String>> mapping = new HashMap<>();
 
-    if (this.cfa.getLoopStructure().isPresent()) {
-      LoopStructure loopStrcutre = cfa.getLoopStructure().get();
-      for (Loop loop : loopStrcutre.getAllLoops()) {
-        Set<String> modifiedVars = new HashSet<>();
-
-        for (CFANode looped : loop.getLoopNodes()){
-            for( int i=0; i < looped.getNumLeavingEdges(); i++) {CFAEdge e = looped.getLeavingEdge(i);
-              if (e instanceof CStatementEdge) {
-              CStatementEdge stmt = (CStatementEdge) e;
-              if (e instanceof CFunctionSummaryStatementEdge) {
-                CFunctionCall call = ((CFunctionSummaryStatementEdge) e).getFunctionCall();
-                CFunctionCallExpression expr = call.getFunctionCallExpression();
-                if (expr.getDeclaration().getName().equals(VERIFIER_ASSERT)) {
-                  List<CExpression> params =
-                      ((CFunctionSummaryStatementEdge) e)
-                          .getFunctionCall()
-                          .getFunctionCallExpression()
-                          .getParameterExpressions();
-                  for (CExpression param : params) {
-                    modifiedVars.addAll(stripExpression(param));
-                  }
-                }
-              }
-              if (stmt.getStatement() instanceof CAssignment) {
-
-                CAssignment assign = (CAssignment) stmt.getStatement();
-                if (assign.getLeftHandSide() instanceof CIdExpression) {
-                  CIdExpression temp = (CIdExpression) assign.getLeftHandSide();
-                  modifiedVars.add(temp.toQualifiedASTString().replace("__", "::"));
-                }
-              }
-            }
-            }
-        }
-        for (CFANode loopHead : loop.getLoopHeads()) {
-          int linenumber = loopHead.getLeavingEdge(0).getLineNumber();
-          if (mapping.containsKey(linenumber)) {
-            Set<String> tempList = mapping.get(linenumber);
-            tempList.addAll(modifiedVars);
-            mapping.put(linenumber, tempList);
-          } else {
-            mapping.put(linenumber, modifiedVars);
-          }
-        }
-      }
-    }
-    return mapping;
-  }
 
   @Override
   protected ValueAnalysisExportState handleFunctionCallEdge(
@@ -259,6 +214,7 @@ public class ValueAnalysisExportTransferRelation
                     .equals(pCfaEdge.getSuccessor().getFunctionName()))) {
           // We are exiting a function, hence store all states computed for this function
           storeStates(exportStates.get(node.getFunctionName()), node.getFunctionName());
+
         }
         for (AbstractState other : pElements) {
           if (other instanceof ValueAnalysisState
@@ -270,6 +226,10 @@ public class ValueAnalysisExportTransferRelation
             ValueAnalysisInformation info = ((ValueAnalysisState) other).getInformation();
             ExportStateStorage currentState = exportStates.get(node.getFunctionName());
             currentState.addNewState(info, pCfaEdge.getLineNumber());
+            counter += 1;
+            if (this.exportAfter50Iterations && counter % 50 == 0) {
+              storeStates(exportStates.get(node.getFunctionName()), node.getFunctionName());
+            }
           }
         }
       }
@@ -285,7 +245,7 @@ public class ValueAnalysisExportTransferRelation
         // Clean the file
         FileChannel.open(currentFile, StandardOpenOption.WRITE).truncate(0).close();
       } catch (IOException e) {
-        // NOthing to do here, assuming that the file does not exists
+        // Nothing to do here, assuming that the file does not exists
       }
 
       try {
@@ -410,5 +370,58 @@ public class ValueAnalysisExportTransferRelation
       return Sets.newHashSet(((CIdExpression) pParam).getName());
     }
     return varsPresent;
+  }
+
+  private Map<Integer, Set<String>> computeVarsAssingeedInLoop() {
+    Map<Integer, Set<String>> mapping = new HashMap<>();
+
+    if (this.cfa.getLoopStructure().isPresent()) {
+      LoopStructure loopStrcutre = cfa.getLoopStructure().get();
+      for (Loop loop : loopStrcutre.getAllLoops()) {
+        Set<String> modifiedVars = new HashSet<>();
+
+        for (CFANode looped : loop.getLoopNodes()) {
+          for (int i = 0; i < looped.getNumLeavingEdges(); i++) {
+            CFAEdge e = looped.getLeavingEdge(i);
+            if (e instanceof CStatementEdge) {
+              CStatementEdge stmt = (CStatementEdge) e;
+              if (e instanceof CFunctionSummaryStatementEdge) {
+                CFunctionCall call = ((CFunctionSummaryStatementEdge) e).getFunctionCall();
+                CFunctionCallExpression expr = call.getFunctionCallExpression();
+                if (expr.getDeclaration().getName().equals(VERIFIER_ASSERT)) {
+                  List<CExpression> params =
+                      ((CFunctionSummaryStatementEdge) e)
+                          .getFunctionCall()
+                          .getFunctionCallExpression()
+                          .getParameterExpressions();
+                  for (CExpression param : params) {
+                    modifiedVars.addAll(stripExpression(param));
+                  }
+                }
+              }
+              if (stmt.getStatement() instanceof CAssignment) {
+
+                CAssignment assign = (CAssignment) stmt.getStatement();
+                if (assign.getLeftHandSide() instanceof CIdExpression) {
+                  CIdExpression temp = (CIdExpression) assign.getLeftHandSide();
+                  modifiedVars.add(temp.toQualifiedASTString().replace("__", "::"));
+                }
+              }
+            }
+          }
+        }
+        for (CFANode loopHead : loop.getLoopHeads()) {
+          int linenumber = loopHead.getLeavingEdge(0).getLineNumber();
+          if (mapping.containsKey(linenumber)) {
+            Set<String> tempList = mapping.get(linenumber);
+            tempList.addAll(modifiedVars);
+            mapping.put(linenumber, tempList);
+          } else {
+            mapping.put(linenumber, modifiedVars);
+          }
+        }
+      }
+    }
+    return mapping;
   }
 }

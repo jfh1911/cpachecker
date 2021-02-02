@@ -3259,6 +3259,9 @@ cpa.value.unknownValueHandling = DISCARD
 # exported file. By default '?'.
 cpa.valueExport.defaultForUndefined = "?"
 
+# Export currently computed data after each 50th loop iterations.
+cpa.valueExport.exportAfter50Iterations = true
+
 # ID to start with at data-generation.
 cpa.valueExport.firstID = 1
 

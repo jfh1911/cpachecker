@@ -50,6 +50,11 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
           "Default Value for unknown values (variable values that are undefined) at exported file. By default '?'.")
   private String defaultForUndefined = "?";
 
+  @Option(
+      secure = true,
+      description = "Export currently computed data after each 50th loop iterations.")
+  private boolean exportAfter50Iterations = true;
+
   public static CPAFactory factory() {
     return AutomaticCPAFactory.forType(ValueAnalysisExportCPA.class);
   }
@@ -79,7 +84,13 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
   @Override
   public ValueAnalysisExportTransferRelation getTransferRelation() {
     return new ValueAnalysisExportTransferRelation(
-        logger, variableValuesCsvFile, storeVariableValues, cfa, firstID, defaultForUndefined);
+        logger,
+        variableValuesCsvFile,
+        storeVariableValues,
+        cfa,
+        firstID,
+        defaultForUndefined,
+        exportAfter50Iterations);
   }
 
   @Override
