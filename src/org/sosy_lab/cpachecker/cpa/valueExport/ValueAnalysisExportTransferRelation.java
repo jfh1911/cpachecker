@@ -252,12 +252,8 @@ public class ValueAnalysisExportTransferRelation
         FileChannel.open(currentFile, StandardOpenOption.WRITE).truncate(0).close();
           if(pisFinalResult) {
           // Remove intermediate file
-          FileChannel.open(
-                  new File(variableValuesCsvFilePath + INTERMEDIATE + "§" + pFunctionName + ".csv")
-                      .toPath(),
-                  StandardOpenOption.WRITE)
-              .truncate(0)
-              .close();
+          new File(variableValuesCsvFilePath + INTERMEDIATE + "§" + pFunctionName + ".csv")
+              .delete();
         }
       } catch (IOException e) {
         // Nothing to do here, assuming that the file does not exists
