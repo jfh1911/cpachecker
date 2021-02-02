@@ -79,6 +79,7 @@ public class ValueAnalysisExportTransferRelation
 
   private static final String VERIFIER_NONDET = "__VERIFIER_nondet_";
   private static final String VERIFIER_ASSERT = "__VERIFIER_assert";
+  private static final String INTERMEDIATE = "__INTERMED";
 
   private String variableValuesCsvFilePath = null;
   private AtomicInteger id_counter;
@@ -213,8 +214,7 @@ public class ValueAnalysisExportTransferRelation
                     .getFunctionName()
                     .equals(pCfaEdge.getSuccessor().getFunctionName()))) {
           // We are exiting a function, hence store all states computed for this function
-          storeStates(exportStates.get(node.getFunctionName()), node.getFunctionName());
-
+          storeStates(exportStates.get(node.getFunctionName()), node.getFunctionName(), true);
         }
         for (AbstractState other : pElements) {
           if (other instanceof ValueAnalysisState
@@ -228,7 +228,7 @@ public class ValueAnalysisExportTransferRelation
             currentState.addNewState(info, pCfaEdge.getLineNumber());
             counter += 1;
             if (this.exportAfter50Iterations && counter % 50 == 0) {
-              storeStates(exportStates.get(node.getFunctionName()), node.getFunctionName());
+              storeStates(exportStates.get(node.getFunctionName()), node.getFunctionName(), false);
             }
           }
         }
@@ -237,13 +237,28 @@ public class ValueAnalysisExportTransferRelation
     return postProcessedResult;
   }
 
-  private void storeStates(ExportStateStorage pExportStateStorage, String pFunctionName) {
-    if (!pExportStateStorage.isEmpty()) {
-      Path currentFile =
-          new File(variableValuesCsvFilePath + "§" + pFunctionName + ".csv").toPath();
+  private void storeStates(
+      ExportStateStorage pExportStateStorage, String pFunctionName, boolean pisFinalResult) {
+    if (!pExportStateStorage.isEmpty()) {Path currentFile ;
+      if(pisFinalResult) {
+        currentFile    =
+            new File(variableValuesCsvFilePath + "§" + pFunctionName + ".csv").toPath();}
+      else {
+
+        currentFile    =
+         new File(variableValuesCsvFilePath +INTERMEDIATE+ "§" + pFunctionName + ".csv").toPath();}
       try {
         // Clean the file
         FileChannel.open(currentFile, StandardOpenOption.WRITE).truncate(0).close();
+          if(pisFinalResult) {
+          // Remove intermediate file
+          FileChannel.open(
+                  new File(variableValuesCsvFilePath + INTERMEDIATE + "§" + pFunctionName + ".csv")
+                      .toPath(),
+                  StandardOpenOption.WRITE)
+              .truncate(0)
+              .close();
+        }
       } catch (IOException e) {
         // Nothing to do here, assuming that the file does not exists
       }
