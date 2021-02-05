@@ -10,6 +10,7 @@ package org.sosy_lab.cpachecker.cpa.valueExport;
 
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import java.io.File;
 import java.io.IOException;
@@ -240,7 +241,7 @@ public class ValueAnalysisExportTransferRelation
                 storeStates(
                     exportStates.get(node.getFunctionName()), node.getFunctionName(), false);
                 // Return an empty state, which leads to not following this path anymore!
-                return ImmutableList.of();
+                return Lists.newArrayList();
               }
             } else {
               lineNumberToVisits.put(lineNumber, 1);
