@@ -3259,11 +3259,15 @@ cpa.value.unknownValueHandling = DISCARD
 # exported file. By default '?'.
 cpa.valueExport.defaultForUndefined = "?"
 
-# Export currently computed data after each 50th loop iterations.
-cpa.valueExport.exportAfter50Iterations = true
+# Export currently computed data after each X-th loop iterations.
+cpa.valueExport.exportAfterXIterations = 50
 
 # ID to start with at data-generation.
 cpa.valueExport.firstID = 1
+
+# Trie to abort theexecution after the loop is visited x times. -1 for no
+# aborting
+cpa.valueExport.maxLoopIteration = 1
 
 # Enable storing the variable values.
 cpa.valueExport.storeVariableValues = false

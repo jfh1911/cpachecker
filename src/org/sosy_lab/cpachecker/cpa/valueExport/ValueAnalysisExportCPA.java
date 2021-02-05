@@ -52,8 +52,14 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
 
   @Option(
       secure = true,
-      description = "Export currently computed data after each 50th loop iterations.")
-  private boolean exportAfter50Iterations = true;
+      description = "Export currently computed data after each X-th loop iterations.")
+  private int exportAfterXIterations = 50;
+
+  @Option(
+      secure = true,
+      description =
+          "Trie to abort theexecution after the loop is visited x times. -1 for no aborting")
+  private int maxLoopIteration = 1;
 
   public static CPAFactory factory() {
     return AutomaticCPAFactory.forType(ValueAnalysisExportCPA.class);
@@ -90,7 +96,8 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
         cfa,
         firstID,
         defaultForUndefined,
-        exportAfter50Iterations);
+        exportAfterXIterations,
+        maxLoopIteration);
   }
 
   @Override

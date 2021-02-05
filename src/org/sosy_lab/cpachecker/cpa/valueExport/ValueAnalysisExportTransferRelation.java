@@ -9,6 +9,7 @@
 package org.sosy_lab.cpachecker.cpa.valueExport;
 
 import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import java.io.File;
 import java.io.IOException;
@@ -91,8 +92,10 @@ public class ValueAnalysisExportTransferRelation
   private Map<String, ExportStateStorage> exportStates;
   private String defaultValueForUndefined;
   private Map<Integer, Set<String>> varsAssignedInLoop;
-  private boolean exportAfter50Iterations;
+  private int exportAfterXIterations;
   private int counter = 0;
+  private int maxLoopIterations;
+  private Map<Integer, Integer> lineNumberToVisits = new HashMap<>();
 
   public ValueAnalysisExportTransferRelation(
       LogManager pLogger,
@@ -101,7 +104,8 @@ public class ValueAnalysisExportTransferRelation
       CFA pCfa,
       int pFirstID,
       String defaultValueForUndefined,
-      boolean pExportAfter50Iterations) {
+      int pExportAfterXIterations,
+      int pMaxLoopIteration) {
 
     logger = new LogManagerWithoutDuplicates(pLogger);
     this.variableValuesCsvFilePath = variableValuesCsvFile;
@@ -112,7 +116,8 @@ public class ValueAnalysisExportTransferRelation
     this.defaultValueForUndefined = defaultValueForUndefined;
     // Compute a coarse approximation of variables changed within the loop
     this.varsAssignedInLoop = computeVarsAssingeedInLoop();
-    this.exportAfter50Iterations = pExportAfter50Iterations;
+    this.exportAfterXIterations = pExportAfterXIterations;
+    this.maxLoopIterations = pMaxLoopIteration;
   }
 
 
@@ -225,9 +230,24 @@ public class ValueAnalysisExportTransferRelation
 
             ValueAnalysisInformation info = ((ValueAnalysisState) other).getInformation();
             ExportStateStorage currentState = exportStates.get(node.getFunctionName());
-            currentState.addNewState(info, pCfaEdge.getLineNumber());
+            int lineNumber = pCfaEdge.getLineNumber();
+            currentState.addNewState(info, lineNumber);
+            if (lineNumberToVisits.containsKey(lineNumber)) {
+              Integer numVisits = lineNumberToVisits.get(lineNumber) + 1;
+              lineNumberToVisits.put(lineNumber, numVisits);
+              if (this.maxLoopIterations > 0 && numVisits > this.maxLoopIterations) {
+                // Store the states, as we will probably not visit this location anymore
+                storeStates(
+                    exportStates.get(node.getFunctionName()), node.getFunctionName(), false);
+                // Return an empty state, which leads to not following this path anymore!
+                return ImmutableList.of();
+              }
+            } else {
+              lineNumberToVisits.put(lineNumber, 1);
+            }
+
             counter += 1;
-            if (this.exportAfter50Iterations && counter % 50 == 0) {
+            if (this.exportAfterXIterations > 0 && counter % exportAfterXIterations == 0) {
               storeStates(exportStates.get(node.getFunctionName()), node.getFunctionName(), false);
             }
           }
