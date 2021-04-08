@@ -1332,6 +1332,10 @@ public class ARGUtils {
    */
   public static Set<ARGPath> getAllPaths(final ReachedSet pReachedSet, final ARGState pStart) {
     ARGState root = AbstractStates.extractStateByType(pReachedSet.getFirstState(), ARGState.class);
+    return getAllPaths(root, pStart);
+  }
+  /** Returns all possible paths from the given state to the given target of the ARG. */
+  public static Set<ARGPath> getAllPaths(final ARGState pTarget, final ARGState pStart) {
     List<ARGState> states = new ArrayList<>();
     ImmutableSet.Builder<ARGPath> results = ImmutableSet.builder();
     List<List<ARGState>> paths = new ArrayList<>();
@@ -1346,7 +1350,7 @@ public class ARGUtils {
       List<ARGState> curPath = paths.remove(paths.size() - 1);
       Preconditions.checkNotNull(curPath);
       // If there is no more to expand - add this path and continue
-      if (curPath.get(curPath.size() - 1) == root) {
+      if (curPath.get(curPath.size() - 1) == pTarget) {
         results.add(new ARGPath(Lists.reverse(curPath)));
 
         continue;

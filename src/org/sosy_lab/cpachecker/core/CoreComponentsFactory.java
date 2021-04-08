@@ -61,6 +61,7 @@ import org.sosy_lab.cpachecker.core.algorithm.residualprogram.ConditionalVerifie
 import org.sosy_lab.cpachecker.core.algorithm.residualprogram.ResidualProgramConstructionAfterAnalysisAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.residualprogram.ResidualProgramConstructionAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.residualprogram.slicing.SlicingAlgorithm;
+import org.sosy_lab.cpachecker.core.algorithm.strongest_post_export.ErrorTraceExportAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.termination.TerminationAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.termination.validation.NonTerminationWitnessValidator;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
@@ -326,6 +327,14 @@ public class CoreComponentsFactory {
       description = "Use fault localization with distance metrics")
   private boolean useFaultLocalizationWithDistanceMetrics = false;
 
+
+  @Option(
+      secure = true,
+      name = "algorithm.exportErrorTrace",
+      description = "Use algorithm to export the error traces of the program")
+  private boolean useErrorTraceExport= false;
+
+
   private final Configuration config;
   private final LogManager logger;
   private final @Nullable ShutdownManager shutdownManager;
@@ -463,6 +472,7 @@ public class CoreComponentsFactory {
           shutdownNotifier,
           specification,
           cfa);
+
     } else {
       algorithm = CPAAlgorithm.create(cpa, logger, config, shutdownNotifier);
 
@@ -492,7 +502,9 @@ public class CoreComponentsFactory {
             new CEGARAlgorithmFactory(algorithm, cpa, logger, config, shutdownNotifier)
                 .newInstance();
       }
-
+      if (useErrorTraceExport) {
+        algorithm = new ErrorTraceExportAlgorithm(algorithm, logger, cfa, cpa);
+      }
       if (usePDR) {
         algorithm =
             new PdrAlgorithm(
