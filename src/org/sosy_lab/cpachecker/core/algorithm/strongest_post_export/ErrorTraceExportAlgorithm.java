@@ -196,7 +196,8 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
             helpfullVerificationCpndition,
             formulaManager,
             logger,
-            loopHead);
+            loopHead,
+            outdirForExport);
       }
       return status;
     }
