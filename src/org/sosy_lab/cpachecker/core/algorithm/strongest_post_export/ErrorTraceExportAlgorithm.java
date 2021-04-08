@@ -19,8 +19,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
-import org.sosy_lab.common.configuration.Option;
-import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
@@ -34,7 +32,6 @@ import org.sosy_lab.cpachecker.cpa.arg.ARGState;
 import org.sosy_lab.cpachecker.cpa.arg.ARGUtils;
 import org.sosy_lab.cpachecker.cpa.arg.path.ARGPath;
 import org.sosy_lab.cpachecker.cpa.composite.CompositeCPA;
-import org.sosy_lab.cpachecker.cpa.location.LocationState;
 import org.sosy_lab.cpachecker.cpa.predicate.PredicateAbstractState;
 import org.sosy_lab.cpachecker.cpa.predicate.PredicateCPA;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
@@ -45,14 +42,9 @@ import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
 import org.sosy_lab.cpachecker.util.predicates.smt.FormulaManagerView;
 import org.sosy_lab.cpachecker.util.predicates.smt.Solver;
 
-@Options(prefix = "errorTraceExport")
+
 public class ErrorTraceExportAlgorithm implements Algorithm {
 
-  @Option(
-      secure = true,
-      name = "exportFormulaAtLoopHeads",
-      description = "Export the strongest post formula needed for verification of invariants")
-  private boolean exportFormulaAtLoopHeads = true;
 
 
 
@@ -215,8 +207,6 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     Collection<AbstractState> toProcess = filter(pPredOfLoopHead, pReached);
 
     for (AbstractState s : toProcess) {
-
-      LocationState loc = AbstractStates.extractStateByType(s, LocationState.class);
       PredicateAbstractState pred =
           AbstractStates.extractStateByType(s, PredicateAbstractState.class);
 

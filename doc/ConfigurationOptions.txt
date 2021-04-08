@@ -202,6 +202,9 @@ analysis.algorithm.analysisWithEnabler = false
 # use adjustable conditions algorithm
 analysis.algorithm.conditionAdjustment = false
 
+# Use algorithm to export the error traces of the program
+analysis.algorithm.exportErrorTrace = false
+
 # for found property violation, perform fault localization with coverage
 analysis.algorithm.faultLocalization.by_coverage = false
 
