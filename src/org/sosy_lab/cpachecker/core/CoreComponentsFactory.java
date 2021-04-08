@@ -503,7 +503,7 @@ public class CoreComponentsFactory {
                 .newInstance();
       }
       if (useErrorTraceExport) {
-        algorithm = new ErrorTraceExportAlgorithm(algorithm, logger, cfa, cpa);
+        algorithm = new ErrorTraceExportAlgorithm(config, algorithm, logger, cfa, cpa);
       }
       if (usePDR) {
         algorithm =

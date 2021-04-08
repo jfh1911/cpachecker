@@ -40,7 +40,6 @@ import org.sosy_lab.java_smt.api.BooleanFormula;
 public class StrongestPost4Loop {
 
   private static final String NAMEING_PREFIX = "sp_for_loop_";
-  private static final String EXCHANGE_DIR = "output";
 
   @SuppressWarnings("resource")
   public static void serializeLoop(
@@ -49,7 +48,8 @@ public class StrongestPost4Loop {
       List<PathFormula> pPath2ErrorLocation,
       FormulaManagerView pFmgr,
       LogManager pLogger,
-      CFANode pLoopHead) {
+      CFANode pLoopHead,
+      String pOutdirForExport) {
 
     // Firstly, determine the loop number needed for the export file name.
     int lineNumberOfLoopHead = -1;
@@ -74,7 +74,7 @@ public class StrongestPost4Loop {
 
       FileOutputStream fileOutputStream =
           new FileOutputStream(
-              String.format(EXCHANGE_DIR + "/" + NAMEING_PREFIX + "%d.txt", lineNumberOfLoopHead));
+              String.format(pOutdirForExport + NAMEING_PREFIX + "%d.txt", lineNumberOfLoopHead));
       ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
       objectOutputStream.writeObject(exObj);
       objectOutputStream.flush();

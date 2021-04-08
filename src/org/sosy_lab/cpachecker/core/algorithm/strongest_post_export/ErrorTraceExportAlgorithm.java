@@ -19,6 +19,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+import org.sosy_lab.common.configuration.Configuration;
+import org.sosy_lab.common.configuration.InvalidConfigurationException;
+import org.sosy_lab.common.configuration.Option;
+import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
@@ -42,11 +46,14 @@ import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
 import org.sosy_lab.cpachecker.util.predicates.smt.FormulaManagerView;
 import org.sosy_lab.cpachecker.util.predicates.smt.Solver;
 
-
+@Options(prefix = "cpa.spexport")
 public class ErrorTraceExportAlgorithm implements Algorithm {
 
-
-
+  @Option(
+      secure = true,
+      description =
+          "Create a file that contains the StrongestPost for each loop in the program in this directory.")
+  private String outdirForExport = "output/";
 
   private final LogManager logger;
 
@@ -55,11 +62,17 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
   Solver solver;
 
   public ErrorTraceExportAlgorithm(
-      Algorithm pAlgorithm, LogManager pLogger, CFA pCfa, ConfigurableProgramAnalysis pCpa) {
+      Configuration config,
+      Algorithm pAlgorithm,
+      LogManager pLogger,
+      CFA pCfa,
+      ConfigurableProgramAnalysis pCpa)
+      throws InvalidConfigurationException {
     algorithm = pAlgorithm;
     cfa = Objects.requireNonNull(pCfa);
     logger = Objects.requireNonNull(pLogger);
 
+    config.inject(this, ErrorTraceExportAlgorithm.class);
 
     if (pCpa instanceof ARGCPA) {
       for (ConfigurableProgramAnalysis cpa : ((ARGCPA) pCpa).getWrappedCPAs()) {
