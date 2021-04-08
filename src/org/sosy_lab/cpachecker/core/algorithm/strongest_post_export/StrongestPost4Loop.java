@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.sosy_lab.common.collect.MapsDifference;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
@@ -89,13 +90,10 @@ public class StrongestPost4Loop {
       String pathToExchangeDIr, LogManager pLogger) {
 
     Map<Integer, StrongestPost4LoopExchangeObj> loops = new HashMap<>();
-    try {
 
+    try (Stream<Path> stream = Files.list(Paths.get(pathToExchangeDIr))) {
       List<File> filesToLoad =
-          Files.list(Paths.get(pathToExchangeDIr))
-              .filter(Files::isRegularFile)
-              .map(Path::toFile)
-              .collect(Collectors.toList());
+          stream.filter(Files::isRegularFile).map(Path::toFile).collect(Collectors.toList());
 
       for (File file : filesToLoad) {
         if (file.getName().startsWith(NAMEING_PREFIX)) {
