@@ -10,11 +10,12 @@ package org.sosy_lab.cpachecker.core.algorithm.injectableValueAnalysis;
 
 import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
-import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -150,12 +151,8 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
       Map<Integer, AbstractState> states = getAllAbstractStates(argStateOfLoopHead.get(0));
       Precision precision = reached.getPrecision(argStateOfLoopHead.get(0));
 
-      File outFile = new File(this.violatingIDsFile);
-      try {
-        Files.write("".getBytes(Charset.defaultCharset()), outFile);
-      } catch (IOException e1) {
-        throw new CPAException("Cleaning the output file failed", e1);
-      }
+      List<String> violations = new ArrayList<>();
+
       for (Entry<Integer, AbstractState> state : states.entrySet()) {
         ShutdownManager manager = ShutdownManager.create();
         ReachedSet currentReached = rfFactory.create();
@@ -180,14 +177,20 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
         if (result.equals(AlgorithmStatus.SOUND_AND_PRECISE)
             && currentReached.hasViolatedProperties()) {
           logger.log(Level.INFO, String.format("Violation found for id %s,", state.getKey()));
-
-          try {
-            Files.asCharSink(outFile, StandardCharsets.UTF_8)
-                .write(Integer.toString(state.getKey()) + System.lineSeparator());
-          } catch (IOException e) {
-            throw new CPAException("Storing the ids failed", e);
-          }
+          violations.add(Integer.toString(state.getKey()));
         }
+      }
+
+      try {
+
+        Path outFile = new File(this.violatingIDsFile).toPath();
+        Files.write(
+            outFile,
+            String.join(System.lineSeparator(), violations).getBytes(Charset.defaultCharset()),
+            StandardOpenOption.WRITE);
+
+      } catch (IOException e) {
+        throw new CPAException("Storing the ids failed", e);
       }
     }
     return status;
@@ -199,9 +202,11 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
     try {
       Map<Integer, AbstractState> idToValues = new HashMap<>();
       List<String> values =
-          Files.readLines(new File(this.variableValuesFile), Charset.defaultCharset());
+          com.google.common.io.Files.readLines(
+              new File(this.variableValuesFile), Charset.defaultCharset());
       List<String> vars =
-          Files.readLines(new File(this.variableNamesFile), Charset.defaultCharset());
+          com.google.common.io.Files.readLines(
+              new File(this.variableNamesFile), Charset.defaultCharset());
       List<Pair<MemoryLocation, CType>> memLocs = parseVars(vars);
 
       for (String line : values) {
