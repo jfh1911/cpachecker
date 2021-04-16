@@ -63,8 +63,8 @@ public class HardLoopBoundCPA extends AbstractCPA implements ConfigurableProgram
   }
 
   @Override
-  public HardLoopboundTransferFunctino getTransferRelation() {
-    return new HardLoopboundTransferFunctino(logger, hardLoopbound);
+  public HardLoopboundTransferFunction getTransferRelation() {
+    return new HardLoopboundTransferFunction(logger, hardLoopbound);
   }
 
   @Override

@@ -8,13 +8,13 @@
 
 package org.sosy_lab.cpachecker.cpa.hardloopbound;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.logging.Level;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.log.LogManager;
@@ -43,7 +43,7 @@ import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 import org.sosy_lab.cpachecker.util.AbstractStates;
 
-public class HardLoopboundTransferFunctino
+public class HardLoopboundTransferFunction
     extends ForwardingTransferRelation<
         HardLoopbonudState, HardLoopbonudState, SingletonPrecision> {
 
@@ -55,7 +55,7 @@ public class HardLoopboundTransferFunctino
 
   private Map<CFANode, Integer> numberVisits;
 
-  public HardLoopboundTransferFunctino(LogManager pLogger, int pMaxLoopIteration) {
+  public HardLoopboundTransferFunction(LogManager pLogger, int pMaxLoopIteration) {
 
     logger = new LogManagerWithoutDuplicates(pLogger);
 
@@ -145,24 +145,24 @@ public class HardLoopboundTransferFunctino
     final Collection<AbstractState> postProcessedResult = new ArrayList<>(1);
     postProcessedResult.add(pElement);
 
-    @Nullable CFANode locState = AbstractStates.extractLocation(pElement);
-    if (!Objects.isNull(locState) && locState.isLoopStart()) {
-      if (numberVisits.containsKey(locState)) {
+    @Nullable Optional<CFANode> locState = AbstractStates.extractLocations(pElements).first();
+    if (locState.isPresent() && locState.get().isLoopStart()) {
+      if (numberVisits.containsKey(locState.get())) {
 
-        int visits = numberVisits.get(locState) + 1;
-        numberVisits.replace(locState, visits);
+        int visits = numberVisits.get(locState.get()) + 1;
+        numberVisits.replace(locState.get(), visits);
         if (visits > this.maxLoopIterations) {
           // Return an empty state, which leads to not following this path anymore!
           logger.log(
               Level.INFO,
               String.format(
                   "Reached the limit for node %s, hence stoping the exploration at this point!",
-                  locState.toString()));
+                  locState.get().toString()));
           return Lists.newArrayList();
         }
 
       } else {
-        numberVisits.put(locState, 1);
+        numberVisits.put(locState.get(), 1);
       }
     }
 
