@@ -49,6 +49,7 @@ import org.sosy_lab.cpachecker.core.algorithm.composition.CompositionAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.counterexamplecheck.CounterexampleCheckAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.explainer.Explainer;
 import org.sosy_lab.cpachecker.core.algorithm.impact.ImpactAlgorithm;
+import org.sosy_lab.cpachecker.core.algorithm.injectableValueAnalysis.InjectableValueAnalysisExecutor;
 import org.sosy_lab.cpachecker.core.algorithm.mpv.MPVAlgorithm;
 import org.sosy_lab.cpachecker.core.algorithm.mpv.MPVReachedSet;
 import org.sosy_lab.cpachecker.core.algorithm.parallel_bam.ParallelBAMAlgorithm;
@@ -334,6 +335,11 @@ public class CoreComponentsFactory {
       description = "Use algorithm to export the error traces of the program")
   private boolean useErrorTraceExport= false;
 
+  @Option(
+      secure = true,
+      name = "injectConcreteValues",
+      description = "Use algorithm to check, which given values lead to a violation;")
+  private boolean injectConcreteValues = false;
 
   private final Configuration config;
   private final LogManager logger;
@@ -642,7 +648,14 @@ public class CoreComponentsFactory {
       if(useFaultLocalizationWithTraceFormulas) {
         algorithm = new FaultLocalizationWithTraceFormula(algorithm, config, logger, cfa, shutdownNotifier);
       }
+      if (injectConcreteValues) {
+        algorithm =
+            new InjectableValueAnalysisExecutor(
+                algorithm, logger, cfa, config, cpa, shutdownNotifier, specification);
+      }
     }
+
+
 
     return algorithm;
   }
