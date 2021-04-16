@@ -59,7 +59,7 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
       secure = true,
       description =
           "Trie to abort theexecution after the loop is visited x times. -1 for no aborting")
-  private int maxLoopIteration = 1;
+  private int maxLoopIteration = -1;
 
   public static CPAFactory factory() {
     return AutomaticCPAFactory.forType(ValueAnalysisExportCPA.class);
