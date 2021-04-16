@@ -8,13 +8,12 @@
 
 package org.sosy_lab.cpachecker.core.algorithm.injectableValueAnalysis;
 
+import com.google.common.base.Throwables;
 import com.google.common.io.Files;
-import com.google.common.util.concurrent.SimpleTimeLimiter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,10 +22,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import org.sosy_lab.common.ShutdownManager;
@@ -156,7 +151,6 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
       Map<Integer, AbstractState> states = getAllAbstractStates(argStateOfLoopHead.get(0));
       Precision precision = reached.getPrecision(argStateOfLoopHead.get(0));
 
-
       File outFile = new File(this.violatingIDsFile);
       try {
         Files.write("".getBytes(), outFile);
@@ -165,8 +159,6 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
       }
       for (Entry<Integer, AbstractState> state : states.entrySet()) {
         ShutdownManager manager = ShutdownManager.create();
-        ExecutorService newCachedThreadPool = Executors.newSingleThreadExecutor();
-        SimpleTimeLimiter limiter = SimpleTimeLimiter.create(newCachedThreadPool);
         ReachedSet currentReached = rfFactory.create();
         currentReached.add(state.getValue(), precision);
         AlgorithmStatus result;
@@ -175,20 +167,14 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
           CoreComponentsFactory fac = new CoreComponentsFactory(updatedCFG, logger, n, null);
           Algorithm currentAlg = fac.createAlgorithm(cpa, cfa, spec);
 
-          Callable<AlgorithmStatus> callable =
-              new Callable<>() {
-                @Override
-                public AlgorithmStatus call() throws Exception {
-                  return currentAlg.run(currentReached);
-                }
-              };
+          result = currentAlg.run(currentReached);
 
-          result = limiter.callWithTimeout(callable, Duration.ofSeconds(this.timeoutForEachCheck));
-
-        } catch (Throwable e) {
+        } catch (CPAException | InvalidConfigurationException e) {
           logger.log(
               Level.WARNING,
-              String.format("Aborted execution for id %d due to a timeout!", state.getKey()));
+              String.format(
+                  "Aborted execution for id %d due to %s",
+                  state.getKey(), Throwables.getStackTraceAsString(e)));
           result = AlgorithmStatus.NO_PROPERTY_CHECKED;
         }
 
@@ -203,11 +189,7 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
             throw new CPAException("Storing the ids failed", e);
           }
         }
-        newCachedThreadPool.shutdownNow();
-        newCachedThreadPool.awaitTermination(1, TimeUnit.SECONDS);
-        logger.log(Level.INFO, newCachedThreadPool.isTerminated());
       }
-
     }
     return status;
   }
