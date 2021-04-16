@@ -8,6 +8,7 @@
 
 package org.sosy_lab.cpachecker.core.algorithm.injectableValueAnalysis;
 
+import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
 import com.google.common.io.Files;
 import java.io.File;
@@ -76,8 +77,6 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
       description = "Path to the file, where the names of the variables present are stored")
   private String variableNamesFile = "output/variableNames.csv";
 
-  @Option(secure = true, description = "The timeout used for checking each element")
-  private int timeoutForEachCheck = 2;
 
   private final LogManager logger;
 
@@ -153,7 +152,7 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
 
       File outFile = new File(this.violatingIDsFile);
       try {
-        Files.write("".getBytes(), outFile);
+        Files.write("".getBytes(Charset.defaultCharset()), outFile);
       } catch (IOException e1) {
         throw new CPAException("Cleaning the output file failed", e1);
       }
@@ -209,20 +208,21 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
         if (line.isBlank()) {
           continue;
         }
-        String[] split = line.split(",");
-        if (split.length != memLocs.size() + 2) {
+        List<String> split = Splitter.on(',').splitToList(line);
+        if (split.size() != memLocs.size() + 2) {
           throw new CPAException(
               String.format(
                   "Cannot parse the values (%s), as it contains %s elements as given in %s",
-                  line, split.length < memLocs.size() + 2 ? "few" : "many", memLocs));
+                  line, split.size() < memLocs.size() + 2 ? "few" : "many", memLocs));
         }
-        int id = Integer.parseInt(split[0]);
+        int id = Integer.parseInt(split.get(0));
         Map<MemoryLocation, ValueAndType> tempMap = new HashMap<>();
         for (int i = 0; i < memLocs.size(); i++) {
           tempMap.put(
               memLocs.get(i).getFirst(),
               new ValueAndType(
-                  new NumericValue(Integer.parseInt(split[i + 1])), memLocs.get(i).getSecond()));
+                  new NumericValue(Integer.parseInt(split.get(i + 1))),
+                  memLocs.get(i).getSecond()));
         }
 
         ValueAnalysisState s =
@@ -252,15 +252,15 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
   private List<Pair<MemoryLocation, CType>> parseVars(List<String> pVars) throws CPAException {
     List<Pair<MemoryLocation, CType>> locs = new ArrayList<>();
     for (String s : pVars) {
-      String[] splitted = s.split(",");
-      if (splitted.length != 2) {
+      List<String> splitted = Splitter.on(',').splitToList(s);
+      if (splitted.size() != 2) {
         throw new CPAException("The variableName file is not well formatted!");
       } else {
-        String variableName = splitted[0];
+        String variableName = splitted.get(0);
         if (variableName.startsWith("|") && variableName.endsWith("|")) {
           variableName = variableName.substring(1, variableName.length() - 1);
         }
-        locs.add(Pair.of(MemoryLocation.valueOf(variableName), parseType(splitted[1])));
+        locs.add(Pair.of(MemoryLocation.valueOf(variableName), parseType(splitted.get(1))));
       }
     }
     return locs;

@@ -319,6 +319,9 @@ analysis.functionPointerTargets = {
 # What CFA nodes should be the starting point of the analysis?
 analysis.initialStatesFor = Sets.newHashSet(InitialStatesFor.ENTRY)
 
+# Use algorithm to check, which given values lead to a violation;
+analysis.injectConcreteValues = false
+
 # run interprocedural analysis
 analysis.interprocedural = true
 
@@ -1646,6 +1649,9 @@ cpa.functionpointer.ignoreUnknownFunctionPointerCalls = false
 # whether function pointers with invalid targets (e.g., 0) should be tracked
 # in order to find calls to such pointers
 cpa.functionpointer.trackInvalidFunctionPointers = false
+
+# Abort the execution after the loop is visited x times. -1 for no aborting
+cpa.hardloopbound.hardLoopbound = -1
 
 # which default SecurityClass to use for PolicyEnforcementCPA
 cpa.ifcsecurity.defaultsc = "LOW"
@@ -3267,7 +3273,7 @@ cpa.valueExport.firstID = 1
 
 # Trie to abort theexecution after the loop is visited x times. -1 for no
 # aborting
-cpa.valueExport.maxLoopIteration = 1
+cpa.valueExport.maxLoopIteration = -1
 
 # Enable storing the variable values.
 cpa.valueExport.storeVariableValues = false
@@ -3468,6 +3474,15 @@ imc.removeUnreachableStopStates = false
 
 # enable the Forced Covering optimization
 impact.useForcedCovering = true
+
+# Path to the file, where the names of the variables present are stored
+injectableValueAnalysis.variableNamesFile = "output/variableNames.csv"
+
+# Path to the file, where the values of the datapoints are  stored
+injectableValueAnalysis.variableValuesFile = "output/variableValues.csv"
+
+# Path to the file, where the ids of the datapoints will be stored
+injectableValueAnalysis.violatingIDsFile = "output/violatingIDs.txt"
 
 # Configuration file for the K-Induction algorithm for checking candidates on
 # invariance.
