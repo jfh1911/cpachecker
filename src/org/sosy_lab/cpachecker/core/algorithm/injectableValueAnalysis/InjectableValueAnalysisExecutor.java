@@ -13,8 +13,10 @@ import com.google.common.base.Throwables;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -182,15 +184,21 @@ public class InjectableValueAnalysisExecutor implements Algorithm {
       }
 
       try {
-
-        Path outFile = new File(this.violatingIDsFile).toPath();
+        Path outfile;
+        try {
+          outfile = Files.createFile(Paths.get(this.violatingIDsFile));
+        } catch (FileAlreadyExistsException e) {
+          outfile = Paths.get(this.violatingIDsFile);
+        }
         Files.write(
-            outFile,
+            outfile,
             String.join(System.lineSeparator(), violations).getBytes(Charset.defaultCharset()),
             StandardOpenOption.WRITE);
 
       } catch (IOException e) {
-        throw new CPAException("Storing the ids failed", e);
+        throw new CPAException(
+            String.format(
+                "Storing the ids failed. Reason: %s", Throwables.getStackTraceAsString(e)));
       }
     }
     return status;
