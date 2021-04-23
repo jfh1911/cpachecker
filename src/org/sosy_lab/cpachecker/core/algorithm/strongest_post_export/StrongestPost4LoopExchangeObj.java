@@ -9,7 +9,9 @@
 package org.sosy_lab.cpachecker.core.algorithm.strongest_post_export;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Objects;
+import org.sosy_lab.cpachecker.util.Triple;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.SSAMap;
 
 /**
@@ -24,6 +26,7 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
   private final SSAMap ssa4Path2LoopHead;
   private final SSAMap ssa4path1LoopIteration;
   private final SSAMap ssa4path2ErrorLocation;
+  private final List<Triple<Integer, String, SSAMap>> invariantsPresent;
 
   public StrongestPost4LoopExchangeObj(
       String pPath2Loophead,
@@ -31,7 +34,8 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
       String pPath1LoopIteration,
       SSAMap pSsa4path1LoopIteration,
       String pPath2ErrorLocation,
-      SSAMap pSsaM4path2ErrorLocation) {
+      SSAMap pSsaM4path2ErrorLocation,
+      List<Triple<Integer, String, SSAMap>> pInvariantsPresent) {
     path2Loophead = pPath2Loophead;
     ssa4Path2LoopHead = pSsa4Path2LoopHead;
 
@@ -39,6 +43,7 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
     ssa4path1LoopIteration = pSsa4path1LoopIteration;
     path2ErrorLocation = pPath2ErrorLocation;
     ssa4path2ErrorLocation = pSsaM4path2ErrorLocation;
+    this.invariantsPresent = pInvariantsPresent;
   }
 
   private static final long serialVersionUID = -2430230516652717470L;
@@ -71,9 +76,14 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
     return serialVersionUID;
   }
 
+  public List<Triple<Integer, String, SSAMap>> getInvariantsPresent() {
+    return invariantsPresent;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(
+        invariantsPresent,
         path1LoopIteration,
         path2ErrorLocation,
         path2Loophead,
@@ -91,7 +101,8 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
       return false;
     }
     StrongestPost4LoopExchangeObj other = (StrongestPost4LoopExchangeObj) obj;
-    return Objects.equals(path1LoopIteration, other.path1LoopIteration)
+    return Objects.equals(invariantsPresent, other.invariantsPresent)
+        && Objects.equals(path1LoopIteration, other.path1LoopIteration)
         && Objects.equals(path2ErrorLocation, other.path2ErrorLocation)
         && Objects.equals(path2Loophead, other.path2Loophead)
         && Objects.equals(ssa4Path2LoopHead, other.ssa4Path2LoopHead)
