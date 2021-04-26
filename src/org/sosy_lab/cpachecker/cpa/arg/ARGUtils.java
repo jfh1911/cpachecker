@@ -1335,12 +1335,12 @@ public class ARGUtils {
     return getAllPaths(root, pStart);
   }
   /** Returns all possible paths from the given state to the given target of the ARG. */
-  public static Set<ARGPath> getAllPaths(final ARGState pTarget, final ARGState pStart) {
+  public static Set<ARGPath> getAllPaths(final ARGState pFrom, final ARGState pTo) {
     List<ARGState> states = new ArrayList<>();
     ImmutableSet.Builder<ARGPath> results = ImmutableSet.builder();
     List<List<ARGState>> paths = new ArrayList<>();
 
-    states.add(pStart);
+    states.add(pTo);
     paths.add(states);
 
     // This is assuming from each node there is a way to go to the start
@@ -1350,7 +1350,7 @@ public class ARGUtils {
       List<ARGState> curPath = paths.remove(paths.size() - 1);
       Preconditions.checkNotNull(curPath);
       // If there is no more to expand - add this path and continue
-      if (curPath.get(curPath.size() - 1) == pTarget) {
+      if (curPath.get(curPath.size() - 1) == pFrom) {
         results.add(new ARGPath(Lists.reverse(curPath)));
 
         continue;

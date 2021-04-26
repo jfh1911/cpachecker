@@ -52,15 +52,39 @@ public class StrongestPost4Loop {
       LogManager pLogger,
       CFANode pLoopHead,
       String pOutdirForExport,
-      Map<CFANode, PathFormula> pInvariants, Map<CFANode, Integer> nodesToLineNumber) {
+      Map<CFANode, PathFormula> pInvariants,
+      Map<CFANode, Integer> nodesToLineNumber) {
+    serializeLoop(
+        initFormula,
+        preserveFormula,
+        merge(pTerminationConditions, pFmgr),
+        pFmgr,
+        pLogger,
+        pLoopHead,
+        pOutdirForExport,
+        pInvariants,
+        nodesToLineNumber);
+  }
 
+  @SuppressWarnings("resource")
+  public static void serializeLoop(
+      PathFormula initFormula,
+      PathFormula preserveFormula,
+      PathFormula pTerminationConditions,
+      FormulaManagerView pFmgr,
+      LogManager pLogger,
+      CFANode pLoopHead,
+      String pOutdirForExport,
+      Map<CFANode, PathFormula> pInvariants,
+      Map<CFANode, Integer> nodesToLineNumber) {
 
     // We build for each set of Path formulae a boolean formula using conjunction
     Pair<BooleanFormula, SSAMap> path2LoooHead =
         Pair.of(initFormula.getFormula(), initFormula.getSsa());
     Pair<BooleanFormula, SSAMap> path1LoopIteration =
         Pair.of(preserveFormula.getFormula(), preserveFormula.getSsa());
-    Pair<BooleanFormula, SSAMap> path2ErrorLoc = mergeAndSerialize(pTerminationConditions, pFmgr);
+    Pair<BooleanFormula, SSAMap> path2ErrorLoc =
+        Pair.of(pTerminationConditions.getFormula(), pTerminationConditions.getSsa());
     List<Triple<Integer, String, SSAMap>> invariantsPresent =
         pInvariants
             .entrySet()
@@ -74,10 +98,13 @@ public class StrongestPost4Loop {
             .collect(Collectors.toList());
     StrongestPost4LoopExchangeObj exObj =
         new StrongestPost4LoopExchangeObj(
-            pFmgr.dumpFormula(path2LoooHead.getFirst()).toString(), path2LoooHead.getSecond(),
+            pFmgr.dumpFormula(path2LoooHead.getFirst()).toString(),
+            path2LoooHead.getSecond(),
             pFmgr.dumpFormula(path1LoopIteration.getFirst()).toString(),
-                path1LoopIteration.getSecond(),
-            pFmgr.dumpFormula(path2ErrorLoc.getFirst()).toString(), path2ErrorLoc.getSecond(), invariantsPresent);
+            path1LoopIteration.getSecond(),
+            pFmgr.dumpFormula(path2ErrorLoc.getFirst()).toString(),
+            path2ErrorLoc.getSecond(),
+            invariantsPresent);
     try {
 
       FileOutputStream fileOutputStream =
@@ -156,9 +183,4 @@ public class StrongestPost4Loop {
         tempList.get(maxIndexAt).getPointerTargetSet(),
         tempList.get(maxIndexAt).getLength());
   }
-
-
-
-
-
 }
