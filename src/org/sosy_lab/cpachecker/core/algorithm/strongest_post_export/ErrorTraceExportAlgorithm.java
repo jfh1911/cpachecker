@@ -53,7 +53,6 @@ import org.sosy_lab.cpachecker.util.CPAs;
 import org.sosy_lab.cpachecker.util.LoopStructure;
 import org.sosy_lab.cpachecker.util.LoopStructure.Loop;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
-import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormulaManager;
 import org.sosy_lab.cpachecker.util.predicates.smt.FormulaManagerView;
 import org.sosy_lab.cpachecker.util.predicates.smt.Solver;
 import org.sosy_lab.java_smt.api.BooleanFormula;
@@ -63,7 +62,7 @@ import org.sosy_lab.java_smt.api.FunctionDeclaration;
 @Options(prefix = "cpa.spexport")
 public class ErrorTraceExportAlgorithm implements Algorithm {
 
-  private static final String INV_FUNCTION_NAMING_SCHEMA = "Inv_%s";
+  public static final String INV_FUNCTION_NAMING_SCHEMA = "Inv_%s";
 
   @Option(
       secure = true,
@@ -79,7 +78,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
   FormulaManagerView fmgr;
   private ShutdownNotifier shutdown;
 
-  private PathFormulaManager pmgr;
+
 
   public ErrorTraceExportAlgorithm(
       Configuration config,
@@ -101,7 +100,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     solver = predCPA.getSolver();
     fmgr = solver.getFormulaManager();
     this.shutdown = pShutdown;
-    pmgr = predCPA.getPathFormulaManager();
+
   }
 
   @Override
@@ -305,12 +304,6 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
 
 
           // Compute termiantoin condition:
-
-
-
-
-
-          Set<PathFormula> terminationConditions = new HashSet<>();
 
           // now, we compute for each loophead the termination condition.
           // therefore, we firstly add the pathFormula from the target locations to the map
