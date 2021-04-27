@@ -8,12 +8,10 @@
 
 package org.sosy_lab.cpachecker.core.algorithm.strongest_post_export;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import com.google.common.graph.EndpointPair;
 import com.google.common.graph.Graph;
 import com.google.common.graph.Graphs;
-import com.google.common.graph.Traverser;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,11 +38,7 @@ public class GraphOrderingDeterminer<T> {
 
     List<T> loopHeadsWithIndeg0 =
         loopheads.stream().filter(node -> graph.inDegree(node) == 0).collect(Collectors.toList());
-    if (loopHeadsWithIndeg0.size() == 1) {
-      // only a single entry point for the program, we can simply returned BFS
-      Traverser<T> traverser = Traverser.forGraph(graph);
-      return Lists.newArrayList(traverser.breadthFirst(loopHeadsWithIndeg0.get(0)));
-    } else {
+
       // As we do not have a single loophead, we need to determine an ordering.
       // The algorithm used is the following:
       List<T> markedNodes = new ArrayList<>();
@@ -81,7 +75,7 @@ public class GraphOrderingDeterminer<T> {
         }
       }
       return markedNodes;
-    }
+
   }
 
   private Collection<EndpointPair<T>> outEdges(Graph<T> pGraph, T pNode) {
