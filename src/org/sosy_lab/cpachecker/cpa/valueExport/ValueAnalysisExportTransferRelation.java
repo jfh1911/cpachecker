@@ -9,7 +9,6 @@
 package org.sosy_lab.cpachecker.cpa.valueExport;
 
 import com.google.common.base.Charsets;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import java.io.File;
@@ -159,6 +158,7 @@ public class ValueAnalysisExportTransferRelation
       String callerFunctionName)
       throws UnrecognizedCodeException {
 
+
     return state;
   }
 
@@ -187,6 +187,7 @@ public class ValueAnalysisExportTransferRelation
       AStatementEdge cfaEdge, AStatement expression) throws UnrecognizedCodeException {
 
     return state;
+
   }
 
   @Override
@@ -197,6 +198,8 @@ public class ValueAnalysisExportTransferRelation
       Precision pPrecision)
       throws CPATransferException {
     assert pElement instanceof ValueAnalysisExportState;
+
+
 
     // Do post processing
     final Collection<AbstractState> postProcessedResult = new ArrayList<>(1);

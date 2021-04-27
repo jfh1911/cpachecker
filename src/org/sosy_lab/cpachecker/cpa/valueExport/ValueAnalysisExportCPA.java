@@ -8,13 +8,20 @@
 
 package org.sosy_lab.cpachecker.cpa.valueExport;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.configuration.Option;
 import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
+import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
+import org.sosy_lab.cpachecker.cfa.model.CFAEdgeType;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
+import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
+import org.sosy_lab.cpachecker.cfa.types.c.CArrayType;
+import org.sosy_lab.cpachecker.cfa.types.c.CType;
 import org.sosy_lab.cpachecker.core.defaults.AbstractCPA;
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
 import org.sosy_lab.cpachecker.core.defaults.DelegateAbstractDomain;
@@ -26,6 +33,7 @@ import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
 import org.sosy_lab.cpachecker.core.interfaces.MergeOperator;
 import org.sosy_lab.cpachecker.core.interfaces.StateSpacePartition;
 import org.sosy_lab.cpachecker.core.interfaces.StopOperator;
+import org.sosy_lab.cpachecker.util.CFAUtils;
 
 @Options(prefix = "cpa.valueExport")
 public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableProgramAnalysis {
@@ -75,6 +83,27 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
     this.cfa = cfa;
 
     config.inject(this, ValueAnalysisExportCPA.class);
+
+    Set<CFAEdge> allEdges = new HashSet<>();
+    cfa.getAllNodes()
+        .stream()
+        .forEach(n -> CFAUtils.allEnteringEdges(n).forEach(e -> allEdges.add(e)));
+
+    if (allEdges
+        .stream()
+        .filter(e -> e.getEdgeType().equals(CFAEdgeType.DeclarationEdge))
+        .anyMatch(decl -> isArrayDecl((CDeclarationEdge) decl))) {
+      throw new InvalidConfigurationException("Cannot handle programs with arrays!");
+    }
+  }
+
+  private boolean isArrayDecl(CDeclarationEdge pDecl) {
+
+    final CType type = pDecl.getDeclaration().getType();
+    if (type instanceof CArrayType) {
+      return true;
+    }
+    return false;
   }
 
   @Override

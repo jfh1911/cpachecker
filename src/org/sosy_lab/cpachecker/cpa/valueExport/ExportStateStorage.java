@@ -56,27 +56,29 @@ public class ExportStateStorage {
     Map<MemoryLocation, Number> state = new HashMap<>();
     for (Entry<MemoryLocation, ValueAndType> ass : pInfo.getAssignments().entrySet()) {
       MemoryLocation memLoc = ass.getKey();
-      boolean isNotArrayVar = true;
+      //      boolean isNotArrayVar = true;
       boolean varIsVisible = true;
       try {
         String functionName = memLoc.getFunctionName();
-        if (functionName == null) {
-          isNotArrayVar = false;
-        } else if (!functionName.equals(this.methodName)) {
+        if (functionName != null && !functionName.equals(this.methodName)) {
           varIsVisible = false;
         }
       } catch (NullPointerException e) {
-        // as the getFunctionName may throw a Nullpointert ( implying to set isNotArrayVar =false)
-        isNotArrayVar = false;
+        // as the getFunctionName may throw a Nullpointert ( implying to set isNotArrayVar
+        //       =false)
+        //              isNotArrayVar = false;
       }
 
       if (ass.getValue() != null
           && ass.getValue().getValue() != null
           && ass.getValue().getValue() instanceof NumericValue
           && !memLoc.getIdentifier().startsWith(CPACHECKER_TEMP)
-          && isNotArrayVar
+          // && isNotArrayVar
+          // TODO: We just remove this line, as it causes many problems and prefer to remove array
+          // programs for the dataset
           && varIsVisible
-          && !memLoc.getIdentifier().equals(memLoc.getAsSimpleString())) {
+      //          && !memLoc.getIdentifier().equals(memLoc.getAsSimpleString())
+      ) {
 
         Number num = ((NumericValue) ass.getValue().getValue()).getNumber();
         state.put(memLoc, num);
