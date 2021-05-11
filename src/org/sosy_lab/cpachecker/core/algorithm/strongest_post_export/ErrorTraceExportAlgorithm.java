@@ -8,6 +8,8 @@
 
 package org.sosy_lab.cpachecker.core.algorithm.strongest_post_export;
 
+import static org.sosy_lab.common.collect.MapsDifference.collectMapsDifferenceTo;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.ShutdownNotifier;
+import org.sosy_lab.common.collect.MapsDifference;
 import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.configuration.Option;
@@ -52,7 +55,9 @@ import org.sosy_lab.cpachecker.util.CFAUtils;
 import org.sosy_lab.cpachecker.util.CPAs;
 import org.sosy_lab.cpachecker.util.LoopStructure;
 import org.sosy_lab.cpachecker.util.LoopStructure.Loop;
+import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
+import org.sosy_lab.cpachecker.util.predicates.pathformula.SSAMap;
 import org.sosy_lab.cpachecker.util.predicates.smt.FormulaManagerView;
 import org.sosy_lab.cpachecker.util.predicates.smt.Solver;
 import org.sosy_lab.java_smt.api.BooleanFormula;
@@ -78,8 +83,6 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
   FormulaManagerView fmgr;
   private ShutdownNotifier shutdown;
 
-
-
   public ErrorTraceExportAlgorithm(
       Configuration config,
       Algorithm pAlgorithm,
@@ -100,7 +103,6 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     solver = predCPA.getSolver();
     fmgr = solver.getFormulaManager();
     this.shutdown = pShutdown;
-
   }
 
   @Override
@@ -138,17 +140,25 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           }
           Set<PathFormula> initCondition = new HashSet<>();
           Set<PathFormula> preserveCondition = new HashSet<>();
+          Set<Pair<AbstractState, SSAMap>> ssaMaps4Loophead = new HashSet<>();
           for (AbstractState state : filter(loopHead, reached)) {
             Optional<PathFormula> initOpt =
                 getInitConditionForLoop(loopHead, nodesInLoop, state, reached);
             Optional<PathFormula> presOpt =
                 getPreserveConditionForLoop(loopHead, nodesInLoop, state, reached);
+
             if (initOpt.isPresent()) {
               initCondition.add(initOpt.get());
             }
             if (presOpt.isPresent()) {
               preserveCondition.add(presOpt.get());
             }
+            Optional<Pair<AbstractState, SSAMap>> ssa4Loop =
+                getSSAForLoophead(loopHead, nodesInLoop, state, reached);
+            if (ssa4Loop.isPresent()) {
+              ssaMaps4Loophead.add(ssa4Loop.get());
+            }
+
           }
 
           List<PathFormula> terminationCondition = new ArrayList<>();
@@ -201,7 +211,9 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
               loopHead,
               outdirForExport,
               map,
-              lineNumbersToNodes);
+              lineNumbersToNodes,
+             this.getSSAMapForAbstratLocatons(ssaMaps4Loophead));
+
         } else {
 
           Map<CFANode, PathFormula> initPathToLoopHead = new HashMap<>();
@@ -210,19 +222,17 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           Map<CFANode, PathFormula> invariants = new HashMap<>();
           Map<AbstractState, PathFormula> absStatesToTherePreceedingPathFormula = new HashMap<>();
           Map<CFANode, Set<PathFormula>> otherInvariantsPresentInInit = new HashMap<>();
-
+          Map<CFANode, SSAMap> ssaMap4LopHeads = new HashMap<>();
           List<CFANode> orderedLoopHeads =
               extracted(loopStruct); // We assume that there is only a single target state
 
           for (CFANode loopHead : orderedLoopHeads) {
             logger.log(Level.INFO, String.format("Processing Node %s", loopHead));
 
-
-
-
-          Set<PathFormula> ohterInvsPresnet = new HashSet<>();
+            Set<PathFormula> ohterInvsPresnet = new HashSet<>();
             List<PathFormula> initPaths = new ArrayList<>();
             List<PathFormula> preservePaths = new ArrayList<>();
+            Set<Pair<AbstractState, SSAMap>> ssaMaps4Loophead = new HashSet<>();
             // TO be able to see, which predecessor nodes of the loop head are part of the
             // loop body  (and hence need to be processed differently)  we first collect all
             // nodes of the looped body
@@ -231,7 +241,8 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
               nodesInLoop.addAll(loop.getLoopNodes());
             }
 
-            for (AbstractState state : filter(loopHead, reached)) {
+            final Set<AbstractState> filter = filter(loopHead, reached);
+            for (AbstractState state : filter) {
               for (ARGPath path :
                   ARGUtils.getAllPaths(
                       reached, AbstractStates.extractStateByType(state, ARGState.class))) {
@@ -242,6 +253,11 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                     getPreserveConditionForLoop(loopHead, nodesInLoop, state, reached);
                 if (preserveConditionForLoop.isPresent()) {
                   preservePaths.add(preserveConditionForLoop.get());
+                }
+                Optional<Pair<AbstractState, SSAMap>> ssa4Loop =
+                    getSSAForLoophead(loopHead, nodesInLoop, state, reached);
+                if (ssa4Loop.isPresent()) {
+                  ssaMaps4Loophead.add(ssa4Loop.get());
                 }
                 if (absStateOnPath.isEmpty()) {
                   // we can "simply" take the pathFormulas from the predecessor nodes of the
@@ -288,6 +304,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
             }
             PathFormula initPF = StrongestPost4Loop.merge(initPaths, fmgr);
             initPathToLoopHead.put(loopHead, initPF);
+            ssaMap4LopHeads.put(loopHead, getSSAMapForAbstratLocatons(ssaMaps4Loophead));
             final PathFormula preserve = StrongestPost4Loop.merge(preservePaths, fmgr);
             preservePathToLoopHead.put(loopHead, preserve);
             otherInvariantsPresentInInit.put(loopHead, ohterInvsPresnet);
@@ -302,7 +319,6 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
             invariants.put(loopHead, getFuncDeclForNode(loopHead, initPF));
           }
 
-
           // Compute termiantoin condition:
 
           // now, we compute for each loophead the termination condition.
@@ -314,20 +330,24 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
             for (ARGPath path :
                 ARGUtils.getAllPaths(
                     reached, AbstractStates.extractStateByType(target, ARGState.class))) {
-              PathFormula pfTargetNode    =               AbstractStates.extractStateByType(
+              PathFormula pfTargetNode =
+                  AbstractStates.extractStateByType(
                           path.getStatePairs().get(path.getStatePairs().size() - 1).getFirst(),
                           PredicateAbstractState.class)
                       .getPathFormula(); // to get the last state.
-              absStatesToTherePreceedingPathFormula
-              .put(target, pfTargetNode);
-            }}
+              absStatesToTherePreceedingPathFormula.put(target, pfTargetNode);
+            }
+          }
 
-//next, we compute for each loophead all path leading to any target state and replace each abstract note with the path formula stored in absStatesToTherePreceedingPathFormula
-          //Moreover, loop heads are additionally conjoined with the predicate for the loopInvariant to correctly abstrct llops accoridng to ssa
+          // next, we compute for each loophead all path leading to any target state and replace
+          // each abstract note with the path formula stored in
+          // absStatesToTherePreceedingPathFormula
+          // Moreover, loop heads are additionally conjoined with the predicate for the
+          // loopInvariant to correctly abstrct llops accoridng to ssa
 
-          //TODO: Discuss, if there is a easier way without that much recomputation.
+          // TODO: Discuss, if there is a easier way without that much recomputation.
 
-          for(CFANode loopHead: loopStruct.getAllLoopHeads()) {
+          for (CFANode loopHead : loopStruct.getAllLoopHeads()) {
             Set<PathFormula> allPathFormulae = new HashSet<>();
             for (AbstractState state : filter(loopHead, reached)) {
               for (AbstractState target : AbstractStates.getTargetStates(reached)) {
@@ -394,13 +414,16 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                 loopHead,
                 outdirForExport,
                 invariants,
-                lineNumbersToNodes);
+                lineNumbersToNodes,
+                ssaMap4LopHeads.get(loopHead));
           }
         }
       }
       return status;
     }
   }
+
+
 
   private boolean isLoopHead(AbstractState pAbsState) {
     return cfa.getAllLoopHeads().get().contains(AbstractStates.extractLocation(pAbsState));
@@ -516,6 +539,61 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     }
     return Optional.of(StrongestPost4Loop.merge(initCondition, fmgr));
   }
+  /**
+   * Looks for all nodes that leaf the loop and takes the ssa map of these nodes
+   *
+   * @param pLoopHead the loop head node
+   * @param pNodesInLoop all nodes in the loop
+   * @param pState the abstract state of the loop head
+   * @param pReached the reached set
+   * @return a pair of abstract state and ssa map of the edge leaving the loop
+   */
+  private Optional<Pair<AbstractState, SSAMap>> getSSAForLoophead(
+      CFANode pLoopHead,
+      Set<CFANode> pNodesInLoop,
+      AbstractState pState,
+      PartitionedReachedSet pReached) {
+    for (int i = 0; i < pLoopHead.getNumLeavingEdges(); i++) {
+      CFANode predOfLoopHead = pLoopHead.getLeavingEdge(i).getSuccessor();
+      if (! pNodesInLoop.contains(predOfLoopHead)) {
+        // We see a path out of the loop
+        Optional<PathFormula> pf =
+            getPathFormulaOfLoopheadSuccessor(predOfLoopHead, pReached, pState);
+        if (pf.isPresent()) {
+          return Optional.of(Pair.of(pState, pf.get().getSsa()));
+        }
+      }
+    }
+
+      return Optional.empty();
+
+  }
+
+  private SSAMap getSSAMapForAbstratLocatons(Set<Pair<AbstractState, SSAMap>> pSsaMaps4Loophead) {
+    List<Pair<AbstractState, SSAMap> > rootNodes = new ArrayList<>();
+
+    for (Pair<AbstractState, SSAMap> pair : pSsaMaps4Loophead) {
+      // Check, if the current node is covered:
+      if (!AbstractStates.extractStateByType(pair.getFirst(), ARGState.class).isCovered()) {
+        rootNodes.add(pair);
+      }
+    }
+    if (rootNodes.size() == 1) {
+      return rootNodes.get(0).getSecond();
+    } else {
+      SSAMap res = SSAMap.emptySSAMap();
+      final List<MapsDifference.Entry<String, Integer>> symbolDifferences = new ArrayList<>();
+      for (Pair<AbstractState, SSAMap> n : rootNodes) {
+        res =
+            SSAMap.merge(
+                res,
+               n.getSecond(),
+                collectMapsDifferenceTo(symbolDifferences));
+      }
+      return res;
+    }
+  }
+
 
   private boolean isAbstractionState(ARGState state) {
     return AbstractStates.extractStateByType(state, PredicateAbstractState.class)
@@ -594,6 +672,29 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
         .collect(Collectors.toSet());
   }
 
+  /**
+   * Returns the path formula of the child node with the licaton node of the given arg state
+   *
+   * @param node the successor CFANode of the loop head leaving the node
+   * @param pReached the reached set
+   * @param argStatetOfLoopHead the abstract state of the loop
+   * @return a path formula, if the arg state has a child associated to node
+   */
+  private Optional<PathFormula> getPathFormulaOfLoopheadSuccessor(
+      CFANode node, ReachedSet pReached, AbstractState argStatetOfLoopHead) {
+
+    for (AbstractState s :
+        AbstractStates.extractStateByType(argStatetOfLoopHead, ARGState.class).getChildren()) {
+      if (AbstractStates.extractLocation(s).equals(node)) {
+        PredicateAbstractState pred =
+            AbstractStates.extractStateByType(s, PredicateAbstractState.class);
+
+        return Optional.of(pred.getPathFormula());
+      }
+    }
+    return Optional.empty();
+  }
+
   private Optional<PathFormula> getPathFormulaOfNode(
       CFANode pPredOfLoopHead, ReachedSet pReached, AbstractState partenARGState) {
     Collection<AbstractState> toProcess = filter(pPredOfLoopHead, pReached);
@@ -607,7 +708,10 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
       // or it has a children covered by the parent node (which is the same but not merged to have a
       // tree)
       if (children.contains(argChild)
-          || children.stream().anyMatch(child -> child.getCoveringState().equals(partenARGState))) {
+          || children
+              .stream()
+              .anyMatch(
+                  child -> child.isCovered() && child.getCoveringState().equals(partenARGState))) {
 
         PredicateAbstractState pred =
             AbstractStates.extractStateByType(s, PredicateAbstractState.class);

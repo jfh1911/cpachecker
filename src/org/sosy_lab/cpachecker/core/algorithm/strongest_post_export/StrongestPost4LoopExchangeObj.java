@@ -26,11 +26,13 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
   private final SSAMap ssa4Path2LoopHead;
   private final SSAMap ssa4path1LoopIteration;
   private final SSAMap ssa4path2ErrorLocation;
+  private final SSAMap ssa4Loophead;
   private final List<Triple<Integer, String, SSAMap>> invariantsPresent;
 
   public StrongestPost4LoopExchangeObj(
       String pPath2Loophead,
       SSAMap pSsa4Path2LoopHead,
+      SSAMap pSsaMapAtLoophead,
       String pPath1LoopIteration,
       SSAMap pSsa4path1LoopIteration,
       String pPath2ErrorLocation,
@@ -44,9 +46,12 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
     path2ErrorLocation = pPath2ErrorLocation;
     ssa4path2ErrorLocation = pSsaM4path2ErrorLocation;
     this.invariantsPresent = pInvariantsPresent;
+    this.ssa4Loophead = pSsaMapAtLoophead;
   }
 
   private static final long serialVersionUID = -2430230516652717470L;
+
+
 
   public String getPath2Loophead() {
     return path2Loophead;
@@ -58,6 +63,10 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
 
   public String getPath2ErrorLocation() {
     return path2ErrorLocation;
+  }
+
+  public SSAMap getSsa4Loophead() {
+    return ssa4Loophead;
   }
 
   public SSAMap getSsa4Path2LoopHead() {
@@ -80,6 +89,8 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
     return invariantsPresent;
   }
 
+
+
   @Override
   public int hashCode() {
     return Objects.hash(
@@ -88,8 +99,30 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
         path2ErrorLocation,
         path2Loophead,
         ssa4Path2LoopHead,
+        ssa4Loophead,
         ssa4path1LoopIteration,
         ssa4path2ErrorLocation);
+  }
+
+  @Override
+  public String toString() {
+    return "StrongestPost4LoopExchangeObj [path2Loophead="
+        + path2Loophead
+        + ",\n ssa4Path2LoopHead="
+        + ssa4Path2LoopHead
+        + ",\n ssaAtLoophead="
+        + ssa4Loophead
+        + ",\n path1LoopIteration="
+        + path1LoopIteration
+        + ",\n ssa4path1LoopIteration="
+        + ssa4path1LoopIteration
+        + ",\n path2ErrorLocation="
+        + path2ErrorLocation
+        + ",\n ssa4path2ErrorLocation="
+        + ssa4path2ErrorLocation
+        + ",\n invariantsPresent="
+        + invariantsPresent
+        + "]\n";
   }
 
   @Override
@@ -106,6 +139,7 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
         && Objects.equals(path2ErrorLocation, other.path2ErrorLocation)
         && Objects.equals(path2Loophead, other.path2Loophead)
         && Objects.equals(ssa4Path2LoopHead, other.ssa4Path2LoopHead)
+        && Objects.equals(ssa4Loophead, other.ssa4Loophead)
         && Objects.equals(ssa4path1LoopIteration, other.ssa4path1LoopIteration)
         && Objects.equals(ssa4path2ErrorLocation, other.ssa4path2ErrorLocation);
   }

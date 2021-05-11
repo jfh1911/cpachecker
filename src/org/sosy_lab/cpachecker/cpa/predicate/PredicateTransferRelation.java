@@ -13,16 +13,26 @@ import static org.sosy_lab.cpachecker.cpa.predicate.PredicateAbstractState.mkInf
 import static org.sosy_lab.cpachecker.cpa.predicate.PredicateAbstractState.mkNonAbstractionStateWithNewPathFormula;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Level;
 import org.sosy_lab.common.collect.PersistentMap;
 import org.sosy_lab.common.log.LogManager;
+import org.sosy_lab.cpachecker.cfa.CFA;
+import org.sosy_lab.cpachecker.cfa.ast.c.CAssignment;
 import org.sosy_lab.cpachecker.cfa.ast.c.CExpression;
+import org.sosy_lab.cpachecker.cfa.ast.c.CIdExpression;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.cfa.model.FunctionCallEdge;
+import org.sosy_lab.cpachecker.cfa.model.FunctionReturnEdge;
+import org.sosy_lab.cpachecker.cfa.model.c.CAssumeEdge;
+import org.sosy_lab.cpachecker.cfa.model.c.CStatementEdge;
 import org.sosy_lab.cpachecker.cfa.types.c.CProblemType;
 import org.sosy_lab.cpachecker.core.AnalysisDirection;
 import org.sosy_lab.cpachecker.core.defaults.SingleEdgeTransferRelation;
@@ -36,10 +46,13 @@ import org.sosy_lab.cpachecker.cpa.threading.ThreadingState;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
 import org.sosy_lab.cpachecker.util.AbstractStates;
 import org.sosy_lab.cpachecker.util.CFAUtils;
+import org.sosy_lab.cpachecker.util.LoopStructure;
+import org.sosy_lab.cpachecker.util.LoopStructure.Loop;
 import org.sosy_lab.cpachecker.util.predicates.AbstractionFormula;
 import org.sosy_lab.cpachecker.util.predicates.BlockOperator;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormulaManager;
+import org.sosy_lab.cpachecker.util.predicates.pathformula.SSAMap.SSAMapBuilder;
 import org.sosy_lab.cpachecker.util.predicates.smt.BooleanFormulaManagerView;
 import org.sosy_lab.cpachecker.util.predicates.smt.FormulaManagerView;
 import org.sosy_lab.cpachecker.util.statistics.ThreadSafeTimerContainer.TimerWrapper;
@@ -63,6 +76,9 @@ public final class PredicateTransferRelation extends SingleEdgeTransferRelation 
   private final PredicateStatistics statistics;
   private final PredicateCpaOptions options;
 
+  private final CFA cfa;
+  private final boolean ssaTransformationForStrongestPost;
+
   private final TimerWrapper postTimer;
   private final TimerWrapper satCheckTimer;
   private final TimerWrapper pathFormulaTimer;
@@ -78,7 +94,9 @@ public final class PredicateTransferRelation extends SingleEdgeTransferRelation 
       BlockOperator pBlk,
       PredicateAbstractionManager pPredAbsManager,
       PredicateStatistics pStatistics,
-      PredicateCpaOptions pOptions) {
+      PredicateCpaOptions pOptions,
+      CFA pCfa,
+      boolean pSsaTransformationForStrongestPost) {
     logger = pLogger;
     formulaManager = pPredAbsManager;
     pathFormulaManager = pPfmgr;
@@ -94,12 +112,14 @@ public final class PredicateTransferRelation extends SingleEdgeTransferRelation 
     strengthenTimer = statistics.strengthenTimer.getNewTimer();
     strengthenCheckTimer = statistics.strengthenCheckTimer.getNewTimer();
     abstractionCheckTimer = statistics.abstractionCheckTimer.getNewTimer();
+    cfa = pCfa;
+    this.ssaTransformationForStrongestPost = pSsaTransformationForStrongestPost;
   }
 
   @Override
   public Collection<? extends AbstractState> getAbstractSuccessorsForEdge(
       AbstractState pElement, Precision pPrecision, CFAEdge edge)
-          throws CPATransferException, InterruptedException {
+      throws CPATransferException, InterruptedException {
 
     postTimer.start();
     try {
@@ -111,9 +131,28 @@ public final class PredicateTransferRelation extends SingleEdgeTransferRelation 
         return ImmutableSet.of();
       }
 
+      // Used for strongest post, is exerimental!
+
+      PathFormula pathFormula;
+
+      if (ssaTransformationForStrongestPost && edge.getPredecessor().isLoopStart()) {
+        // If we have a edge leaving the loop, we update the ssa by increasing all indices for
+        // variables that are used within the loop.
+        // Thereby, the relation between these variables after the loop and the path formula leading
+        // to the loop is removed (as the original SSA-form requeires)
+        pathFormula = updateSSA(edge, element.getPathFormula());
+      }else {
+        pathFormula = element.getPathFormula();
+      }
+
       // calculate strongest post
-      PathFormula pathFormula = convertEdgeToPathFormula(element.getPathFormula(), edge);
+      pathFormula = convertEdgeToPathFormula(pathFormula, edge);
+
+
+
       logger.log(Level.ALL, "New path formula is", pathFormula);
+
+
 
       // Check whether we should do a SAT check.s
       boolean satCheck = shouldDoSatCheck(edge, pathFormula);
@@ -144,6 +183,55 @@ public final class PredicateTransferRelation extends SingleEdgeTransferRelation 
       postTimer.stop();
     }
   }
+
+  private PathFormula updateSSA(CFAEdge pEdge, PathFormula pPathFormula) {
+
+      CFANode loc = pEdge.getPredecessor();
+      if (loc.isLoopStart() &&  cfa.getLoopStructure().isPresent()) {
+      if (pEdge instanceof CAssumeEdge && ((CAssumeEdge) pEdge).getTruthAssumption() == false) {
+        //Finde the current loop strcuture
+        LoopStructure loopStructure = cfa.getLoopStructure().get();
+        Optional<Loop> loop = Optional.empty();
+
+        for (Loop currentLoop : loopStructure.getAllLoops()) {
+          if (currentLoop.getLoopHeads().contains(loc)) {
+            loop = Optional.of(currentLoop);
+            break;
+          }
+        }
+        // Collect all variables that are modified within the statements in the loop /(and hence
+        // need a new ssa index)
+        if (loop.isPresent()) {
+          Set<String> varsModifiedInLoop = new HashSet<>();
+          for (CFAEdge loopEdge : loop.get().getInnerLoopEdges()) {
+            Optional<Set<String>> modifiedVars = geModifiedVarsInEdge(loopEdge);
+            if (modifiedVars.isPresent()) {
+              varsModifiedInLoop.addAll(modifiedVars.get());
+            }
+          }
+
+        SSAMapBuilder ssa = pPathFormula.getSsa().builder();
+          for (String var : varsModifiedInLoop) {
+            int fresh = ssa.getFreshIndex(var);
+          logger.log(
+              Level.INFO,
+              String.format(
+                  "Updated ssa index for variable '%s' from %d to %d",
+                  var, pPathFormula.getSsa().getIndex(var), fresh));
+            ssa.setIndex(var, ssa.getType(var), fresh);
+
+          }
+        return new PathFormula(
+            pPathFormula.getFormula(),
+            ssa.build(),
+            pPathFormula.getPointerTargetSet(),
+            pPathFormula.getLength());
+        }
+      }
+    }
+    return pPathFormula;
+    }
+
 
   private boolean shouldDoSatCheck(CFAEdge edge, PathFormula pathFormula) {
     if ((options.getSatCheckBlockSize() > 0)
@@ -343,6 +431,36 @@ public final class PredicateTransferRelation extends SingleEdgeTransferRelation 
     } finally {
       strengthenTimer.stop();
     }
+  }
+
+  private Optional<Set<String>> geModifiedVarsInEdge(CFAEdge e) {
+//Code taken from LoopStructure# obtainIncDecVariable)
+
+    /**
+     * This method obtains a variable referenced in this edge that are incremented or decremented by a constant
+     * (if there is one such variable).
+     * @param e the edge from which to obtain variables
+     * @return a variable name or null
+     */
+      if (e instanceof CStatementEdge) {
+        CStatementEdge stmtEdge = (CStatementEdge) e;
+        if (stmtEdge.getStatement() instanceof CAssignment) {
+          CAssignment assign = (CAssignment) stmtEdge.getStatement();
+
+          if (assign.getLeftHandSide() instanceof CIdExpression) {
+            CIdExpression assignementToId = (CIdExpression) assign.getLeftHandSide();
+            String assignToVar = assignementToId.getDeclaration().getQualifiedName();
+          return Optional.of(Sets.newHashSet(assignToVar));
+          }
+        }
+    } else if (e instanceof FunctionCallEdge) {
+      // FIXME: Code for function calls
+
+    } else if (e instanceof FunctionReturnEdge) {
+      // FIXME: Code for function calls
+
+    }
+    return Optional.empty();
   }
 
   private PredicateAbstractState strengthen(

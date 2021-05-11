@@ -44,6 +44,7 @@ import org.sosy_lab.cpachecker.core.specification.Specification;
 import org.sosy_lab.cpachecker.cpa.predicate.persistence.PredicateAbstractionsStorage;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.exceptions.CPATransferException;
+import org.sosy_lab.cpachecker.util.CFAUtils;
 import org.sosy_lab.cpachecker.util.blocking.BlockedCFAReducer;
 import org.sosy_lab.cpachecker.util.blocking.interfaces.BlockComputer;
 import org.sosy_lab.cpachecker.util.predicates.AbstractionManager;
@@ -92,13 +93,21 @@ public class PredicateCPA
   private boolean mergeAbstractionStates = false;
 
   @Option(
-    secure = true,
-    name = "stop",
-    values = {"SEP", "SEPPCC", "SEPNAA"},
-    toUppercase = true,
-    description = "which stop operator to use for predicate cpa (usually SEP should be used in analysis). "
-        + "SEPNAA works the same as SEP, except that it Never stops At Abstraction states. "
-        + "SEPNAA is used in bmc-IMC.properties for config bmc-incremental-ABEl to keep exploring covered states.")
+      secure = true,
+      name = "ssaTransformationForStrongestPost",
+      description =
+          "Use a ssa transformation for strongest post condition generation. DANGER: Dont use otherwise!")
+  private boolean ssaTransformationForStrongestPost = false;
+
+  @Option(
+      secure = true,
+      name = "stop",
+      values = {"SEP", "SEPPCC", "SEPNAA"},
+      toUppercase = true,
+      description =
+          "which stop operator to use for predicate cpa (usually SEP should be used in analysis). "
+              + "SEPNAA works the same as SEP, except that it Never stops At Abstraction states. "
+              + "SEPNAA is used in bmc-IMC.properties for config bmc-incremental-ABEl to keep exploring covered states.")
   private String stopType = "SEP";
 
   @Option(secure=true, description="Direction of the analysis?")
@@ -154,6 +163,9 @@ public class PredicateCPA
 
     cfa = pCfa;
     blk = pBlk;
+    for(CFANode n: pCfa.getAllNodes()) {
+      System.out.println(n.toString() + "\t" + CFAUtils.allEnteringEdges(n) + "\n");
+    }
 
     if (enableBlockreducer) {
       BlockComputer blockComputer = new BlockedCFAReducer(config, logger);
@@ -244,7 +256,9 @@ public class PredicateCPA
         blk,
         getPredicateManager(),
         statistics,
-        options);
+        options,
+        cfa,
+        this.ssaTransformationForStrongestPost);
   }
 
   @Override

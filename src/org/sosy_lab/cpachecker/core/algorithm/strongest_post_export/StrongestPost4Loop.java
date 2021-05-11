@@ -53,7 +53,8 @@ public class StrongestPost4Loop {
       CFANode pLoopHead,
       String pOutdirForExport,
       Map<CFANode, PathFormula> pInvariants,
-      Map<CFANode, Integer> nodesToLineNumber) {
+      Map<CFANode, Integer> nodesToLineNumber,
+      SSAMap ssaMapAtLoophead) {
     serializeLoop(
         initFormula,
         preserveFormula,
@@ -63,7 +64,8 @@ public class StrongestPost4Loop {
         pLoopHead,
         pOutdirForExport,
         pInvariants,
-        nodesToLineNumber);
+        nodesToLineNumber,
+        ssaMapAtLoophead);
   }
 
   @SuppressWarnings("resource")
@@ -76,7 +78,8 @@ public class StrongestPost4Loop {
       CFANode pLoopHead,
       String pOutdirForExport,
       Map<CFANode, PathFormula> pInvariants,
-      Map<CFANode, Integer> nodesToLineNumber) {
+      Map<CFANode, Integer> nodesToLineNumber,
+      SSAMap ssaMapAtLoophead) {
 
     // We build for each set of Path formulae a boolean formula using conjunction
     Pair<BooleanFormula, SSAMap> path2LoooHead =
@@ -100,13 +103,14 @@ public class StrongestPost4Loop {
         new StrongestPost4LoopExchangeObj(
             pFmgr.dumpFormula(path2LoooHead.getFirst()).toString(),
             path2LoooHead.getSecond(),
+            ssaMapAtLoophead,
             pFmgr.dumpFormula(path1LoopIteration.getFirst()).toString(),
             path1LoopIteration.getSecond(),
             pFmgr.dumpFormula(path2ErrorLoc.getFirst()).toString(),
             path2ErrorLoc.getSecond(),
             invariantsPresent);
     try {
-
+      System.out.println(exObj.toString());
       FileOutputStream fileOutputStream =
           new FileOutputStream(
               String.format(
