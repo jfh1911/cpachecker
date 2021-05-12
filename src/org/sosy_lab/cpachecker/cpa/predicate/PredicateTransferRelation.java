@@ -237,13 +237,24 @@ public final class PredicateTransferRelation extends SingleEdgeTransferRelation 
         SSAMapBuilder ssa = pPathFormula.getSsa().builder();
           for (String var : varsModifiedInLoop) {
             int fresh = ssa.getFreshIndex(var);
+            if (fresh <= 0) {
+              fresh = Math.abs(ssa.getFreshIndex(var));
+              fresh = fresh + 1;
+            }
           logger.log(
               Level.INFO,
               String.format(
                   "Updated ssa index for variable '%s' from %d to %d",
                   var, pPathFormula.getSsa().getIndex(var), fresh));
+            if (ssa.getType(var) == null) {
+              logger.log(
+                  Level.WARNING,
+                  String.format(
+                      "Cannot update the ssa value for variable %s, as it is not present in the ssa-map",
+                      var));
+            } else {
             ssa.setIndex(var, ssa.getType(var), fresh);
-
+            }
           }
         return new PathFormula(
             pPathFormula.getFormula(),
