@@ -154,7 +154,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
               preserveCondition.add(presOpt.get());
             }
             Optional<Pair<AbstractState, SSAMap>> ssa4Loop =
-                getSSAForLoophead(loopHead, nodesInLoop, state, reached);
+                getSSAForLoophead(loopHead, nodesInLoop, state);
             if (ssa4Loop.isPresent()) {
               ssaMaps4Loophead.add(ssa4Loop.get());
             }
@@ -545,21 +545,31 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
    * @param pLoopHead the loop head node
    * @param pNodesInLoop all nodes in the loop
    * @param pState the abstract state of the loop head
-   * @param pReached the reached set
    * @return a pair of abstract state and ssa map of the edge leaving the loop
    */
   private Optional<Pair<AbstractState, SSAMap>> getSSAForLoophead(
-      CFANode pLoopHead,
-      Set<CFANode> pNodesInLoop,
-      AbstractState pState,
-      PartitionedReachedSet pReached) {
-    for (int i = 0; i < pLoopHead.getNumLeavingEdges(); i++) {
-      CFANode predOfLoopHead = pLoopHead.getLeavingEdge(i).getSuccessor();
-      if (! pNodesInLoop.contains(predOfLoopHead)) {
+      CFANode pLoopHead, Set<CFANode> pNodesInLoop, AbstractState pState) {
+    Optional<CFANode> toProcess = StrongestPostUtils.getLoopBranchForLoopHead(pLoopHead, logger);
+
+    if (toProcess.isEmpty()) {
+      return Optional.empty();
+    }
+    Optional<AbstractState> succAbsStateOfLoopHead =
+        StrongestPostUtils.getAbstractStateForLoopHead(
+            AbstractStates.extractStateByType(pState, ARGState.class), toProcess.get(), logger);
+    if (succAbsStateOfLoopHead.isEmpty()) {
+      return Optional.empty();
+    }
+
+    for (int i = 0; i < toProcess.get().getNumLeavingEdges(); i++) {
+      CFANode succOfLoopHead = toProcess.get().getLeavingEdge(i).getSuccessor();
+
+      if (!pNodesInLoop.contains(succOfLoopHead)) {
         // We see a path out of the loop
         Optional<PathFormula> pf =
-            getPathFormulaOfLoopheadSuccessor(predOfLoopHead, pReached, pState);
+            getPathFormulaOfLoopheadSuccessor(succOfLoopHead, succAbsStateOfLoopHead.get());
         if (pf.isPresent()) {
+          // As pSttate is the loopHead, we nned to return the ssamap wrt. the loophead!
           return Optional.of(Pair.of(pState, pf.get().getSsa()));
         }
       }
@@ -676,12 +686,11 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
    * Returns the path formula of the child node with the licaton node of the given arg state
    *
    * @param node the successor CFANode of the loop head leaving the node
-   * @param pReached the reached set
    * @param argStatetOfLoopHead the abstract state of the loop
    * @return a path formula, if the arg state has a child associated to node
    */
   private Optional<PathFormula> getPathFormulaOfLoopheadSuccessor(
-      CFANode node, ReachedSet pReached, AbstractState argStatetOfLoopHead) {
+      CFANode node, AbstractState argStatetOfLoopHead) {
 
     for (AbstractState s :
         AbstractStates.extractStateByType(argStatetOfLoopHead, ARGState.class).getChildren()) {

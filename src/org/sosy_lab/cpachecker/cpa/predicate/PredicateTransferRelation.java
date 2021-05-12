@@ -16,6 +16,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +36,7 @@ import org.sosy_lab.cpachecker.cfa.model.c.CAssumeEdge;
 import org.sosy_lab.cpachecker.cfa.model.c.CStatementEdge;
 import org.sosy_lab.cpachecker.cfa.types.c.CProblemType;
 import org.sosy_lab.cpachecker.core.AnalysisDirection;
+import org.sosy_lab.cpachecker.core.algorithm.strongest_post_export.StrongestPostUtils;
 import org.sosy_lab.cpachecker.core.defaults.SingleEdgeTransferRelation;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractStateWithAssumptions;
@@ -86,6 +88,8 @@ public final class PredicateTransferRelation extends SingleEdgeTransferRelation 
   private final TimerWrapper strengthenCheckTimer;
   private final TimerWrapper abstractionCheckTimer;
 
+  private Map<CFANode, CFANode> loopBranchingNodesToIncreaseSSAIndicesFor = new HashMap<>();
+
   public PredicateTransferRelation(
       LogManager pLogger,
       AnalysisDirection pDirection,
@@ -135,13 +139,34 @@ public final class PredicateTransferRelation extends SingleEdgeTransferRelation 
 
       PathFormula pathFormula;
 
-      if (ssaTransformationForStrongestPost && edge.getPredecessor().isLoopStart()) {
+      if ((ssaTransformationForStrongestPost && edge.getPredecessor().isLoopStart())) {
+
         // If we have a edge leaving the loop, we update the ssa by increasing all indices for
         // variables that are used within the loop.
         // Thereby, the relation between these variables after the loop and the path formula leading
         // to the loop is removed (as the original SSA-form requeires)
-        pathFormula = updateSSA(edge, element.getPathFormula());
-      }else {
+        Optional<CFANode> nodeToIncreaseSSAIndecies =
+            StrongestPostUtils.getLoopBranchForLoopHead(edge.getPredecessor(), logger);
+        if (nodeToIncreaseSSAIndecies.isPresent()
+            && nodeToIncreaseSSAIndecies.get().equals(edge.getPredecessor())) {
+          pathFormula = updateSSA(edge, element.getPathFormula(), nodeToIncreaseSSAIndecies.get());
+        } else {
+          if (nodeToIncreaseSSAIndecies.isPresent()) {
+            this.loopBranchingNodesToIncreaseSSAIndicesFor.put(
+                nodeToIncreaseSSAIndecies.get(), edge.getPredecessor());
+          }
+          pathFormula = element.getPathFormula();
+        }
+      } else if (this.loopBranchingNodesToIncreaseSSAIndicesFor.containsKey(
+          edge.getPredecessor())) {
+        // Same as descriebed above in case that we have a loop where the loop head is not the same
+        // as the loop branching node
+        pathFormula =
+            updateSSA(
+                edge,
+                element.getPathFormula(),
+                loopBranchingNodesToIncreaseSSAIndicesFor.get(edge.getPredecessor()));
+      } else {
         pathFormula = element.getPathFormula();
       }
 
@@ -184,17 +209,16 @@ public final class PredicateTransferRelation extends SingleEdgeTransferRelation 
     }
   }
 
-  private PathFormula updateSSA(CFAEdge pEdge, PathFormula pPathFormula) {
+  private PathFormula updateSSA(CFAEdge pEdge, PathFormula pPathFormula, CFANode loophead) {
 
-      CFANode loc = pEdge.getPredecessor();
-      if (loc.isLoopStart() &&  cfa.getLoopStructure().isPresent()) {
-      if (pEdge instanceof CAssumeEdge && ((CAssumeEdge) pEdge).getTruthAssumption() == false) {
+    if (loophead.isLoopStart() && cfa.getLoopStructure().isPresent()) {
+      if (pEdge instanceof CAssumeEdge && isFalseBranch(((CAssumeEdge) pEdge))) {
         //Finde the current loop strcuture
         LoopStructure loopStructure = cfa.getLoopStructure().get();
         Optional<Loop> loop = Optional.empty();
 
         for (Loop currentLoop : loopStructure.getAllLoops()) {
-          if (currentLoop.getLoopHeads().contains(loc)) {
+          if (currentLoop.getLoopHeads().contains(loophead)) {
             loop = Optional.of(currentLoop);
             break;
           }
@@ -232,6 +256,10 @@ public final class PredicateTransferRelation extends SingleEdgeTransferRelation 
     return pPathFormula;
     }
 
+  private boolean isFalseBranch(CAssumeEdge pEdge) {
+    return (!pEdge.getTruthAssumption() && !pEdge.isSwapped())
+        || (pEdge.getTruthAssumption() && pEdge.isSwapped());
+  }
 
   private boolean shouldDoSatCheck(CFAEdge edge, PathFormula pathFormula) {
     if ((options.getSatCheckBlockSize() > 0)
