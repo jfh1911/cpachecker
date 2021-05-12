@@ -255,7 +255,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                   preservePaths.add(preserveConditionForLoop.get());
                 }
                 Optional<Pair<AbstractState, SSAMap>> ssa4Loop =
-                    getSSAForLoophead(loopHead, nodesInLoop, state, reached);
+                    getSSAForLoophead(loopHead, nodesInLoop, state);
                 if (ssa4Loop.isPresent()) {
                   ssaMaps4Loophead.add(ssa4Loop.get());
                 }
