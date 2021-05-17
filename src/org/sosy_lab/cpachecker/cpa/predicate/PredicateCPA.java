@@ -175,9 +175,6 @@ public class PredicateCPA
 
     cfa = pCfa;
     blk = pBlk;
-    for(CFANode n: pCfa.getAllNodes()) {
-      System.out.println(n.toString() + "\t" + CFAUtils.allEnteringEdges(n) + "\n");
-    }
 
     if (enableBlockreducer) {
       BlockComputer blockComputer = new BlockedCFAReducer(config, logger);

@@ -10,6 +10,7 @@ package org.sosy_lab.cpachecker.core.algorithm.strongest_post_export;
 
 import static org.sosy_lab.common.collect.MapsDifference.collectMapsDifferenceTo;
 
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
@@ -198,6 +199,14 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           FormulaManagerView formulaManager = solver.getFormulaManager();
           // Finally, serialize the object
 
+          if (terminationCondition.isEmpty()) {
+            throw new CPAException(
+                String.format(
+                    "We were not able to compute a termination conditinon fot the loop %s."
+                        + " Are you sure that the loop can be exited?",
+                    loopHead));
+          }
+
           PathFormula init = StrongestPost4Loop.merge(initCondition, formulaManager);
           PathFormula preserve = StrongestPost4Loop.merge(preserveCondition, formulaManager);
           Map<CFANode, PathFormula> map = new HashMap<>();
@@ -372,6 +381,14 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                 }
               }
             }
+            if(allPathFormulae.isEmpty()) {
+                throw new CPAException(
+                    String.format(
+                        "We were not able to compute a termination conditinon fot the loop %s."
+                            + " Are you sure that the loop can be exited?",
+                        loopHead));
+              }
+
             loopHeadToTermiationCond.put(loopHead, StrongestPost4Loop.merge(allPathFormulae, fmgr));
           }
 
@@ -404,6 +421,14 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
 
           // Finally, serialize the objectes
           for (CFANode loopHead : orderedLoopHeads) {
+
+            if (!loopHeadToTermiationCond.containsKey(loopHead)) {
+              throw new CPAException(
+                  String.format(
+                      "We were not able to compute a termination conditinon fot the loop %s."
+                          + " Are you sure that the loop can be exited?",
+                      loopHead));
+            }
 
             StrongestPost4Loop.serializeLoop(
                 initPathToLoopHead.get(loopHead),
@@ -618,17 +643,20 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     // but not from B to A
     List<CFANode> loopheads = Lists.newArrayList(loopStruct.getAllLoopHeads());
     // Check if nested loops are present, if a loophead is present in a different loop
-    for (Loop loop : loopStruct.getAllLoops()) {
-      if (loopheads
-          .stream()
-          .anyMatch(
-              head -> !loop.getLoopHeads().contains(head) && loop.getLoopNodes().contains(head))) {
-        logger.log(
-            Level.WARNING,
-            "The program contains nested loops. This is currently not supported, hence aborting!");
-        throw new CPAException("Currently, only programs without neaded loops are supported!");
-      }
-    }
+    //    for (Loop loop : loopStruct.getAllLoops()) {
+    //      if (loopheads
+    //          .stream()
+    //          .anyMatch(
+    //              head -> !loop.getLoopHeads().contains(head) &&
+    // loop.getLoopNodes().contains(head))) {
+    //        logger.log(
+    //            Level.WARNING,
+    //            "The program contains nested loops. This is currently not supported, hence
+    // aborting!");
+    //        throw new CPAException("Currently, only programs without neaded loops are
+    // supported!");
+    //      }
+    //    }
     // We now that the program does not contain any nested loops
     // now, we determine  a ordering. Therefore, we firstly compute a total order for all loopheads
     // present
@@ -640,9 +668,17 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     // If there are no edges between, both (A before B or B before A) is ok.
     Function<CFANode, Iterable<CFAEdge>> func =
         new Function<>() {
+          //          Map<CFANode, List> callStack = new HashMap<>();
+
           @Override
           public Iterable<CFAEdge> apply(CFANode pT) {
-            return CFAUtils.allLeavingEdges(pT);
+            // To avoid confusions with method calls!
+            if (pT.getLeavingSummaryEdge() != null) {
+              return Lists.newArrayList(pT.getLeavingSummaryEdge());
+            }
+
+            FluentIterable<CFAEdge> edges = CFAUtils.allLeavingEdges(pT);
+            return edges;
           }
         };
     for (int i = 0; i < loopheads.size(); i++) {
