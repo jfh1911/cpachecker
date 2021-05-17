@@ -11,7 +11,9 @@ package org.sosy_lab.cpachecker.cpa.predicate;
 import com.google.common.collect.ImmutableSet;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.collect.PathCopyingPersistentTreeMap;
@@ -22,7 +24,11 @@ import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
+import org.sosy_lab.cpachecker.cfa.model.CFAEdgeType;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
+import org.sosy_lab.cpachecker.cfa.model.c.CDeclarationEdge;
+import org.sosy_lab.cpachecker.cfa.types.c.CArrayType;
+import org.sosy_lab.cpachecker.cfa.types.c.CType;
 import org.sosy_lab.cpachecker.core.AnalysisDirection;
 import org.sosy_lab.cpachecker.core.algorithm.invariants.InvariantSupplier.TrivialInvariantSupplier;
 import org.sosy_lab.cpachecker.core.defaults.AutomaticCPAFactory;
@@ -112,6 +118,12 @@ public class PredicateCPA
 
   @Option(secure=true, description="Direction of the analysis?")
   private AnalysisDirection direction = AnalysisDirection.FORWARD;
+
+  @Option(
+      secure = true,
+      name = "abortOnArrays",
+      description = "Abort, if the program contains an array declaration!")
+  private boolean abortOnArrays = false;
 
   @Option(
       secure = true,
@@ -239,6 +251,28 @@ public class PredicateCPA
             abstractionManager,
             abstractionStats,
             statistics);
+
+    Set<CFAEdge> allEdges = new HashSet<>();
+    cfa.getAllNodes()
+        .stream()
+        .forEach(n -> CFAUtils.allEnteringEdges(n).forEach(e -> allEdges.add(e)));
+
+    if (abortOnArrays
+        && allEdges
+            .stream()
+            .filter(e -> e.getEdgeType().equals(CFAEdgeType.DeclarationEdge))
+            .anyMatch(decl -> isArrayDecl((CDeclarationEdge) decl))) {
+      throw new InvalidConfigurationException("Cannot handle programs with arrays!");
+    }
+  }
+
+  private boolean isArrayDecl(CDeclarationEdge pDecl) {
+
+    final CType type = pDecl.getDeclaration().getType();
+    if (type instanceof CArrayType) {
+      return true;
+    }
+    return false;
   }
 
   @Override
