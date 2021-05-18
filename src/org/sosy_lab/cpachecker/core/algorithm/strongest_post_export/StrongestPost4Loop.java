@@ -180,9 +180,6 @@ public class StrongestPost4Loop {
         maxIndexAt = i;
       }
     }
-    if (tempList.isEmpty()) {
-      System.out.println("BUg");
-    }
 
     return new PathFormula(
         formula2Loop,
