@@ -65,6 +65,7 @@ import org.sosy_lab.cpachecker.core.counterexample.CFAPathWithAssumptions;
 import org.sosy_lab.cpachecker.core.counterexample.CounterexampleInfo;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
+import org.sosy_lab.cpachecker.core.reachedset.PartitionedReachedSet;
 import org.sosy_lab.cpachecker.core.reachedset.ReachedSet;
 import org.sosy_lab.cpachecker.core.reachedset.UnmodifiableReachedSet;
 import org.sosy_lab.cpachecker.cpa.arg.path.ARGPath;
@@ -1336,6 +1337,19 @@ public class ARGUtils {
   }
   /** Returns all possible paths from the given state to the given target of the ARG. */
   public static Set<ARGPath> getAllPaths(final ARGState pFrom, final ARGState pTo) {
+    return getAllPaths(pFrom, pTo, false);
+  }
+
+  public static Set<ARGPath> getAllPaths(
+      PartitionedReachedSet pReachedSet,
+      @Nullable ARGState pStart,
+      boolean useCoveredNodesForPath) {
+    ARGState root = AbstractStates.extractStateByType(pReachedSet.getFirstState(), ARGState.class);
+    return getAllPaths(root, pStart, useCoveredNodesForPath);
+  }
+
+  public static Set<ARGPath> getAllPaths(
+      ARGState pFrom, ARGState pTo, boolean useCoveredNodesForPath) {
     List<ARGState> states = new ArrayList<>();
     ImmutableSet.Builder<ARGPath> results = ImmutableSet.builder();
     List<List<ARGState>> paths = new ArrayList<>();
@@ -1357,7 +1371,11 @@ public class ARGUtils {
       }
 
       // Add all parents of currently first state on the current path
-      for (ARGState parentElement : curPath.get(curPath.size() - 1).getParents()) {
+      final Collection<ARGState> parents = curPath.get(curPath.size() - 1).getParents();
+      if (useCoveredNodesForPath && curPath.get(curPath.size() - 1).isCovered()) {
+        parents.add(curPath.get(curPath.size() - 1).getCoveringState());
+      }
+      for (ARGState parentElement : parents) {
         ImmutableList.Builder<ARGState> tmp =
             ImmutableList.builderWithExpectedSize(curPath.size() + 1);
         tmp.addAll(curPath);

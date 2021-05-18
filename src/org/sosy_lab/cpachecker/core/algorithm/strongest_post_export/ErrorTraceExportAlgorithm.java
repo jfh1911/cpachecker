@@ -169,7 +169,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
               Set<ARGPath> paths =
                   ARGUtils.getAllPaths(
                       AbstractStates.extractStateByType(argStateOfLoopHead.get(0), ARGState.class),
-                      AbstractStates.extractStateByType(s, ARGState.class));
+                      AbstractStates.extractStateByType(s, ARGState.class), true);
               for (ARGPath path : paths) {
 
                 // If the path contains exactly two abstraction locations, namely the first (loop
@@ -254,7 +254,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
             for (AbstractState state : filter) {
               for (ARGPath path :
                   ARGUtils.getAllPaths(
-                      reached, AbstractStates.extractStateByType(state, ARGState.class))) {
+                      reached, AbstractStates.extractStateByType(state, ARGState.class), true)) {
                 List<AbstractState> absStateOnPath = filterAbstractStatesOnPathWOLast(path);
                 Optional<PathFormula> initConditionForLoop =
                     getInitConditionForLoop(loopHead, nodesInLoop, state, reached);
@@ -338,7 +338,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           for (AbstractState target : AbstractStates.getTargetStates(reached)) {
             for (ARGPath path :
                 ARGUtils.getAllPaths(
-                    reached, AbstractStates.extractStateByType(target, ARGState.class))) {
+                    reached, AbstractStates.extractStateByType(target, ARGState.class), true)) {
               PathFormula pfTargetNode =
                   AbstractStates.extractStateByType(
                           path.getStatePairs().get(path.getStatePairs().size() - 1).getFirst(),
@@ -363,7 +363,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                 final Set<ARGPath> allPaths =
                     ARGUtils.getAllPaths(
                         AbstractStates.extractStateByType(state, ARGState.class),
-                        AbstractStates.extractStateByType(target, ARGState.class));
+                        AbstractStates.extractStateByType(target, ARGState.class), true);
                 for (ARGPath path : allPaths) {
                   List<PathFormula> pfOnPath = new ArrayList<>();
                   List<AbstractState> absStateOnPath = filterAbstractStatesOnPath(path);

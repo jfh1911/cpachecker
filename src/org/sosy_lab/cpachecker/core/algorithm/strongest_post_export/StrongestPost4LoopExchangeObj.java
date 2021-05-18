@@ -104,22 +104,25 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
         ssa4path2ErrorLocation);
   }
 
+
+
+
   @Override
   public String toString() {
     return "StrongestPost4LoopExchangeObj [path2Loophead="
         + path2Loophead
-        + ",\n ssa4Path2LoopHead="
+        + ", ssa4Path2LoopHead="
         + ssa4Path2LoopHead
-        + ",\n ssaAtLoophead="
-        + ssa4Loophead
-        + ",\n path1LoopIteration="
+        + ",\n\n path1LoopIteration="
         + path1LoopIteration
-        + ",\n ssa4path1LoopIteration="
+        + ", ssa4path1LoopIteration="
         + ssa4path1LoopIteration
-        + ",\n path2ErrorLocation="
+        + ",\n\n path2ErrorLocation="
         + path2ErrorLocation
-        + ",\n ssa4path2ErrorLocation="
+        + ", ssa4path2ErrorLocation="
         + ssa4path2ErrorLocation
+        + "\n\n, ssa4Loophead="
+        + ssa4Loophead
         + ",\n invariantsPresent="
         + invariantsPresent
         + "]\n";
