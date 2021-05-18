@@ -159,7 +159,6 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
             if (ssa4Loop.isPresent()) {
               ssaMaps4Loophead.add(ssa4Loop.get());
             }
-
           }
 
           List<PathFormula> terminationCondition = new ArrayList<>();
@@ -169,7 +168,8 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
               Set<ARGPath> paths =
                   ARGUtils.getAllPaths(
                       AbstractStates.extractStateByType(argStateOfLoopHead.get(0), ARGState.class),
-                      AbstractStates.extractStateByType(s, ARGState.class), true);
+                      AbstractStates.extractStateByType(s, ARGState.class),
+                      true);
               for (ARGPath path : paths) {
 
                 // If the path contains exactly two abstraction locations, namely the first (loop
@@ -221,7 +221,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
               outdirForExport,
               map,
               lineNumbersToNodes,
-             this.getSSAMapForAbstratLocatons(ssaMaps4Loophead));
+              this.getSSAMapForAbstratLocatons(ssaMaps4Loophead));
 
         } else {
 
@@ -363,7 +363,8 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                 final Set<ARGPath> allPaths =
                     ARGUtils.getAllPaths(
                         AbstractStates.extractStateByType(state, ARGState.class),
-                        AbstractStates.extractStateByType(target, ARGState.class), true);
+                        AbstractStates.extractStateByType(target, ARGState.class),
+                        true);
                 for (ARGPath path : allPaths) {
                   List<PathFormula> pfOnPath = new ArrayList<>();
                   List<AbstractState> absStateOnPath = filterAbstractStatesOnPath(path);
@@ -381,13 +382,13 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                 }
               }
             }
-            if(allPathFormulae.isEmpty()) {
-                throw new CPAException(
-                    String.format(
-                        "We were not able to compute a termination conditinon fot the loop %s."
-                            + " Are you sure that the loop can be exited?",
-                        loopHead));
-              }
+            if (allPathFormulae.isEmpty()) {
+              throw new CPAException(
+                  String.format(
+                      "We were not able to compute a termination conditinon fot the loop %s."
+                          + " Are you sure that the loop can be exited?",
+                      loopHead));
+            }
 
             loopHeadToTermiationCond.put(loopHead, StrongestPost4Loop.merge(allPathFormulae, fmgr));
           }
@@ -447,8 +448,6 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
       return status;
     }
   }
-
-
 
   private boolean isLoopHead(AbstractState pAbsState) {
     return cfa.getAllLoopHeads().get().contains(AbstractStates.extractLocation(pAbsState));
@@ -520,10 +519,8 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
   }
 
   private Optional<PathFormula> getPreserveConditionForLoop(
-      CFANode loopHead,
-      Set<CFANode> nodesInLoop,
-      AbstractState pAbstractState,
-      ReachedSet reached) {
+      CFANode loopHead, Set<CFANode> nodesInLoop, AbstractState pAbstractState, ReachedSet reached)
+      throws CPAException {
     List<PathFormula> preserveCondition = new ArrayList<>();
     for (int i = 0; i < loopHead.getNumEnteringEdges(); i++) {
       CFANode predOfLoopHead = loopHead.getEnteringEdge(i).getPredecessor();
@@ -545,7 +542,8 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
       CFANode loopHead,
       Set<CFANode> nodesInLoop,
       AbstractState pAbstractState,
-      PartitionedReachedSet reached) {
+      PartitionedReachedSet reached)
+      throws CPAException {
 
     List<PathFormula> initCondition = new ArrayList<>();
     for (int i = 0; i < loopHead.getNumEnteringEdges(); i++) {
@@ -600,12 +598,11 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
       }
     }
 
-      return Optional.empty();
-
+    return Optional.empty();
   }
 
   private SSAMap getSSAMapForAbstratLocatons(Set<Pair<AbstractState, SSAMap>> pSsaMaps4Loophead) {
-    List<Pair<AbstractState, SSAMap> > rootNodes = new ArrayList<>();
+    List<Pair<AbstractState, SSAMap>> rootNodes = new ArrayList<>();
 
     for (Pair<AbstractState, SSAMap> pair : pSsaMaps4Loophead) {
       // Check, if the current node is covered:
@@ -619,16 +616,11 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
       SSAMap res = SSAMap.emptySSAMap();
       final List<MapsDifference.Entry<String, Integer>> symbolDifferences = new ArrayList<>();
       for (Pair<AbstractState, SSAMap> n : rootNodes) {
-        res =
-            SSAMap.merge(
-                res,
-               n.getSecond(),
-                collectMapsDifferenceTo(symbolDifferences));
+        res = SSAMap.merge(res, n.getSecond(), collectMapsDifferenceTo(symbolDifferences));
       }
       return res;
     }
   }
-
 
   private boolean isAbstractionState(ARGState state) {
     return AbstractStates.extractStateByType(state, PredicateAbstractState.class)

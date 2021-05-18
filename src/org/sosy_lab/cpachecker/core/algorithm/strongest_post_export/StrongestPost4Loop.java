@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 import org.sosy_lab.common.collect.MapsDifference;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
+import org.sosy_lab.cpachecker.exceptions.CPAException;
 import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.Triple;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
@@ -54,7 +55,8 @@ public class StrongestPost4Loop {
       String pOutdirForExport,
       Map<CFANode, PathFormula> pInvariants,
       Map<CFANode, Integer> nodesToLineNumber,
-      SSAMap ssaMapAtLoophead) {
+      SSAMap ssaMapAtLoophead)
+      throws CPAException {
     serializeLoop(
         initFormula,
         preserveFormula,
@@ -157,12 +159,17 @@ public class StrongestPost4Loop {
   }
 
   public static Pair<BooleanFormula, SSAMap> mergeAndSerialize(
-      Collection<PathFormula> pPathFormulae, FormulaManagerView pFmgr) {
+      Collection<PathFormula> pPathFormulae, FormulaManagerView pFmgr) throws CPAException {
     PathFormula merged = merge(pPathFormulae, pFmgr);
     return Pair.of(merged.getFormula(), merged.getSsa());
   }
 
-  public static PathFormula merge(Collection<PathFormula> pPathFormulae, FormulaManagerView pFmgr) {
+  public static PathFormula merge(Collection<PathFormula> pPathFormulae, FormulaManagerView pFmgr)
+      throws CPAException {
+    if(pPathFormulae.isEmpty()) {
+      throw new CPAException("Cannot merge an empty list of path Formula!");
+    }
+
     BooleanFormula formula2Loop =
         pFmgr
             .getBooleanFormulaManager()
