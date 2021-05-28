@@ -49,6 +49,12 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
   @Option(secure = true, description = "Enable storing the variable values.")
   private boolean storeVariableValues = false;
 
+  @Option(
+      secure = true,
+      description =
+          "Store values of variables that do not have a value at loophead (uninitalized) aswell.")
+  private boolean handleUndefiendVars = true;
+
   @Option(secure = true, description = "ID to start with at data-generation.")
   private int firstID = 1;
 
@@ -111,6 +117,7 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
     return new MergeSepOperator();
   }
 
+
   @Override
   public StopOperator getStopOperator() {
     return new StopAlwaysOperator();
@@ -126,7 +133,8 @@ public class ValueAnalysisExportCPA extends AbstractCPA implements ConfigurableP
         firstID,
         defaultForUndefined,
         exportAfterXIterations,
-        maxLoopIteration);
+        maxLoopIteration,
+        handleUndefiendVars);
   }
 
   @Override

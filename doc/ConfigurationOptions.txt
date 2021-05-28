@@ -3271,6 +3271,10 @@ cpa.valueExport.exportAfterXIterations = 50
 # ID to start with at data-generation.
 cpa.valueExport.firstID = 1
 
+# Store values of variables that do not have a value at loophead
+# (uninitalized) aswell.
+cpa.valueExport.handleUndefiendVars = true
+
 # Trie to abort theexecution after the loop is visited x times. -1 for no
 # aborting
 cpa.valueExport.maxLoopIteration = -1

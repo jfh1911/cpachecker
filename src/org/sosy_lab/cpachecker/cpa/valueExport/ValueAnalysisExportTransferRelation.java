@@ -96,6 +96,7 @@ public class ValueAnalysisExportTransferRelation
   private int counter = 0;
   private int maxLoopIterations;
   private Map<Integer, Integer> lineNumberToVisits = new HashMap<>();
+  private boolean handleUndefiendVars;
 
   public ValueAnalysisExportTransferRelation(
       LogManager pLogger,
@@ -105,7 +106,8 @@ public class ValueAnalysisExportTransferRelation
       int pFirstID,
       String defaultValueForUndefined,
       int pExportAfterXIterations,
-      int pMaxLoopIteration) {
+      int pMaxLoopIteration,
+      boolean handleUndefiendVars) {
 
     logger = new LogManagerWithoutDuplicates(pLogger);
     this.variableValuesCsvFilePath = variableValuesCsvFile;
@@ -118,6 +120,7 @@ public class ValueAnalysisExportTransferRelation
     this.varsAssignedInLoop = computeVarsAssingeedInLoop();
     this.exportAfterXIterations = pExportAfterXIterations;
     this.maxLoopIterations = pMaxLoopIteration;
+    this.handleUndefiendVars = handleUndefiendVars;
   }
 
 
@@ -214,7 +217,10 @@ public class ValueAnalysisExportTransferRelation
         CFANode node = pCfaEdge.getPredecessor();
         if (pCfaEdge.getPredecessor() instanceof CFunctionEntryNode) {
           // We are entering a new function, hence create a new ExportState for the function
-          exportStates.put(node.getFunctionName(), new ExportStateStorage(node.getFunctionName(), defaultValueForUndefined));
+          exportStates.put(
+              node.getFunctionName(),
+              new ExportStateStorage(
+                  node.getFunctionName(), defaultValueForUndefined, handleUndefiendVars));
         }
         if (pCfaEdge.getPredecessor() instanceof FunctionExitNode
             || (pCfaEdge.getSuccessor() != null

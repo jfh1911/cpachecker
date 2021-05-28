@@ -31,8 +31,6 @@ public class ExportStateStorage {
 
   private static final String ID_HEADER = "ID";
 
-
-
   String methodName;
   Set<Pair<MemoryLocation, Type>> locationsUsedInMethod;
   Multimap<Integer, Map<MemoryLocation, Number>> lineNumberToState;
@@ -40,12 +38,16 @@ public class ExportStateStorage {
 
   private String default_for_unknown;
 
-  public ExportStateStorage(String pMethodName, String default_for_unknown) {
+  private boolean handleUndefiendVars;
+
+  public ExportStateStorage(
+      String pMethodName, String default_for_unknown, boolean handleUndefiendVars) {
     this.methodName = pMethodName;
     this.lineNumberToState = ArrayListMultimap.create();
     this.locationsUsedInMethod = new HashSet<>();
     this.locationsUsedInMethodOrdered = new ArrayList<>();
     this.default_for_unknown = default_for_unknown;
+    this.handleUndefiendVars = handleUndefiendVars;
   }
 
   public boolean isEmpty() {
@@ -71,7 +73,6 @@ public class ExportStateStorage {
 
       if (ass.getValue() != null
           && ass.getValue().getValue() != null
-          && ass.getValue().getValue() instanceof NumericValue
           && !memLoc.getIdentifier().startsWith(CPACHECKER_TEMP)
           // && isNotArrayVar
           // TODO: We just remove this line, as it causes many problems and prefer to remove array
@@ -80,13 +81,22 @@ public class ExportStateStorage {
       //          && !memLoc.getIdentifier().equals(memLoc.getAsSimpleString())
       ) {
 
-        Number num = ((NumericValue) ass.getValue().getValue()).getNumber();
-        state.put(memLoc, num);
-        Pair<MemoryLocation, Type> pair = Pair.of(memLoc, ass.getValue().getType());
-        if (this.locationsUsedInMethod.add(pair)) {
-          // To maintain a consistent variable ordering, add them to a list
-          this.locationsUsedInMethodOrdered.add(pair);
+        if (ass.getValue().getValue() instanceof NumericValue) {
+          Number num = ((NumericValue) ass.getValue().getValue()).getNumber();
+          state.put(memLoc, num);
+          Pair<MemoryLocation, Type> pair = Pair.of(memLoc, ass.getValue().getType());
+          if (this.locationsUsedInMethod.add(pair)) {
+            // To maintain a consistent variable ordering, add them to a list
+            this.locationsUsedInMethodOrdered.add(pair);
+          }
+        } else if (handleUndefiendVars) {
+          state.put(memLoc, null);
+          Pair<MemoryLocation, Type> pair = Pair.of(memLoc, ass.getValue().getType());
+          if (this.locationsUsedInMethod.add(pair)) {
+            // To maintain a consistent variable ordering, add them to a list
+            this.locationsUsedInMethodOrdered.add(pair);
         }
+      }
       }
     }
     this.lineNumberToState.put(pLineNumber, state);
@@ -101,8 +111,7 @@ public class ExportStateStorage {
 
     for (Pair<MemoryLocation, Type> var : this.locationsUsedInMethodOrdered) {
 
-        builder = builder.append("|" + var.getFirst().getAsSimpleString() + "|").append(",");
-
+      builder = builder.append("|" + var.getFirst().getAsSimpleString() + "|").append(",");
     }
     // Remove last ","
     if (builder.lastIndexOf(",") > 0) {
@@ -131,10 +140,10 @@ public class ExportStateStorage {
       }
       if (builder.lastIndexOf(",") > 0) {
         // Now, print the encoding, which variables are modified within the loop
-        if(pVarsAssignedInLoop.containsKey(state.getKey())) {
+        if (pVarsAssignedInLoop.containsKey(state.getKey())) {
           Set<String> modified = pVarsAssignedInLoop.get(state.getKey());
           builder = builder.append("[");
-          for(String var : varsPrinted) {
+          for (String var : varsPrinted) {
             builder = builder.append(modified.contains(var) ? "1" : "0").append(";");
           }
           if (builder.lastIndexOf(";") > 0) {
