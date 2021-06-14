@@ -161,7 +161,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
             }
           }
 
-          List<PathFormula> terminationCondition = new ArrayList<>();
+          Set<PredicateAbstractState> terminationCondition = new HashSet<>();
           for (AbstractState s : reached.asCollection()) {
 
             if (AbstractStates.isTargetState(s)) {
@@ -180,11 +180,22 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                 if (isAbstractionState(path.getFirstState())
                     && isAbstractionState(path.getLastState())
                     && allInnerNodesAreNonAbstractionStates(path)) {
+
+                  System.out.println(
+                      fmgr.dumpFormula(
+                              AbstractStates.extractStateByType(
+                                      path.getStatePairs()
+                                          .get(path.getStatePairs().size() - 2)
+                                          .getFirst(),
+                                      PredicateAbstractState.class)
+                                  .getPathFormula()
+                                  .getFormula())
+                          .toString());
+
                   terminationCondition.add(
                       AbstractStates.extractStateByType(
-                              path.getStatePairs().get(path.getStatePairs().size() - 1).getFirst(),
-                              PredicateAbstractState.class)
-                          .getPathFormula()); // to get the last state.
+                          path.getStatePairs().get(path.getStatePairs().size() - 1).getFirst(),
+                          PredicateAbstractState.class)); // to get the last state.
                 } else {
                   // TODO: Implement
                   logger.log(
@@ -214,7 +225,10 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           StrongestPost4Loop.serializeLoop(
               init,
               preserve,
-              terminationCondition,
+              terminationCondition
+                  .stream()
+                  .map(p -> p.getPathFormula())
+                  .collect(Collectors.toList()),
               formulaManager,
               logger,
               loopHead,
