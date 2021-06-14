@@ -123,344 +123,355 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
 
     } else {
       // Try to get the loop heads and extract the loop invariant conditions for these
+      LoopStructure loopStruct = cfa.getLoopStructure().get();
       if (cfa.getAllLoopHeads().isPresent() && cfa.getLoopStructure().isPresent()) {
 
-        LoopStructure loopStruct = cfa.getLoopStructure().get();
         Map<CFANode, Integer> lineNumbersToNodes =
             getLineNumbersToNodes(loopStruct.getAllLoopHeads());
         if (loopStruct.getCount() == 1) {
-          CFANode loopHead = cfa.getAllLoopHeads().get().asList().get(0);
-          List<AbstractState> argStateOfLoopHead = Lists.newArrayList(filter(loopHead, reached));
-
-          // TO be able to see, which predecessor nodes of the loop head are part of the loop body
-          // (and hence need to be processed differently)
-          // we first collect all nodes of the looped body
-          Set<CFANode> nodesInLoop = new HashSet<>();
-          for (Loop loop : loopStruct.getLoopsForLoopHead(loopHead)) {
-            nodesInLoop.addAll(loop.getLoopNodes());
-          }
-          Set<PathFormula> initCondition = new HashSet<>();
-          Set<PathFormula> preserveCondition = new HashSet<>();
-          Set<Pair<AbstractState, SSAMap>> ssaMaps4Loophead = new HashSet<>();
-          for (AbstractState state : filter(loopHead, reached)) {
-            Optional<PathFormula> initOpt =
-                getInitConditionForLoop(loopHead, nodesInLoop, state, reached);
-            Optional<PathFormula> presOpt =
-                getPreserveConditionForLoop(loopHead, nodesInLoop, state, reached);
-
-            if (initOpt.isPresent()) {
-              initCondition.add(initOpt.get());
-            }
-            if (presOpt.isPresent()) {
-              preserveCondition.add(presOpt.get());
-            }
-            Optional<Pair<AbstractState, SSAMap>> ssa4Loop =
-                getSSAForLoophead(loopHead, nodesInLoop, state);
-            if (ssa4Loop.isPresent()) {
-              ssaMaps4Loophead.add(ssa4Loop.get());
-            }
-          }
-
-          Set<PredicateAbstractState> terminationCondition = new HashSet<>();
-          for (AbstractState s : reached.asCollection()) {
-
-            if (AbstractStates.isTargetState(s)) {
-              Set<ARGPath> paths =
-                  ARGUtils.getAllPaths(
-                      AbstractStates.extractStateByType(argStateOfLoopHead.get(0), ARGState.class),
-                      AbstractStates.extractStateByType(s, ARGState.class),
-                      true);
-              for (ARGPath path : paths) {
-
-                // If the path contains exactly two abstraction locations, namely the first (loop
-                // head) and the last (error location) and all nodes in between are non-abstraction
-                // nodes, we know that last but one's node contains the path formula for the full
-                // path that need to be checked.
-
-                if (isAbstractionState(path.getFirstState())
-                    && isAbstractionState(path.getLastState())
-                    && allInnerNodesAreNonAbstractionStates(path)) {
-
-                  System.out.println(
-                      fmgr.dumpFormula(
-                              AbstractStates.extractStateByType(
-                                      path.getStatePairs()
-                                          .get(path.getStatePairs().size() - 2)
-                                          .getFirst(),
-                                      PredicateAbstractState.class)
-                                  .getPathFormula()
-                                  .getFormula())
-                          .toString());
-
-                  terminationCondition.add(
-                      AbstractStates.extractStateByType(
-                          path.getStatePairs().get(path.getStatePairs().size() - 1).getFirst(),
-                          PredicateAbstractState.class)); // to get the last state.
-                } else {
-                  // TODO: Implement
-                  logger.log(
-                      Level.WARNING,
-                      "Ecountered a path with intermediated states that have been abstracted. Currently, this is not supported!");
-                  throw new UnsupportedOperationException("not implemented yet");
-                }
-              }
-            }
-          }
-
-          FormulaManagerView formulaManager = solver.getFormulaManager();
-          // Finally, serialize the object
-
-          if (terminationCondition.isEmpty()) {
-            throw new CPAException(
-                String.format(
-                    "We were not able to compute a termination conditinon fot the loop %s."
-                        + " Are you sure that the loop can be exited?",
-                    loopHead));
-          }
-
-          PathFormula init = StrongestPost4Loop.merge(initCondition, formulaManager);
-          PathFormula preserve = StrongestPost4Loop.merge(preserveCondition, formulaManager);
-          Map<CFANode, PathFormula> map = new HashMap<>();
-          map.put(loopHead, getFuncDeclForNode(loopHead, init));
-          StrongestPost4Loop.serializeLoop(
-              init,
-              preserve,
-              terminationCondition
-                  .stream()
-                  .map(p -> p.getPathFormula())
-                  .collect(Collectors.toList()),
-              formulaManager,
-              logger,
-              loopHead,
-              outdirForExport,
-              map,
-              lineNumbersToNodes,
-              this.getSSAMapForAbstratLocatons(ssaMaps4Loophead));
-
+          processSingleLoop(reached, loopStruct, lineNumbersToNodes);
         } else {
-
-          Map<CFANode, PathFormula> initPathToLoopHead = new HashMap<>();
-          Map<CFANode, PathFormula> preservePathToLoopHead = new HashMap<>();
-          Map<CFANode, PathFormula> loopHeadToTermiationCond = new HashMap<>();
-          Map<CFANode, PathFormula> invariants = new HashMap<>();
-          Map<AbstractState, PathFormula> absStatesToTherePreceedingPathFormula = new HashMap<>();
-          Map<CFANode, Set<PathFormula>> otherInvariantsPresentInInit = new HashMap<>();
-          Map<CFANode, SSAMap> ssaMap4LopHeads = new HashMap<>();
-          List<CFANode> orderedLoopHeads =
-              extracted(loopStruct); // We assume that there is only a single target state
-
-          for (CFANode loopHead : orderedLoopHeads) {
-            logger.log(Level.INFO, String.format("Processing Node %s", loopHead));
-
-            Set<PathFormula> ohterInvsPresnet = new HashSet<>();
-            List<PathFormula> initPaths = new ArrayList<>();
-            List<PathFormula> preservePaths = new ArrayList<>();
-            Set<Pair<AbstractState, SSAMap>> ssaMaps4Loophead = new HashSet<>();
-            // TO be able to see, which predecessor nodes of the loop head are part of the
-            // loop body  (and hence need to be processed differently)  we first collect all
-            // nodes of the looped body
-            Set<CFANode> nodesInLoop = new HashSet<>();
-            for (Loop loop : loopStruct.getLoopsForLoopHead(loopHead)) {
-              nodesInLoop.addAll(loop.getLoopNodes());
-            }
-
-            final Set<AbstractState> filter = filter(loopHead, reached);
-            for (AbstractState state : filter) {
-              for (ARGPath path :
-                  ARGUtils.getAllPaths(
-                      reached, AbstractStates.extractStateByType(state, ARGState.class), true)) {
-                List<AbstractState> absStateOnPath = filterAbstractStatesOnPathWOLast(path);
-                Optional<PathFormula> initConditionForLoop =
-                    getInitConditionForLoop(loopHead, nodesInLoop, state, reached);
-                Optional<PathFormula> preserveConditionForLoop =
-                    getPreserveConditionForLoop(loopHead, nodesInLoop, state, reached);
-                if (preserveConditionForLoop.isPresent()) {
-                  preservePaths.add(preserveConditionForLoop.get());
-                }
-                Optional<Pair<AbstractState, SSAMap>> ssa4Loop =
-                    getSSAForLoophead(loopHead, nodesInLoop, state);
-                if (ssa4Loop.isPresent()) {
-                  ssaMaps4Loophead.add(ssa4Loop.get());
-                }
-                if (absStateOnPath.isEmpty()) {
-                  // we can "simply" take the pathFormulas from the predecessor nodes of the
-                  // loopHead
-                  if (initConditionForLoop.isPresent()) {
-                    initPaths.add(initConditionForLoop.get());
-                  }
-
-                } else {
-                  // Now, we have at least one  abstract location on the path.
-                  // DUe to the ordering we process the loopheads, we know that the inforamtion for
-                  // the direcly succesing loopheads are already computed (especiall the init, which
-                  // we can reuse).
-
-                  CFANode lastNode =
-                      AbstractStates.extractLocation(absStateOnPath.get(absStateOnPath.size() - 1));
-                  if (!invariants.containsKey(lastNode)) {
-                    logger.log(
-                        Level.WARNING,
-                        String.format(
-                            "An internal error occured. The loop %s cannot be paresd, as a preceeding loop head %s is not processed. Hence aborting!",
-                            loopHead, lastNode));
-                    throw new CPAException(
-                        "An internal error occured, see log for furhter information !");
-                  }
-                  ohterInvsPresnet.add(invariants.get(lastNode));
-                  ohterInvsPresnet.addAll(otherInvariantsPresentInInit.get(lastNode));
-                  // Build initCOnd4Loop as follows:
-                  //                  sp(lastNode) \wedge inv(lastNode \wedge iniCondForLoop
-                  if (initConditionForLoop.isPresent()) {
-                    absStatesToTherePreceedingPathFormula.put(state, initConditionForLoop.get());
-
-                    PathFormula combinedInit =
-                        StrongestPost4Loop.merge(
-                            Lists.newArrayList(
-                                initPathToLoopHead.get(lastNode),
-                                invariants.get(lastNode),
-                                initConditionForLoop.get()),
-                            fmgr);
-                    initPaths.add(combinedInit);
-                  }
-                }
-              }
-            }
-            PathFormula initPF = StrongestPost4Loop.merge(initPaths, fmgr);
-            initPathToLoopHead.put(loopHead, initPF);
-            ssaMap4LopHeads.put(loopHead, getSSAMapForAbstratLocatons(ssaMaps4Loophead));
-            final PathFormula preserve = StrongestPost4Loop.merge(preservePaths, fmgr);
-            preservePathToLoopHead.put(loopHead, preserve);
-            otherInvariantsPresentInInit.put(loopHead, ohterInvsPresnet);
-            logger.log(
-                Level.INFO,
-                String.format(
-                    "Processing Node %s finished. Added information are: \n"
-                        + "init: %s \n  preserve: %s \n",
-                    loopHead, initPF.getFormula(), preserve.getFormula()));
-            // now, we can create a pathformula for the invariant (needed for later verification)
-
-            invariants.put(loopHead, getFuncDeclForNode(loopHead, initPF));
-          }
-
-          // Compute termiantoin condition:
-
-          // now, we compute for each loophead the termination condition.
-          // therefore, we firstly add the pathFormula from the target locations to the map
-          // absStatesToTherePreceedingPathFormula which then contains the path formula for all
-          // abstract states
-
-          for (AbstractState target : AbstractStates.getTargetStates(reached)) {
-            for (ARGPath path :
-                ARGUtils.getAllPaths(
-                    reached, AbstractStates.extractStateByType(target, ARGState.class), true)) {
-              PathFormula pfTargetNode =
-                  AbstractStates.extractStateByType(
-                          path.getStatePairs().get(path.getStatePairs().size() - 1).getFirst(),
-                          PredicateAbstractState.class)
-                      .getPathFormula(); // to get the last state.
-              absStatesToTherePreceedingPathFormula.put(target, pfTargetNode);
-            }
-          }
-
-          // next, we compute for each loophead all path leading to any target state and replace
-          // each abstract note with the path formula stored in
-          // absStatesToTherePreceedingPathFormula
-          // Moreover, loop heads are additionally conjoined with the predicate for the
-          // loopInvariant to correctly abstrct llops accoridng to ssa
-
-          // TODO: Discuss, if there is a easier way without that much recomputation.
-
-          for (CFANode loopHead : loopStruct.getAllLoopHeads()) {
-            Set<PathFormula> allPathFormulae = new HashSet<>();
-            for (AbstractState state : filter(loopHead, reached)) {
-              for (AbstractState target : AbstractStates.getTargetStates(reached)) {
-                final Set<ARGPath> allPaths =
-                    ARGUtils.getAllPaths(
-                        AbstractStates.extractStateByType(state, ARGState.class),
-                        AbstractStates.extractStateByType(target, ARGState.class),
-                        true);
-                for (ARGPath path : allPaths) {
-                  List<PathFormula> pfOnPath = new ArrayList<>();
-                  List<AbstractState> absStateOnPath = filterAbstractStatesOnPath(path);
-                  for (AbstractState absState : absStateOnPath) {
-                    if (absStatesToTherePreceedingPathFormula.containsKey(absState)) {
-                      pfOnPath.add(absStatesToTherePreceedingPathFormula.get(absState));
-                      if (isLoopHead(absState)) {
-                        pfOnPath.add(invariants.get(AbstractStates.extractLocation(absState)));
-                      }
-                    }
-                  }
-                  if (!pfOnPath.isEmpty()) {
-                    allPathFormulae.add(StrongestPost4Loop.merge(pfOnPath, fmgr));
-                  }
-                }
-              }
-            }
-            if (allPathFormulae.isEmpty()) {
-              throw new CPAException(
-                  String.format(
-                      "We were not able to compute a termination conditinon fot the loop %s."
-                          + " Are you sure that the loop can be exited?",
-                      loopHead));
-            }
-
-            loopHeadToTermiationCond.put(loopHead, StrongestPost4Loop.merge(allPathFormulae, fmgr));
-          }
-
-          //                if (isAbstractionState(path.getLastState())
-          //                    && allInnerNodesAreNonAbstractionStates(path)) {
-          //                  // there is no abstraction state except the last on the path. Hence
-          // the path
-          //                  // formula covers the full path
-          //
-          //
-          //                  terminationConditions.add(pf)pfTargetNode            } else {
-          //                // There is at least one  loop on the path.
-          //                // We compute the termination condition as follows:
-          //                CFANode lastNode =
-          // AbstractStates.extractLocation(absPath.get(absPath.size() - 2));
-          //                if (!invariants.containsKey(lastNode)) {
-          //                  logger.log(
-          //                      Level.WARNING,
-          //                      String.format(
-          //                          "An internal error occured. The loop %s cannot be paresd, as a
-          // preceeding loop head %s is not processed. Hence aborting!",
-          //                          target, lastNode));
-          //                  throw new CPAException(
-          //                      "An internal error occured, see log for furhter information !");
-          //                }
-          //                terminationConditions.add(invariants.get(lastNode));
-          //              }
-          //            }
-          //          }
-
-          // Finally, serialize the objectes
-          for (CFANode loopHead : orderedLoopHeads) {
-
-            if (!loopHeadToTermiationCond.containsKey(loopHead)) {
-              throw new CPAException(
-                  String.format(
-                      "We were not able to compute a termination conditinon fot the loop %s."
-                          + " Are you sure that the loop can be exited?",
-                      loopHead));
-            }
-
-            StrongestPost4Loop.serializeLoop(
-                initPathToLoopHead.get(loopHead),
-                preservePathToLoopHead.get(loopHead),
-                loopHeadToTermiationCond.get(loopHead),
-                fmgr,
-                logger,
-                loopHead,
-                outdirForExport,
-                invariants,
-                lineNumbersToNodes,
-                ssaMap4LopHeads.get(loopHead));
-          }
+          processConsecutiveLoops(reached, loopStruct, lineNumbersToNodes);
         }
       }
       return status;
     }
+  }
+
+  private void processConsecutiveLoops(
+      PartitionedReachedSet reached,
+      LoopStructure loopStruct,
+      Map<CFANode, Integer> lineNumbersToNodes)
+      throws CPAException, InterruptedException {
+    Map<CFANode, PathFormula> initPathToLoopHead = new HashMap<>();
+    Map<CFANode, PathFormula> preservePathToLoopHead = new HashMap<>();
+    Map<CFANode, PathFormula> loopHeadToTermiationCond = new HashMap<>();
+    Map<CFANode, PathFormula> invariants = new HashMap<>();
+    Map<AbstractState, PathFormula> absStatesToTherePreceedingPathFormula = new HashMap<>();
+    Map<CFANode, Set<PathFormula>> otherInvariantsPresentInInit = new HashMap<>();
+    Map<CFANode, SSAMap> ssaMap4LopHeads = new HashMap<>();
+    List<CFANode> orderedLoopHeads =
+        extracted(loopStruct); // We assume that there is only a single target state
+
+    for (CFANode loopHead : orderedLoopHeads) {
+      logger.log(Level.INFO, String.format("Processing Node %s", loopHead));
+
+      Set<PathFormula> ohterInvsPresnet = new HashSet<>();
+      List<PathFormula> initPaths = new ArrayList<>();
+      List<PathFormula> preservePaths = new ArrayList<>();
+      Set<Pair<AbstractState, SSAMap>> ssaMaps4Loophead = new HashSet<>();
+      // TO be able to see, which predecessor nodes of the loop head are part of the
+      // loop body  (and hence need to be processed differently)  we first collect all
+      // nodes of the looped body
+      Set<CFANode> nodesInLoop = new HashSet<>();
+      for (Loop loop : loopStruct.getLoopsForLoopHead(loopHead)) {
+        nodesInLoop.addAll(loop.getLoopNodes());
+      }
+
+      final Set<AbstractState> filter = filter(loopHead, reached);
+      for (AbstractState state : filter) {
+        for (ARGPath path :
+            ARGUtils.getAllPaths(
+                reached, AbstractStates.extractStateByType(state, ARGState.class), true)) {
+          List<AbstractState> absStateOnPath = filterAbstractStatesOnPathWOLast(path);
+          Optional<PathFormula> initConditionForLoop =
+              getInitConditionForLoop(loopHead, nodesInLoop, state, reached);
+          Optional<PathFormula> preserveConditionForLoop =
+              getPreserveConditionForLoop(loopHead, nodesInLoop, state, reached);
+          if (preserveConditionForLoop.isPresent()) {
+            preservePaths.add(preserveConditionForLoop.get());
+          }
+          Optional<Pair<AbstractState, SSAMap>> ssa4Loop =
+              getSSAForLoophead(loopHead, nodesInLoop, state);
+          if (ssa4Loop.isPresent()) {
+            ssaMaps4Loophead.add(ssa4Loop.get());
+          }
+          if (absStateOnPath.isEmpty()) {
+            // we can "simply" take the pathFormulas from the predecessor nodes of the
+            // loopHead
+            if (initConditionForLoop.isPresent()) {
+              initPaths.add(initConditionForLoop.get());
+            }
+
+          } else {
+            // Now, we have at least one  abstract location on the path.
+            // DUe to the ordering we process the loopheads, we know that the inforamtion for
+            // the direcly succesing loopheads are already computed (especiall the init, which
+            // we can reuse).
+
+            CFANode lastNode =
+                AbstractStates.extractLocation(absStateOnPath.get(absStateOnPath.size() - 1));
+            if (!invariants.containsKey(lastNode)) {
+              logger.log(
+                  Level.WARNING,
+                  String.format(
+                      "An internal error occured. The loop %s cannot be paresd, as a preceeding loop head %s is not processed. Hence aborting!",
+                      loopHead, lastNode));
+              throw new CPAException(
+                  "An internal error occured, see log for furhter information !");
+            }
+            ohterInvsPresnet.add(invariants.get(lastNode));
+            ohterInvsPresnet.addAll(otherInvariantsPresentInInit.get(lastNode));
+            // Build initCOnd4Loop as follows:
+            //                  sp(lastNode) \wedge inv(lastNode \wedge iniCondForLoop
+            if (initConditionForLoop.isPresent()) {
+              absStatesToTherePreceedingPathFormula.put(state, initConditionForLoop.get());
+
+              PathFormula combinedInit =
+                  StrongestPost4Loop.merge(
+                      Lists.newArrayList(
+                          initPathToLoopHead.get(lastNode),
+                          invariants.get(lastNode),
+                          initConditionForLoop.get()),
+                      fmgr);
+              initPaths.add(combinedInit);
+            }
+          }
+        }
+      }
+      PathFormula initPF = StrongestPost4Loop.merge(initPaths, fmgr);
+      initPathToLoopHead.put(loopHead, initPF);
+      ssaMap4LopHeads.put(loopHead, getSSAMapForAbstratLocatons(ssaMaps4Loophead));
+      final PathFormula preserve = StrongestPost4Loop.merge(preservePaths, fmgr);
+      preservePathToLoopHead.put(loopHead, preserve);
+      otherInvariantsPresentInInit.put(loopHead, ohterInvsPresnet);
+      logger.log(
+          Level.INFO,
+          String.format(
+              "Processing Node %s finished. Added information are: \n"
+                  + "init: %s \n  preserve: %s \n",
+              loopHead, initPF.getFormula(), preserve.getFormula()));
+      // now, we can create a pathformula for the invariant (needed for later verification)
+
+      invariants.put(loopHead, getFuncDeclForNode(loopHead, initPF));
+    }
+
+    // Compute termiantoin condition:
+
+    // now, we compute for each loophead the termination condition.
+    // therefore, we firstly add the pathFormula from the target locations to the map
+    // absStatesToTherePreceedingPathFormula which then contains the path formula for all
+    // abstract states
+
+    for (AbstractState target : AbstractStates.getTargetStates(reached)) {
+      for (ARGPath path :
+          ARGUtils.getAllPaths(
+              reached, AbstractStates.extractStateByType(target, ARGState.class), true)) {
+        PathFormula pfTargetNode =
+            AbstractStates.extractStateByType(
+                    path.getStatePairs().get(path.getStatePairs().size() - 1).getFirst(),
+                    PredicateAbstractState.class)
+                .getPathFormula(); // to get the last state.
+        absStatesToTherePreceedingPathFormula.put(target, pfTargetNode);
+      }
+    }
+
+    // next, we compute for each loophead all path leading to any target state and replace
+    // each abstract note with the path formula stored in
+    // absStatesToTherePreceedingPathFormula
+    // Moreover, loop heads are additionally conjoined with the predicate for the
+    // loopInvariant to correctly abstrct llops accoridng to ssa
+
+    // TODO: Discuss, if there is a easier way without that much recomputation.
+
+    for (CFANode loopHead : loopStruct.getAllLoopHeads()) {
+      Set<PathFormula> allPathFormulae = new HashSet<>();
+      for (AbstractState state : filter(loopHead, reached)) {
+        for (AbstractState target : AbstractStates.getTargetStates(reached)) {
+          final Set<ARGPath> allPaths =
+              ARGUtils.getAllPaths(
+                  AbstractStates.extractStateByType(state, ARGState.class),
+                  AbstractStates.extractStateByType(target, ARGState.class),
+                  true);
+          for (ARGPath path : allPaths) {
+            List<PathFormula> pfOnPath = new ArrayList<>();
+            List<AbstractState> absStateOnPath = filterAbstractStatesOnPath(path);
+            for (AbstractState absState : absStateOnPath) {
+              if (absStatesToTherePreceedingPathFormula.containsKey(absState)) {
+                pfOnPath.add(absStatesToTherePreceedingPathFormula.get(absState));
+                if (isLoopHead(absState)) {
+                  pfOnPath.add(invariants.get(AbstractStates.extractLocation(absState)));
+                }
+              }
+            }
+            if (!pfOnPath.isEmpty()) {
+              allPathFormulae.add(StrongestPost4Loop.merge(pfOnPath, fmgr));
+            }
+          }
+        }
+      }
+      if (allPathFormulae.isEmpty()) {
+        throw new CPAException(
+            String.format(
+                "We were not able to compute a termination conditinon fot the loop %s."
+                    + " Are you sure that the loop can be exited?",
+                loopHead));
+      }
+
+      loopHeadToTermiationCond.put(loopHead, StrongestPost4Loop.merge(allPathFormulae, fmgr));
+    }
+
+    //                if (isAbstractionState(path.getLastState())
+    //                    && allInnerNodesAreNonAbstractionStates(path)) {
+    //                  // there is no abstraction state except the last on the path. Hence
+    // the path
+    //                  // formula covers the full path
+    //
+    //
+    //                  terminationConditions.add(pf)pfTargetNode            } else {
+    //                // There is at least one  loop on the path.
+    //                // We compute the termination condition as follows:
+    //                CFANode lastNode =
+    // AbstractStates.extractLocation(absPath.get(absPath.size() - 2));
+    //                if (!invariants.containsKey(lastNode)) {
+    //                  logger.log(
+    //                      Level.WARNING,
+    //                      String.format(
+    //                          "An internal error occured. The loop %s cannot be paresd, as a
+    // preceeding loop head %s is not processed. Hence aborting!",
+    //                          target, lastNode));
+    //                  throw new CPAException(
+    //                      "An internal error occured, see log for furhter information !");
+    //                }
+    //                terminationConditions.add(invariants.get(lastNode));
+    //              }
+    //            }
+    //          }
+
+    // Finally, serialize the objectes
+    for (CFANode loopHead : orderedLoopHeads) {
+
+      if (!loopHeadToTermiationCond.containsKey(loopHead)) {
+        throw new CPAException(
+            String.format(
+                "We were not able to compute a termination conditinon fot the loop %s."
+                    + " Are you sure that the loop can be exited?",
+                loopHead));
+      }
+
+      StrongestPost4Loop.serializeLoop(
+          initPathToLoopHead.get(loopHead),
+          preservePathToLoopHead.get(loopHead),
+          loopHeadToTermiationCond.get(loopHead),
+          fmgr,
+          logger,
+          loopHead,
+          outdirForExport,
+          invariants,
+          lineNumbersToNodes,
+          ssaMap4LopHeads.get(loopHead));
+    }
+  }
+
+  private void processSingleLoop(
+      PartitionedReachedSet reached,
+      LoopStructure loopStruct,
+      Map<CFANode, Integer> lineNumbersToNodes)
+      throws CPAException {
+    CFANode loopHead = cfa.getAllLoopHeads().get().asList().get(0);
+    List<AbstractState> argStateOfLoopHead = Lists.newArrayList(filter(loopHead, reached));
+
+    // TO be able to see, which predecessor nodes of the loop head are part of the loop body
+    // (and hence need to be processed differently)
+    // we first collect all nodes of the looped body
+    Set<CFANode> nodesInLoop = new HashSet<>();
+    for (Loop loop : loopStruct.getLoopsForLoopHead(loopHead)) {
+      nodesInLoop.addAll(loop.getLoopNodes());
+    }
+    Set<PathFormula> initCondition = new HashSet<>();
+    Set<PathFormula> preserveCondition = new HashSet<>();
+    Set<Pair<AbstractState, SSAMap>> ssaMaps4Loophead = new HashSet<>();
+    for (AbstractState state : filter(loopHead, reached)) {
+      Optional<PathFormula> initOpt =
+          getInitConditionForLoop(loopHead, nodesInLoop, state, reached);
+      Optional<PathFormula> presOpt =
+          getPreserveConditionForLoop(loopHead, nodesInLoop, state, reached);
+
+      if (initOpt.isPresent()) {
+        initCondition.add(initOpt.get());
+      }
+      if (presOpt.isPresent()) {
+        preserveCondition.add(presOpt.get());
+      }
+      Optional<Pair<AbstractState, SSAMap>> ssa4Loop =
+          getSSAForLoophead(loopHead, nodesInLoop, state);
+      if (ssa4Loop.isPresent()) {
+        ssaMaps4Loophead.add(ssa4Loop.get());
+      }
+    }
+
+    Set<PredicateAbstractState> terminationCondition = new HashSet<>();
+    for (AbstractState s : reached.asCollection()) {
+
+      if (AbstractStates.isTargetState(s)) {
+        Set<ARGPath> paths =
+            ARGUtils.getAllPaths(
+                AbstractStates.extractStateByType(argStateOfLoopHead.get(0), ARGState.class),
+                AbstractStates.extractStateByType(s, ARGState.class),
+                true);
+        for (ARGPath path : paths) {
+
+          // If the path contains exactly two abstraction locations, namely the first (loop
+          // head) and the last (error location) and all nodes in between are non-abstraction
+          // nodes, we know that last but one's node contains the path formula for the full
+          // path that need to be checked.
+
+          if (isAbstractionState(path.getFirstState())
+              && isAbstractionState(path.getLastState())
+              && allInnerNodesAreNonAbstractionStates(path)) {
+
+            System.out.println(
+                fmgr.dumpFormula(
+                        AbstractStates.extractStateByType(
+                                path.getStatePairs()
+                                    .get(path.getStatePairs().size() - 2)
+                                    .getFirst(),
+                                PredicateAbstractState.class)
+                            .getPathFormula()
+                            .getFormula())
+                    .toString());
+
+            terminationCondition.add(
+                AbstractStates.extractStateByType(
+                    path.getStatePairs().get(path.getStatePairs().size() - 1).getFirst(),
+                    PredicateAbstractState.class)); // to get the last state.
+          } else {
+            // TODO: Implement
+            logger.log(
+                Level.WARNING,
+                "Ecountered a path with intermediated states that have been abstracted. Currently, this is not supported!");
+            throw new UnsupportedOperationException("not implemented yet");
+          }
+        }
+      }
+    }
+
+    FormulaManagerView formulaManager = solver.getFormulaManager();
+    // Finally, serialize the object
+
+    if (terminationCondition.isEmpty()) {
+      throw new CPAException(
+          String.format(
+              "We were not able to compute a termination conditinon fot the loop %s."
+                  + " Are you sure that the loop can be exited?",
+              loopHead));
+    }
+
+    PathFormula init = StrongestPost4Loop.merge(initCondition, formulaManager);
+    PathFormula preserve = StrongestPost4Loop.merge(preserveCondition, formulaManager);
+    Map<CFANode, PathFormula> map = new HashMap<>();
+    map.put(loopHead, getFuncDeclForNode(loopHead, init));
+    StrongestPost4Loop.serializeLoop(
+        init,
+        preserve,
+        terminationCondition.stream().map(p -> p.getPathFormula()).collect(Collectors.toList()),
+        formulaManager,
+        logger,
+        loopHead,
+        outdirForExport,
+        map,
+        lineNumbersToNodes,
+        this.getSSAMapForAbstratLocatons(ssaMaps4Loophead));
   }
 
   private boolean isLoopHead(AbstractState pAbsState) {
@@ -560,6 +571,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
       throws CPAException {
 
     List<PathFormula> initCondition = new ArrayList<>();
+
     for (int i = 0; i < loopHead.getNumEnteringEdges(); i++) {
       CFANode predOfLoopHead = loopHead.getEnteringEdge(i).getPredecessor();
       if (!nodesInLoop.contains(predOfLoopHead)) {
