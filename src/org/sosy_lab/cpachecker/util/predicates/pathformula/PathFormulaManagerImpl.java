@@ -99,6 +99,9 @@ public class PathFormulaManagerImpl implements PathFormulaManager {
     SYMBOLICLOCATIONS
   }
 
+
+
+
   private static final String BRANCHING_PREDICATE_NAME = "__ART__";
   private static final Pattern BRANCHING_PREDICATE_NAME_PATTERN = Pattern.compile(
       "^.*" + BRANCHING_PREDICATE_NAME + "(?=\\d+$)");
@@ -315,6 +318,11 @@ public class PathFormulaManagerImpl implements PathFormulaManager {
         m,
         pPts,
         oldFormula.getLength());
+  }
+
+  @Override
+  public CtoFormulaConverter getConverter() {
+    return converter;
   }
 
   @Override

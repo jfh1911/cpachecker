@@ -38,8 +38,10 @@ import org.sosy_lab.common.configuration.Option;
 import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
+import org.sosy_lab.cpachecker.cfa.model.AssumeEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
+import org.sosy_lab.cpachecker.cfa.model.c.CAssumeEdge;
 import org.sosy_lab.cpachecker.core.algorithm.Algorithm;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
@@ -51,14 +53,19 @@ import org.sosy_lab.cpachecker.cpa.arg.path.ARGPath;
 import org.sosy_lab.cpachecker.cpa.predicate.PredicateAbstractState;
 import org.sosy_lab.cpachecker.cpa.predicate.PredicateCPA;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
+import org.sosy_lab.cpachecker.exceptions.CPATransferException;
+import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 import org.sosy_lab.cpachecker.util.AbstractStates;
 import org.sosy_lab.cpachecker.util.CFAUtils;
 import org.sosy_lab.cpachecker.util.CPAs;
 import org.sosy_lab.cpachecker.util.LoopStructure;
 import org.sosy_lab.cpachecker.util.LoopStructure.Loop;
 import org.sosy_lab.cpachecker.util.Pair;
+import org.sosy_lab.cpachecker.util.Triple;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
+import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormulaManager;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.SSAMap;
+import org.sosy_lab.cpachecker.util.predicates.pathformula.ctoformula.CtoFormulaConverter;
 import org.sosy_lab.cpachecker.util.predicates.smt.FormulaManagerView;
 import org.sosy_lab.cpachecker.util.predicates.smt.Solver;
 import org.sosy_lab.java_smt.api.BooleanFormula;
@@ -84,6 +91,10 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
   FormulaManagerView fmgr;
   private ShutdownNotifier shutdown;
 
+  private PathFormulaManager pfManager;
+
+  private CtoFormulaConverter converter;
+
   public ErrorTraceExportAlgorithm(
       Configuration config,
       Algorithm pAlgorithm,
@@ -103,6 +114,8 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
         CPAs.retrieveCPAOrFail(pCpa, PredicateCPA.class, ErrorTraceExportAlgorithm.class);
     solver = predCPA.getSolver();
     fmgr = solver.getFormulaManager();
+    pfManager = predCPA.getPathFormulaManager();
+    converter = pfManager.getConverter();
     this.shutdown = pShutdown;
   }
 
@@ -224,6 +237,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                           invariants.get(lastNode),
                           initConditionForLoop.get()),
                       fmgr);
+
               initPaths.add(combinedInit);
             }
           }
@@ -367,8 +381,9 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
       PartitionedReachedSet reached,
       LoopStructure loopStruct,
       Map<CFANode, Integer> lineNumbersToNodes)
-      throws CPAException {
+      throws CPAException, InterruptedException {
     CFANode loopHead = cfa.getAllLoopHeads().get().asList().get(0);
+
     List<AbstractState> argStateOfLoopHead = Lists.newArrayList(filter(loopHead, reached));
 
     // TO be able to see, which predecessor nodes of the loop head are part of the loop body
@@ -381,11 +396,10 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     Set<PathFormula> initCondition = new HashSet<>();
     Set<PathFormula> preserveCondition = new HashSet<>();
     Set<Pair<AbstractState, SSAMap>> ssaMaps4Loophead = new HashSet<>();
-    for (AbstractState state : filter(loopHead, reached)) {
-      Optional<PathFormula> initOpt =
-          getInitConditionForLoop(loopHead, nodesInLoop, state, reached);
+    for (AbstractState loopHeadAbstractState : argStateOfLoopHead) {
+      Optional<PathFormula> initOpt = getInitConditionForLoop(loopHead, loopHeadAbstractState);
       Optional<PathFormula> presOpt =
-          getPreserveConditionForLoop(loopHead, nodesInLoop, state, reached);
+          getPreserveConditionForLoop(loopHead, nodesInLoop, loopHeadAbstractState, reached);
 
       if (initOpt.isPresent()) {
         initCondition.add(initOpt.get());
@@ -394,19 +408,29 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
         preserveCondition.add(presOpt.get());
       }
       Optional<Pair<AbstractState, SSAMap>> ssa4Loop =
-          getSSAForLoophead(loopHead, nodesInLoop, state);
+          getSSAForLoophead(loopHead, nodesInLoop, loopHeadAbstractState);
       if (ssa4Loop.isPresent()) {
         ssaMaps4Loophead.add(ssa4Loop.get());
       }
     }
 
-    Set<PredicateAbstractState> terminationCondition = new HashSet<>();
+    Set<Pair<PathFormula, PathFormula>> postConditionAndAssertion = new HashSet<>();
     for (AbstractState s : reached.asCollection()) {
 
       if (AbstractStates.isTargetState(s)) {
+        // only compute the termination condition once per loop
         Set<ARGPath> paths =
             ARGUtils.getAllPaths(
-                AbstractStates.extractStateByType(argStateOfLoopHead.get(0), ARGState.class),
+                AbstractStates.extractStateByType(
+                    argStateOfLoopHead
+                        .stream()
+                        .filter(
+                            state ->
+                                !AbstractStates.extractStateByType(state, ARGState.class)
+                                    .isCovered())
+                        .findFirst()
+                        .get(),
+                    ARGState.class),
                 AbstractStates.extractStateByType(s, ARGState.class),
                 true);
         for (ARGPath path : paths) {
@@ -420,21 +444,23 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
               && isAbstractionState(path.getLastState())
               && allInnerNodesAreNonAbstractionStates(path)) {
 
-            System.out.println(
-                fmgr.dumpFormula(
-                        AbstractStates.extractStateByType(
-                                path.getStatePairs()
-                                    .get(path.getStatePairs().size() - 2)
-                                    .getFirst(),
-                                PredicateAbstractState.class)
-                            .getPathFormula()
-                            .getFormula())
-                    .toString());
+            Optional<AbstractState> stateBeforeAssertion = getStateWithAssertion(path);
+            if (stateBeforeAssertion.isPresent()) {
+              @Nullable
+              PredicateAbstractState predState =
+                  AbstractStates.extractStateByType(
+                      stateBeforeAssertion.get(), PredicateAbstractState.class);
 
-            terminationCondition.add(
-                AbstractStates.extractStateByType(
-                    path.getStatePairs().get(path.getStatePairs().size() - 1).getFirst(),
-                    PredicateAbstractState.class)); // to get the last state.
+              // Update the path with the pbranching information
+              PathFormula pathFormula = addBranchingCondition(predState.getPathFormula(), path);
+              postConditionAndAssertion.add(
+                  Pair.of(
+                      pathFormula,
+                      getAssertion(
+                          predState,
+                          AbstractStates.extractLocation(stateBeforeAssertion.get()),
+                          path)));
+            }
           } else {
             // TODO: Implement
             logger.log(
@@ -449,7 +475,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     FormulaManagerView formulaManager = solver.getFormulaManager();
     // Finally, serialize the object
 
-    if (terminationCondition.isEmpty()) {
+    if (postConditionAndAssertion.isEmpty()) {
       throw new CPAException(
           String.format(
               "We were not able to compute a termination conditinon fot the loop %s."
@@ -464,7 +490,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     StrongestPost4Loop.serializeLoop(
         init,
         preserve,
-        terminationCondition.stream().map(p -> p.getPathFormula()).collect(Collectors.toList()),
+        postConditionAndAssertion,
         formulaManager,
         logger,
         loopHead,
@@ -472,6 +498,49 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
         map,
         lineNumbersToNodes,
         this.getSSAMapForAbstratLocatons(ssaMaps4Loophead));
+  }
+
+  private @Nullable PathFormula getAssertion(
+      PredicateAbstractState pStateBeforeAssertion, CFANode locOfStateBeforeAssertion, ARGPath pPath) throws CPATransferException, InterruptedException {
+    PathFormula oldPF = pStateBeforeAssertion.getPathFormula();
+    PathFormula res = new PathFormula(fmgr.getBooleanFormulaManager().makeTrue(), oldPF.getSsa(), oldPF.getPointerTargetSet(), oldPF.getLength());
+
+    boolean start = false;
+    //Iterate through all edges of the path and start to build the path fromula from pStateBeforeAssertion to last state
+    for(CFAEdge e : pPath.getFullPath()) {
+      if (start) {
+        res = pfManager.makeAnd(res, e);
+      }else if (e.getSuccessor().equals(locOfStateBeforeAssertion)) {
+        start = true;
+      }
+    }
+    return res;
+
+  }
+
+  private Optional<AbstractState> getStateWithAssertion(ARGPath pPath) {
+    for (Pair<ARGState, ARGState> pair : pPath.getStatePairs()) {
+      CFAEdge e = pair.getFirst().getEdgeToChild(pair.getSecond());
+      if (Objects.nonNull(e)
+          && AbstractStates.extractLocation(pair.getFirst())
+              .getFunctionName()
+              .equals("__VERIFIER_assert")) {
+        if (e instanceof AssumeEdge &&  ((AssumeEdge) e).getTruthAssumption()) { // as the function says: if (! cond) {Error}
+          return Optional.ofNullable(
+             pair.getFirst());
+        }
+      }
+    }
+    return Optional.empty();
+  }
+
+  private Optional<PathFormula> getInitConditionForLoop(
+      CFANode pLoopHead,
+      Set<CFANode> pNodesInLoop,
+      AbstractState pState,
+      PartitionedReachedSet pReached) {
+    // TODO Auto-generated method stub
+    return null;
   }
 
   private boolean isLoopHead(AbstractState pAbsState) {
@@ -564,29 +633,36 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
   }
 
   private Optional<PathFormula> getInitConditionForLoop(
-      CFANode loopHead,
-      Set<CFANode> nodesInLoop,
-      AbstractState pAbstractState,
-      PartitionedReachedSet reached)
-      throws CPAException {
+      CFANode loopHead, AbstractState pLoopHeadAbstractState) {
 
-    List<PathFormula> initCondition = new ArrayList<>();
-
-    for (int i = 0; i < loopHead.getNumEnteringEdges(); i++) {
-      CFANode predOfLoopHead = loopHead.getEnteringEdge(i).getPredecessor();
-      if (!nodesInLoop.contains(predOfLoopHead)) {
-        // This is the path from the last abstraction location to the loophead
-
-        Optional<PathFormula> pf = getPathFormulaOfNode(predOfLoopHead, reached, pAbstractState);
-        if (pf.isPresent()) {
-          initCondition.add(pf.get());
-        }
-      }
-    }
-    if (initCondition.isEmpty()) {
+    @Nullable PredicateAbstractState loopHeadPredState = AbstractStates.extractStateByType(pLoopHeadAbstractState, PredicateAbstractState.class);
+    // Ensure that this is a abstraction location and the loop head is visited only once (no loop
+    // iteration is taken)
+    if (loopHeadPredState.isAbstractionState()
+        && loopHeadPredState.getAbstractionLocationsOnPath().getOrDefault(loopHead, 0) < 2) {
+      return Optional.of(loopHeadPredState.getAbstractionFormula().getBlockFormula());
+    } else {
       return Optional.empty();
     }
-    return Optional.of(StrongestPost4Loop.merge(initCondition, fmgr));
+    //    // TODO: Remove, as probably obsolte
+    //        List<PathFormula> initCondition = new ArrayList<>();
+    //
+    //        for (int i = 0; i < loopHead.getNumEnteringEdges(); i++) {
+    //          CFANode predOfLoopHead = loopHead.getEnteringEdge(i).getPredecessor();
+    //          if (!nodesInLoop.contains(predOfLoopHead)) {
+    //            // This is the path from the last abstraction location to the loophead
+    //
+    //            Optional<PathFormula> pf = getPathFormulaOfNode(predOfLoopHead, reached,
+    //     pLoopHeadAbstractState);
+    //            if (pf.isPresent()) {
+    //              initCondition.add(pf.get());
+    //            }
+    //          }
+    //        }
+    //        if (initCondition.isEmpty()) {
+    //          return Optional.empty();
+    //        }
+    //        return Optional.of(StrongestPost4Loop.merge(initCondition, fmgr));
   }
   /**
    * Looks for all nodes that leaf the loop and takes the ssa map of these nodes
@@ -784,4 +860,52 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     }
     return Optional.empty();
   }
+
+
+  private PathFormula addBranchingCondition(PathFormula pathFormula, ARGPath path) throws UnrecognizedCodeException, InterruptedException {
+    // Add the branching conditions
+    List<BooleanFormula> pathConditions = Lists.newArrayList();
+
+
+      for( Triple<ARGState, CFAEdge, ARGState> e:iterate(path)) {
+      if (e.getSecond() instanceof CAssumeEdge) {
+        CAssumeEdge assume = (CAssumeEdge) e.getSecond();
+        @Nullable
+        PredicateAbstractState predState =
+            AbstractStates.extractStateByType(e.getFirst(), PredicateAbstractState.class);
+       BooleanFormula pred = converter.makePredicate(
+            assume.getExpression(),
+            assume,
+            AbstractStates.extractLocation(e.getFirst()).getFunctionName(),
+            predState.getPathFormula().getSsa().builder());
+        if (assume.getTruthAssumption()) {
+
+          pathConditions.add(pred);
+        } else {
+          pathConditions.add(fmgr.getBooleanFormulaManager().not(pred));
+        }
+      }
+    }
+
+    BooleanFormula and = fmgr.getBooleanFormulaManager().and(pathConditions);
+    and = fmgr.uninstantiate(and);
+    return pfManager.makeAnd(pathFormula, and);
+  }
+
+  private List<Triple<ARGState, CFAEdge, ARGState>> iterate(ARGPath path){
+
+    List<Triple<ARGState, CFAEdge, ARGState>>  res = new ArrayList<>();
+
+    List<CFAEdge> edges = path.getFullPath();
+    List<Pair<ARGState, ARGState>> nodePairs = path.getStatePairs();
+    if(edges.size() != nodePairs.size() ) {
+      throw new IllegalArgumentException("The path is not formed well "+ path.toString());
+    }
+    for (int i =0; i <edges.size(); i++) {
+
+      res.add(Triple.of(nodePairs.get(i).getFirst(), edges.get(i), nodePairs.get(i).getSecond()));
+    }
+return res;
+  }
+
 }

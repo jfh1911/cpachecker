@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -193,5 +194,20 @@ public class StrongestPost4Loop {
         map,
         tempList.get(maxIndexAt).getPointerTargetSet(),
         tempList.get(maxIndexAt).getLength());
+  }
+
+  public static void serializeLoop(
+      PathFormula pInit,
+      PathFormula pPreserve,
+      Set<Pair<PathFormula, PathFormula>> pPostConditionAndAssertion,
+      FormulaManagerView pFormulaManager,
+      LogManager pLogger,
+      CFANode pLoopHead,
+      String pOutdirForExport,
+      Map<CFANode, PathFormula> pMap,
+      Map<CFANode, Integer> pLineNumbersToNodes,
+      SSAMap pSsaMapForAbstratLocatons) {
+    // TODO Auto-generated method stub
+
   }
 }

@@ -27,6 +27,7 @@ import org.sosy_lab.cpachecker.exceptions.UnrecognizedCFAEdgeException;
 import org.sosy_lab.cpachecker.exceptions.UnrecognizedCodeException;
 import org.sosy_lab.cpachecker.util.Pair;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.SSAMap.SSAMapBuilder;
+import org.sosy_lab.cpachecker.util.predicates.pathformula.ctoformula.CtoFormulaConverter;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.pointeraliasing.PointerTargetSet;
 import org.sosy_lab.cpachecker.util.statistics.ThreadSafeTimerContainer;
 import org.sosy_lab.cpachecker.util.statistics.ThreadSafeTimerContainer.TimerWrapper;
@@ -177,6 +178,8 @@ public class CachingPathFormulaManager implements PathFormulaManager {
     return delegate.makeAnd(pPathFormula, pAssumption);
   }
 
+
+
   @Override
   @Deprecated
   public PathFormula makeNewPathFormula(PathFormula pOldFormula, SSAMap pM) {
@@ -274,5 +277,10 @@ public class CachingPathFormulaManager implements PathFormulaManager {
   @Override
   public PathFormulaBuilder createNewPathFormulaBuilder() {
     return delegate.createNewPathFormulaBuilder();
+  }
+
+  @Override
+  public CtoFormulaConverter getConverter() {
+    return delegate.getConverter();
   }
 }
