@@ -12,6 +12,7 @@ import static org.sosy_lab.common.collect.MapsDifference.collectMapsDifferenceTo
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -45,88 +46,89 @@ public class StrongestPost4Loop {
 
   private static final String NAMEING_PREFIX = "sp_for_loop_";
 
-  @SuppressWarnings("resource")
-  public static void serializeLoop(
-      PathFormula initFormula,
-      PathFormula preserveFormula,
-      Collection<PathFormula> pTerminationConditions,
-      FormulaManagerView pFmgr,
-      LogManager pLogger,
-      CFANode pLoopHead,
-      String pOutdirForExport,
-      Map<CFANode, PathFormula> pInvariants,
-      Map<CFANode, Integer> nodesToLineNumber,
-      SSAMap ssaMapAtLoophead)
-      throws CPAException {
-    serializeLoop(
-        initFormula,
-        preserveFormula,
-        merge(pTerminationConditions, pFmgr),
-        pFmgr,
-        pLogger,
-        pLoopHead,
-        pOutdirForExport,
-        pInvariants,
-        nodesToLineNumber,
-        ssaMapAtLoophead);
-  }
+  //  @SuppressWarnings("resource")
+  //  public static void serializeLoop(
+  //      PathFormula initFormula,
+  //      PathFormula preserveFormula,
+  //      Pair<PathFormula, PathFormula> terminationAndAssertion,
+  //      FormulaManagerView pFmgr,
+  //      LogManager pLogger,
+  //      CFANode pLoopHead,
+  //      String pOutdirForExport,
+  //      Map<CFANode, PathFormula> pInvariants,
+  //      Map<CFANode, Integer> nodesToLineNumber,
+  //      SSAMap ssaMapAtLoophead)
+  //      throws CPAException {
+  //    serializeLoop(
+  //        initFormula,
+  //        preserveFormula,
+  //        terminationAndAssertion,
+  //        pFmgr,
+  //        pLogger,
+  //        pLoopHead,
+  //        pOutdirForExport,
+  //        pInvariants,
+  //        nodesToLineNumber,
+  //        ssaMapAtLoophead);
+  //  }
 
-  @SuppressWarnings("resource")
-  public static void serializeLoop(
-      PathFormula initFormula,
-      PathFormula preserveFormula,
-      PathFormula pTerminationConditions,
-      FormulaManagerView pFmgr,
-      LogManager pLogger,
-      CFANode pLoopHead,
-      String pOutdirForExport,
-      Map<CFANode, PathFormula> pInvariants,
-      Map<CFANode, Integer> nodesToLineNumber,
-      SSAMap ssaMapAtLoophead) {
-
-    // We build for each set of Path formulae a boolean formula using conjunction
-    Pair<BooleanFormula, SSAMap> path2LoooHead =
-        Pair.of(initFormula.getFormula(), initFormula.getSsa());
-    Pair<BooleanFormula, SSAMap> path1LoopIteration =
-        Pair.of(preserveFormula.getFormula(), preserveFormula.getSsa());
-    Pair<BooleanFormula, SSAMap> path2ErrorLoc =
-        Pair.of(pTerminationConditions.getFormula(), pTerminationConditions.getSsa());
-    List<Triple<Integer, String, SSAMap>> invariantsPresent =
-        pInvariants
-            .entrySet()
-            .stream()
-            .map(
-                e ->
-                    Triple.of(
-                        nodesToLineNumber.get(e.getKey()),
-                        pFmgr.dumpFormula(e.getValue().getFormula()).toString(),
-                        e.getValue().getSsa()))
-            .collect(Collectors.toList());
-    StrongestPost4LoopExchangeObj exObj =
-        new StrongestPost4LoopExchangeObj(
-            pFmgr.dumpFormula(path2LoooHead.getFirst()).toString(),
-            path2LoooHead.getSecond(),
-            ssaMapAtLoophead,
-            pFmgr.dumpFormula(path1LoopIteration.getFirst()).toString(),
-            path1LoopIteration.getSecond(),
-            pFmgr.dumpFormula(path2ErrorLoc.getFirst()).toString(),
-            path2ErrorLoc.getSecond(),
-            invariantsPresent);
-    try {
-      System.out.println(exObj.toString());
-      FileOutputStream fileOutputStream =
-          new FileOutputStream(
-              String.format(
-                  pOutdirForExport + NAMEING_PREFIX + "%d.txt", nodesToLineNumber.get(pLoopHead)));
-      ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
-      objectOutputStream.writeObject(exObj);
-      objectOutputStream.flush();
-      objectOutputStream.close();
-      fileOutputStream.close();
-    } catch (IOException e) {
-      pLogger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
-    }
-  }
+  //  @SuppressWarnings("resource")
+  //  public static void serializeLoop(
+  //      PathFormula initFormula,
+  //      PathFormula preserveFormula,
+  //      PathFormula pTerminationConditions,
+  //      FormulaManagerView pFmgr,
+  //      LogManager pLogger,
+  //      CFANode pLoopHead,
+  //      String pOutdirForExport,
+  //      Map<CFANode, PathFormula> pInvariants,
+  //      Map<CFANode, Integer> nodesToLineNumber,
+  //      SSAMap ssaMapAtLoophead) {
+  //
+  //    // We build for each set of Path formulae a boolean formula using conjunction
+  //    Pair<BooleanFormula, SSAMap> path2LoooHead =
+  //        Pair.of(initFormula.getFormula(), initFormula.getSsa());
+  //    Pair<BooleanFormula, SSAMap> path1LoopIteration =
+  //        Pair.of(preserveFormula.getFormula(), preserveFormula.getSsa());
+  //    Pair<BooleanFormula, SSAMap> path2ErrorLoc =
+  //        Pair.of(pTerminationConditions.getFormula(), pTerminationConditions.getSsa());
+  //    List<Triple<Integer, String, SSAMap>> invariantsPresent =
+  //        pInvariants
+  //            .entrySet()
+  //            .stream()
+  //            .map(
+  //                e ->
+  //                    Triple.of(
+  //                        nodesToLineNumber.get(e.getKey()),
+  //                        pFmgr.dumpFormula(e.getValue().getFormula()).toString(),
+  //                        e.getValue().getSsa()))
+  //            .collect(Collectors.toList());
+  //    StrongestPost4LoopExchangeObj exObj =
+  //        new StrongestPost4LoopExchangeObj(
+  //            pFmgr.dumpFormula(path2LoooHead.getFirst()).toString(),
+  //            path2LoooHead.getSecond(),
+  //            ssaMapAtLoophead,
+  //            pFmgr.dumpFormula(path1LoopIteration.getFirst()).toString(),
+  //            path1LoopIteration.getSecond(),
+  //            pFmgr.dumpFormula(path2ErrorLoc.getFirst()).toString(),
+  //            path2ErrorLoc.getSecond(),
+  //            invariantsPresent);
+  //    try {
+  //      System.out.println(exObj.toString());
+  //      FileOutputStream fileOutputStream =
+  //          new FileOutputStream(
+  //              String.format(
+  //                  pOutdirForExport + NAMEING_PREFIX + "%d.txt",
+  // nodesToLineNumber.get(pLoopHead)));
+  //      ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
+  //      objectOutputStream.writeObject(exObj);
+  //      objectOutputStream.flush();
+  //      objectOutputStream.close();
+  //      fileOutputStream.close();
+  //    } catch (IOException e) {
+  //      pLogger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
+  //    }
+  //  }
 
   @SuppressWarnings("resource")
   public static Map<Integer, StrongestPost4LoopExchangeObj> deserializeAllLoops(
@@ -167,7 +169,7 @@ public class StrongestPost4Loop {
 
   public static PathFormula merge(Collection<PathFormula> pPathFormulae, FormulaManagerView pFmgr)
       throws CPAException {
-    if(pPathFormulae.isEmpty()) {
+    if (pPathFormulae.isEmpty()) {
       throw new CPAException("Cannot merge an empty list of path Formula!");
     }
 
@@ -197,17 +199,75 @@ public class StrongestPost4Loop {
   }
 
   public static void serializeLoop(
-      PathFormula pInit,
+      PathFormula initFormula,
       PathFormula pPreserve,
       Set<Pair<PathFormula, PathFormula>> pPostConditionAndAssertion,
-      FormulaManagerView pFormulaManager,
+      FormulaManagerView pFmgr,
       LogManager pLogger,
       CFANode pLoopHead,
       String pOutdirForExport,
-      Map<CFANode, PathFormula> pMap,
+      Map<CFANode, PathFormula> pInvariants,
       Map<CFANode, Integer> pLineNumbersToNodes,
-      SSAMap pSsaMapForAbstratLocatons) {
-    // TODO Auto-generated method stub
+      SSAMap ssaMapAtLoophead) {
 
+    // We build for each set of Path formulae a boolean formula using conjunction
+    Pair<BooleanFormula, SSAMap> path2LoooHead =
+        Pair.of(initFormula.getFormula(), initFormula.getSsa());
+    Pair<BooleanFormula, SSAMap> path1LoopIteration =
+        Pair.of(pPreserve.getFormula(), pPreserve.getSsa());
+
+    List<Triple<Integer, String, SSAMap>> invariantsPresent =
+        pInvariants
+            .entrySet()
+            .stream()
+            .map(
+                e ->
+                    Triple.of(
+                        pLineNumbersToNodes.get(e.getKey()),
+                        pFmgr.dumpFormula(e.getValue().getFormula()).toString(),
+                        e.getValue().getSsa()))
+            .collect(Collectors.toList());
+    StrongestPost4LoopExchangeObj exObj =
+        new StrongestPost4LoopExchangeObj(
+            pFmgr.dumpFormula(path2LoooHead.getFirst()).toString(),
+            path2LoooHead.getSecond(),
+            ssaMapAtLoophead,
+            pFmgr.dumpFormula(path1LoopIteration.getFirst()).toString(),
+            path1LoopIteration.getSecond(),
+            dump2TerminationConditionExchangeObj(pFmgr, pPostConditionAndAssertion),
+            invariantsPresent);
+
+      System.out.println(exObj.toString());
+    try (FileOutputStream fileOutputStream =
+            new FileOutputStream(
+                String.format(
+                    pOutdirForExport + NAMEING_PREFIX + "%d.txt",
+                    pLineNumbersToNodes.get(pLoopHead)));
+        ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream); ) {
+      objectOutputStream.writeObject(exObj);
+      objectOutputStream.flush();
+      objectOutputStream.close();
+      fileOutputStream.close();
+    } catch (IOException e) {
+      pLogger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
+    }
+  }
+
+  private static Set<TerminationConditionExchangeObj> dump2TerminationConditionExchangeObj(
+      FormulaManagerView pFmgr, Set<Pair<PathFormula, PathFormula>> pPostConditionAndAssertion) {
+   Set<TerminationConditionExchangeObj> res = Sets.newHashSet();
+    for (Pair<PathFormula, PathFormula> elem : pPostConditionAndAssertion) {
+
+
+
+      TerminationConditionExchangeObj tempElem =
+          new TerminationConditionExchangeObj(
+              pFmgr.dumpFormula(elem.getFirst().getFormula()).toString(),
+              pFmgr.dumpFormula(elem.getSecond().getFormula()).toString(),
+              elem.getFirst().getSsa(),
+              elem.getSecond().getSsa());
+      res.add(tempElem);
+    }
+    return res;
   }
 }

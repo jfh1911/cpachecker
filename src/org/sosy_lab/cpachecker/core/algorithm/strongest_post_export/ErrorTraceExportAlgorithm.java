@@ -14,6 +14,7 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.MutableGraph;
 import java.util.ArrayList;
@@ -71,6 +72,9 @@ import org.sosy_lab.cpachecker.util.predicates.smt.Solver;
 import org.sosy_lab.java_smt.api.BooleanFormula;
 import org.sosy_lab.java_smt.api.FormulaType;
 import org.sosy_lab.java_smt.api.FunctionDeclaration;
+import org.sosy_lab.java_smt.api.ProverEnvironment;
+import org.sosy_lab.java_smt.api.SolverContext.ProverOptions;
+import org.sosy_lab.java_smt.api.SolverException;
 
 @Options(prefix = "cpa.spexport")
 public class ErrorTraceExportAlgorithm implements Algorithm {
@@ -158,9 +162,11 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
       throws CPAException, InterruptedException {
     Map<CFANode, PathFormula> initPathToLoopHead = new HashMap<>();
     Map<CFANode, PathFormula> preservePathToLoopHead = new HashMap<>();
-    Map<CFANode, PathFormula> loopHeadToTermiationCond = new HashMap<>();
-    Map<CFANode, PathFormula> invariants = new HashMap<>();
-    Map<AbstractState, PathFormula> absStatesToTherePreceedingPathFormula = new HashMap<>();
+    Map<CFANode, Set<Pair<PathFormula, PathFormula>>> loopHeadToTermiationCond = new HashMap<>();
+    Map<CFANode, PathFormula> invariants =
+        new HashMap<>(); // we need a path formula to store the  predicate (as boolean formula) and
+    // the ssa map
+    Map<AbstractState, CFANode> absLoopStatesToLoopRedicates = new HashMap<>();
     Map<CFANode, Set<PathFormula>> otherInvariantsPresentInInit = new HashMap<>();
     Map<CFANode, SSAMap> ssaMap4LopHeads = new HashMap<>();
     List<CFANode> orderedLoopHeads =
@@ -187,8 +193,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
             ARGUtils.getAllPaths(
                 reached, AbstractStates.extractStateByType(state, ARGState.class), true)) {
           List<AbstractState> absStateOnPath = filterAbstractStatesOnPathWOLast(path);
-          Optional<PathFormula> initConditionForLoop =
-              getInitConditionForLoop(loopHead, nodesInLoop, state, reached);
+          Optional<PathFormula> initConditionForLoop = getInitConditionForLoop(loopHead, state);
           Optional<PathFormula> preserveConditionForLoop =
               getPreserveConditionForLoop(loopHead, nodesInLoop, state, reached);
           if (preserveConditionForLoop.isPresent()) {
@@ -212,6 +217,8 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
             // the direcly succesing loopheads are already computed (especiall the init, which
             // we can reuse).
 
+            // We can ignore branching predicates here, as we are intereseted in all path between
+            // the two loop-heads except the looped body
             CFANode lastNode =
                 AbstractStates.extractLocation(absStateOnPath.get(absStateOnPath.size() - 1));
             if (!invariants.containsKey(lastNode)) {
@@ -226,9 +233,10 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
             ohterInvsPresnet.add(invariants.get(lastNode));
             ohterInvsPresnet.addAll(otherInvariantsPresentInInit.get(lastNode));
             // Build initCOnd4Loop as follows:
-            //                  sp(lastNode) \wedge inv(lastNode \wedge iniCondForLoop
+            //                  init(lastNode) \wedge inv(lastNode) \wedge path(Last-node-thisNode =
+            // pathFormula(thisNode)
             if (initConditionForLoop.isPresent()) {
-              absStatesToTherePreceedingPathFormula.put(state, initConditionForLoop.get());
+              absLoopStatesToLoopRedicates.put(state, loopHead);
 
               PathFormula combinedInit =
                   StrongestPost4Loop.merge(
@@ -260,56 +268,113 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
       invariants.put(loopHead, getFuncDeclForNode(loopHead, initPF));
     }
 
-    // Compute termiantoin condition:
+    // Compute termiantion condition:
 
     // now, we compute for each loophead the termination condition.
-    // therefore, we firstly add the pathFormula from the target locations to the map
-    // absStatesToTherePreceedingPathFormula which then contains the path formula for all
-    // abstract states
 
-    for (AbstractState target : AbstractStates.getTargetStates(reached)) {
-      for (ARGPath path :
-          ARGUtils.getAllPaths(
-              reached, AbstractStates.extractStateByType(target, ARGState.class), true)) {
-        PathFormula pfTargetNode =
-            AbstractStates.extractStateByType(
-                    path.getStatePairs().get(path.getStatePairs().size() - 1).getFirst(),
-                    PredicateAbstractState.class)
-                .getPathFormula(); // to get the last state.
-        absStatesToTherePreceedingPathFormula.put(target, pfTargetNode);
-      }
-    }
+    //
+    //
+    //    for (AbstractState target : AbstractStates.getTargetStates(reached)) {
+    //      for (ARGPath path :
+    //          ARGUtils.getAllPaths(
+    //              reached, AbstractStates.extractStateByType(target, ARGState.class), true)) {
+    //
+    //
+    //
+    //        if (isAbstractionState(path.getFirstState())
+    //            && isAbstractionState(path.getLastState())
+    //            && allInnerNodesAreNonAbstractionStates(path)) {
+    //
+    //          Optional<AbstractState> stateBeforeAssertion = getStateWithAssertion(path);
+    //          if (stateBeforeAssertion.isPresent()) {
+    //            @Nullable
+    //            PredicateAbstractState predState =
+    //                AbstractStates.extractStateByType(
+    //                    stateBeforeAssertion.get(), PredicateAbstractState.class);
+    //
+    //            // Update the path with the pbranching information
+    //            PathFormula pathFormula = addBranchingCondition(predState.getPathFormula(), path);
+    //            postConditionAndAssertion.add(
+    //                Pair.of(
+    //                    pathFormula,
+    //                    getAssertion(
+    //                        predState,
+    //                        AbstractStates.extractLocation(stateBeforeAssertion.get()),
+    //                        path)));
+    //
+    //          }}
+    //
+    //
+    //
+    //        PathFormula pfTargetNode =
+    //            AbstractStates.extractStateByType(
+    //                    path.getStatePairs().get(path.getStatePairs().size() - 1).getFirst(),
+    //                    PredicateAbstractState.class)
+    //                .getPathFormula(); // to get the last state.
+    //        absStatesToTherePreceedingPathFormula.put(target, pfTargetNode);
+    //      }
+    //    }
 
     // next, we compute for each loophead all path leading to any target state and replace
-    // each abstract note with the path formula stored in
-    // absStatesToTherePreceedingPathFormula
-    // Moreover, loop heads are additionally conjoined with the predicate for the
-    // loopInvariant to correctly abstrct llops accoridng to ssa
-
-    // TODO: Discuss, if there is a easier way without that much recomputation.
+    // each abstract node except the first and last with the predicate stored as invariant
+    // moreover, we determien the state on the path before the assertion is checked. we compute the
+    // path formula until this state, the rest is stored as assertion
 
     for (CFANode loopHead : loopStruct.getAllLoopHeads()) {
       Set<PathFormula> allPathFormulae = new HashSet<>();
-      for (AbstractState state : filter(loopHead, reached)) {
+      for (AbstractState absLoopHeadState : filter(loopHead, reached)) {
         for (AbstractState target : AbstractStates.getTargetStates(reached)) {
           final Set<ARGPath> allPaths =
               ARGUtils.getAllPaths(
-                  AbstractStates.extractStateByType(state, ARGState.class),
+                  AbstractStates.extractStateByType(absLoopHeadState, ARGState.class),
                   AbstractStates.extractStateByType(target, ARGState.class),
                   true);
           for (ARGPath path : allPaths) {
-            List<PathFormula> pfOnPath = new ArrayList<>();
-            List<AbstractState> absStateOnPath = filterAbstractStatesOnPath(path);
-            for (AbstractState absState : absStateOnPath) {
-              if (absStatesToTherePreceedingPathFormula.containsKey(absState)) {
-                pfOnPath.add(absStatesToTherePreceedingPathFormula.get(absState));
-                if (isLoopHead(absState)) {
-                  pfOnPath.add(invariants.get(AbstractStates.extractLocation(absState)));
+
+            if (isAbstractionState(path.getFirstState())
+                && isAbstractionState(path.getLastState())
+                && allInnerNodesAreNonAbstractionStates(path)) {
+
+              Optional<AbstractState> stateBeforeAssertion = getStateWithAssertion(path);
+              if (stateBeforeAssertion.isPresent()) {
+                @Nullable
+                PredicateAbstractState predState =
+                    AbstractStates.extractStateByType(
+                        stateBeforeAssertion.get(), PredicateAbstractState.class);
+
+                ARGPath reducedPath =
+                    reducePath(path, Optional.of(absLoopHeadState), stateBeforeAssertion.get());
+                PathFormula formulaForCurrentPath =
+                    pfManager.makeFormulaForPath(reducedPath.getFullPath());
+
+                // Update the path with the branching information
+                formulaForCurrentPath = addBranchingCondition(formulaForCurrentPath, reducedPath);
+                // Add the loop invariant predicates for abstract loop locations at path
+                List<AbstractState> absStateOnPath = filterAbstractStatesOnPath(reducedPath);
+                for (AbstractState absState : absStateOnPath) {
+
+                  if (absLoopStatesToLoopRedicates.containsKey(absState)) {
+                    CFANode loopHeadPresent = absLoopStatesToLoopRedicates.get(absState);
+                    PathFormula predicateOfLoophead = invariants.get(loopHeadPresent);
+                    formulaForCurrentPath =
+                        pfManager.makeAnd(formulaForCurrentPath, predicateOfLoophead.getFormula());
+                  }
                 }
+                if (!loopHeadToTermiationCond.containsKey(loopHead)) {
+                  loopHeadToTermiationCond.put(loopHead, Sets.newHashSet());
+                }
+                Set<Pair<PathFormula, PathFormula>> currentSet =
+                    loopHeadToTermiationCond.get(loopHead);
+                currentSet.add(
+                    Pair.of(
+                        formulaForCurrentPath,
+                        getAssertion(stateBeforeAssertion.get(), predState, reducedPath)));
+                loopHeadToTermiationCond.put(loopHead, currentSet);
+              } else {
+                logger.log(
+                    Level.WARNING,
+                    String.format("CAnnot store the termination condition for path %s", path));
               }
-            }
-            if (!pfOnPath.isEmpty()) {
-              allPathFormulae.add(StrongestPost4Loop.merge(pfOnPath, fmgr));
             }
           }
         }
@@ -321,8 +386,6 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                     + " Are you sure that the loop can be exited?",
                 loopHead));
       }
-
-      loopHeadToTermiationCond.put(loopHead, StrongestPost4Loop.merge(allPathFormulae, fmgr));
     }
 
     //                if (isAbstractionState(path.getLastState())
@@ -375,6 +438,34 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           lineNumbersToNodes,
           ssaMap4LopHeads.get(loopHead));
     }
+  }
+
+  private ARGPath reducePath(
+      ARGPath originalPath, Optional<AbstractState> pStartIncluded, AbstractState pEndNotIncluded) {
+    List<ARGState> states = new ArrayList<>();
+    List<CFAEdge> edges = new ArrayList<>();
+    boolean firstFound = pStartIncluded.isEmpty();
+
+    final List<Triple<ARGState, CFAEdge, ARGState>> iterate = iterate(originalPath);
+    for (Triple<ARGState, CFAEdge, ARGState> e : iterate) {
+      final @Nullable ARGState currentNode = e.getFirst();
+      if (!firstFound && currentNode.equals(pStartIncluded.get())) {
+        firstFound = true;
+      }
+      if (firstFound) {
+        if (!currentNode.equals(pEndNotIncluded)) {
+
+        states.add(currentNode);
+
+        edges.add(e.getSecond());
+        } else {
+          // Remove the last edge
+          edges.remove(edges.size() - 1);
+          break;
+        }
+      }
+    }
+    return new ARGPath(states, edges);
   }
 
   private void processSingleLoop(
@@ -452,14 +543,27 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                       stateBeforeAssertion.get(), PredicateAbstractState.class);
 
               // Update the path with the pbranching information
-              PathFormula pathFormula = addBranchingCondition(predState.getPathFormula(), path);
-              postConditionAndAssertion.add(
-                  Pair.of(
-                      pathFormula,
-                      getAssertion(
-                          predState,
-                          AbstractStates.extractLocation(stateBeforeAssertion.get()),
-                          path)));
+              final PathFormula pf = predState.getPathFormula();
+
+              PathFormula pathFormula =
+                  addBranchingCondition(
+                      pf, reducePath(path, Optional.empty(), stateBeforeAssertion.get()));
+
+              // Check, if the computed path formula for the path to the assertion can be satisfied
+              // or represents an path overapproximating the state space
+              final @Nullable PathFormula assertion =
+                  getAssertion(stateBeforeAssertion.get(), predState, path);
+              System.out.println(fmgr.dumpFormula(pathFormula.getFormula()));
+              System.out.println("+\n" + fmgr.dumpFormula(assertion.getFormula()) + "\n\n");
+              if (canBeSAT(pathFormula, assertion)) {
+
+                postConditionAndAssertion.add(
+                    Pair.of(
+                        pathFormula, assertion));
+
+                          }else {
+                            logger.log(Level.INFO, String.format("Ignoring the path %s, as its path formula is not satisfiable!", path.toString()));
+                          }
             }
           } else {
             // TODO: Implement
@@ -500,22 +604,44 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
         this.getSSAMapForAbstratLocatons(ssaMaps4Loophead));
   }
 
-  private @Nullable PathFormula getAssertion(
-      PredicateAbstractState pStateBeforeAssertion, CFANode locOfStateBeforeAssertion, ARGPath pPath) throws CPATransferException, InterruptedException {
-    PathFormula oldPF = pStateBeforeAssertion.getPathFormula();
-    PathFormula res = new PathFormula(fmgr.getBooleanFormulaManager().makeTrue(), oldPF.getSsa(), oldPF.getPointerTargetSet(), oldPF.getLength());
+  private boolean canBeSAT(PathFormula pPathFormula, PathFormula assertion) {
+    ProverEnvironment prover = solver.newProverEnvironment(ProverOptions.GENERATE_MODELS);
+    try {
+      prover.addConstraint(pPathFormula.getFormula());
+      prover.addConstraint(assertion.getFormula());
+      return !prover.isUnsat();
+    } catch (InterruptedException | SolverException e) { // TODO Auto-generated catch block
+//In case of an error, we assume that the formula is sat and should be exported
+      return true;
+    }
+  }
 
-    boolean start = false;
-    //Iterate through all edges of the path and start to build the path fromula from pStateBeforeAssertion to last state
-    for(CFAEdge e : pPath.getFullPath()) {
-      if (start) {
-        res = pfManager.makeAnd(res, e);
-      }else if (e.getSuccessor().equals(locOfStateBeforeAssertion)) {
+  private @Nullable PathFormula getAssertion(
+      AbstractState pAbstractState, PredicateAbstractState pPredicateState,
+
+      ARGPath pPath)
+      throws CPATransferException, InterruptedException {
+    PathFormula oldPF = pPredicateState.getPathFormula();
+    PathFormula res =
+        new PathFormula(
+            fmgr.getBooleanFormulaManager().makeTrue(),
+            oldPF.getSsa(),
+            oldPF.getPointerTargetSet(),
+            oldPF.getLength());
+
+  boolean start = false;
+    // Iterate through all edges of the path and start to build the path fromula from
+    // pStateBeforeAssertion to last state
+
+    for (Triple<ARGState, CFAEdge, ARGState> e : iterate(pPath)) {
+      if (e.getFirst().equals(pAbstractState)) {
         start = true;
+      }
+      if (start) {
+        res = pfManager.makeAnd(res, e.getSecond());
       }
     }
     return res;
-
   }
 
   private Optional<AbstractState> getStateWithAssertion(ARGPath pPath) {
@@ -525,22 +651,13 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           && AbstractStates.extractLocation(pair.getFirst())
               .getFunctionName()
               .equals("__VERIFIER_assert")) {
-        if (e instanceof AssumeEdge &&  ((AssumeEdge) e).getTruthAssumption()) { // as the function says: if (! cond) {Error}
-          return Optional.ofNullable(
-             pair.getFirst());
+        if (e instanceof AssumeEdge
+            && ((AssumeEdge) e).getTruthAssumption()) { // as the function says: if (! cond) {Error}
+          return Optional.ofNullable(pair.getFirst());
         }
       }
     }
     return Optional.empty();
-  }
-
-  private Optional<PathFormula> getInitConditionForLoop(
-      CFANode pLoopHead,
-      Set<CFANode> pNodesInLoop,
-      AbstractState pState,
-      PartitionedReachedSet pReached) {
-    // TODO Auto-generated method stub
-    return null;
   }
 
   private boolean isLoopHead(AbstractState pAbsState) {
@@ -635,7 +752,9 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
   private Optional<PathFormula> getInitConditionForLoop(
       CFANode loopHead, AbstractState pLoopHeadAbstractState) {
 
-    @Nullable PredicateAbstractState loopHeadPredState = AbstractStates.extractStateByType(pLoopHeadAbstractState, PredicateAbstractState.class);
+    @Nullable
+    PredicateAbstractState loopHeadPredState =
+        AbstractStates.extractStateByType(pLoopHeadAbstractState, PredicateAbstractState.class);
     // Ensure that this is a abstraction location and the loop head is visited only once (no loop
     // iteration is taken)
     if (loopHeadPredState.isAbstractionState()
@@ -861,23 +980,23 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     return Optional.empty();
   }
 
-
-  private PathFormula addBranchingCondition(PathFormula pathFormula, ARGPath path) throws UnrecognizedCodeException, InterruptedException {
+  private PathFormula addBranchingCondition(PathFormula pathFormula, ARGPath path)
+      throws UnrecognizedCodeException, InterruptedException {
     // Add the branching conditions
     List<BooleanFormula> pathConditions = Lists.newArrayList();
 
-
-      for( Triple<ARGState, CFAEdge, ARGState> e:iterate(path)) {
+    for (Triple<ARGState, CFAEdge, ARGState> e : iterate(path)) {
       if (e.getSecond() instanceof CAssumeEdge) {
         CAssumeEdge assume = (CAssumeEdge) e.getSecond();
         @Nullable
         PredicateAbstractState predState =
             AbstractStates.extractStateByType(e.getFirst(), PredicateAbstractState.class);
-       BooleanFormula pred = converter.makePredicate(
-            assume.getExpression(),
-            assume,
-            AbstractStates.extractLocation(e.getFirst()).getFunctionName(),
-            predState.getPathFormula().getSsa().builder());
+        BooleanFormula pred =
+            converter.makePredicate(
+                assume.getExpression(),
+                assume,
+                AbstractStates.extractLocation(e.getFirst()).getFunctionName(),
+                predState.getPathFormula().getSsa().builder());
         if (assume.getTruthAssumption()) {
 
           pathConditions.add(pred);
@@ -888,24 +1007,29 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     }
 
     BooleanFormula and = fmgr.getBooleanFormulaManager().and(pathConditions);
-    and = fmgr.uninstantiate(and);
-    return pfManager.makeAnd(pathFormula, and);
+
+    final BooleanFormula newPF = fmgr.makeAnd(and, pathFormula.getFormula());
+    return new PathFormula(
+        newPF,
+        pathFormula.getSsa(),
+        pathFormula.getPointerTargetSet(),
+        pathFormula.getLength());
   }
 
-  private List<Triple<ARGState, CFAEdge, ARGState>> iterate(ARGPath path){
+  private List<Triple<ARGState, CFAEdge, ARGState>> iterate(ARGPath path) {
 
-    List<Triple<ARGState, CFAEdge, ARGState>>  res = new ArrayList<>();
+    List<Triple<ARGState, CFAEdge, ARGState>> res = new ArrayList<>();
 
     List<CFAEdge> edges = path.getFullPath();
     List<Pair<ARGState, ARGState>> nodePairs = path.getStatePairs();
-    if(edges.size() != nodePairs.size() ) {
-      throw new IllegalArgumentException("The path is not formed well "+ path.toString());
+    if (edges.size() != nodePairs.size()) {
+      throw new IllegalArgumentException("The path is not formed well " + path.toString());
     }
-    for (int i =0; i <edges.size(); i++) {
+    for (int i = 0; i < edges.size(); i++) {
 
-      res.add(Triple.of(nodePairs.get(i).getFirst(), edges.get(i), nodePairs.get(i).getSecond()));
+      final Triple<ARGState, CFAEdge, ARGState> triple = Triple.of(nodePairs.get(i).getFirst(), edges.get(i), nodePairs.get(i).getSecond());
+      res.add(triple);
     }
-return res;
+    return res;
   }
-
 }

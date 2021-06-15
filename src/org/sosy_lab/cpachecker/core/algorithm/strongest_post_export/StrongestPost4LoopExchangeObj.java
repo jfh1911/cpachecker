@@ -11,6 +11,7 @@ package org.sosy_lab.cpachecker.core.algorithm.strongest_post_export;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.sosy_lab.cpachecker.util.Triple;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.SSAMap;
 
@@ -22,10 +23,10 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
 
   private final String path2Loophead;
   private final String path1LoopIteration;
-  private final String path2ErrorLocation;
+  private final Set<TerminationConditionExchangeObj> terminationObject;
   private final SSAMap ssa4Path2LoopHead;
   private final SSAMap ssa4path1LoopIteration;
-  private final SSAMap ssa4path2ErrorLocation;
+
   private final SSAMap ssa4Loophead;
   private final List<Triple<Integer, String, SSAMap>> invariantsPresent;
 
@@ -35,16 +36,14 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
       SSAMap pSsaMapAtLoophead,
       String pPath1LoopIteration,
       SSAMap pSsa4path1LoopIteration,
-      String pPath2ErrorLocation,
-      SSAMap pSsaM4path2ErrorLocation,
+      Set<TerminationConditionExchangeObj> terminationObj,
       List<Triple<Integer, String, SSAMap>> pInvariantsPresent) {
     path2Loophead = pPath2Loophead;
     ssa4Path2LoopHead = pSsa4Path2LoopHead;
 
     path1LoopIteration = pPath1LoopIteration;
     ssa4path1LoopIteration = pSsa4path1LoopIteration;
-    path2ErrorLocation = pPath2ErrorLocation;
-    ssa4path2ErrorLocation = pSsaM4path2ErrorLocation;
+ this.terminationObject= terminationObj;
     this.invariantsPresent = pInvariantsPresent;
     this.ssa4Loophead = pSsaMapAtLoophead;
   }
@@ -61,9 +60,7 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
     return path1LoopIteration;
   }
 
-  public String getPath2ErrorLocation() {
-    return path2ErrorLocation;
-  }
+
 
   public SSAMap getSsa4Loophead() {
     return ssa4Loophead;
@@ -77,8 +74,8 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
     return ssa4path1LoopIteration;
   }
 
-  public SSAMap getSsa4path2ErrorLocation() {
-    return ssa4path2ErrorLocation;
+  public Set<TerminationConditionExchangeObj> getTerminationObject() {
+    return terminationObject;
   }
 
   public static long getSerialversionuid() {
@@ -96,12 +93,11 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
     return Objects.hash(
         invariantsPresent,
         path1LoopIteration,
-        path2ErrorLocation,
+        terminationObject,
         path2Loophead,
         ssa4Path2LoopHead,
         ssa4Loophead,
-        ssa4path1LoopIteration,
-        ssa4path2ErrorLocation);
+        ssa4path1LoopIteration);
   }
 
 
@@ -117,10 +113,9 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
         + path1LoopIteration
         + ", ssa4path1LoopIteration="
         + ssa4path1LoopIteration
-        + ",\n\n path2ErrorLocation="
-        + path2ErrorLocation
-        + ", ssa4path2ErrorLocation="
-        + ssa4path2ErrorLocation
+        + ",\n\n TerminationConditionExchangeObj="
+        + terminationObject
+
         + "\n\n, ssa4Loophead="
         + ssa4Loophead
         + ",\n invariantsPresent="
@@ -139,11 +134,11 @@ public class StrongestPost4LoopExchangeObj implements Serializable {
     StrongestPost4LoopExchangeObj other = (StrongestPost4LoopExchangeObj) obj;
     return Objects.equals(invariantsPresent, other.invariantsPresent)
         && Objects.equals(path1LoopIteration, other.path1LoopIteration)
-        && Objects.equals(path2ErrorLocation, other.path2ErrorLocation)
+        && Objects.equals(terminationObject, other.terminationObject)
         && Objects.equals(path2Loophead, other.path2Loophead)
         && Objects.equals(ssa4Path2LoopHead, other.ssa4Path2LoopHead)
         && Objects.equals(ssa4Loophead, other.ssa4Loophead)
         && Objects.equals(ssa4path1LoopIteration, other.ssa4path1LoopIteration)
-        && Objects.equals(ssa4path2ErrorLocation, other.ssa4path2ErrorLocation);
+        ;
   }
 }
