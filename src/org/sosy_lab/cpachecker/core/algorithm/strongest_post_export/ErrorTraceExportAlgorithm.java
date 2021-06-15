@@ -660,10 +660,6 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     return Optional.empty();
   }
 
-  private boolean isLoopHead(AbstractState pAbsState) {
-    return cfa.getAllLoopHeads().get().contains(AbstractStates.extractLocation(pAbsState));
-  }
-
   private List<AbstractState> filterAbstractStatesOnPath(ARGPath path) {
     return path.asStatesList()
         .stream()

@@ -246,8 +246,7 @@ public class StrongestPost4Loop {
         ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream); ) {
       objectOutputStream.writeObject(exObj);
       objectOutputStream.flush();
-      objectOutputStream.close();
-      fileOutputStream.close();
+
     } catch (IOException e) {
       pLogger.log(Level.WARNING, Throwables.getStackTraceAsString(e));
     }
