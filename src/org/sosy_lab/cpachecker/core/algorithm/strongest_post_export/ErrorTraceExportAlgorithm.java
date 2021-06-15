@@ -553,8 +553,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
               // or represents an path overapproximating the state space
               final @Nullable PathFormula assertion =
                   getAssertion(stateBeforeAssertion.get(), predState, path);
-              System.out.println(fmgr.dumpFormula(pathFormula.getFormula()));
-              System.out.println("+\n" + fmgr.dumpFormula(assertion.getFormula()) + "\n\n");
+
               if (canBeSAT(pathFormula, assertion)) {
 
                 postConditionAndAssertion.add(

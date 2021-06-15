@@ -237,7 +237,6 @@ public class StrongestPost4Loop {
             dump2TerminationConditionExchangeObj(pFmgr, pPostConditionAndAssertion),
             invariantsPresent);
 
-      System.out.println(exObj.toString());
     try (FileOutputStream fileOutputStream =
             new FileOutputStream(
                 String.format(
