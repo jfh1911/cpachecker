@@ -51,6 +51,7 @@ import org.sosy_lab.cpachecker.core.reachedset.ReachedSet;
 import org.sosy_lab.cpachecker.cpa.arg.ARGState;
 import org.sosy_lab.cpachecker.cpa.arg.ARGUtils;
 import org.sosy_lab.cpachecker.cpa.arg.path.ARGPath;
+import org.sosy_lab.cpachecker.cpa.arg.path.PathIterator;
 import org.sosy_lab.cpachecker.cpa.predicate.PredicateAbstractState;
 import org.sosy_lab.cpachecker.cpa.predicate.PredicateCPA;
 import org.sosy_lab.cpachecker.exceptions.CPAException;
@@ -62,7 +63,6 @@ import org.sosy_lab.cpachecker.util.CPAs;
 import org.sosy_lab.cpachecker.util.LoopStructure;
 import org.sosy_lab.cpachecker.util.LoopStructure.Loop;
 import org.sosy_lab.cpachecker.util.Pair;
-import org.sosy_lab.cpachecker.util.Triple;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormula;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.PathFormulaManager;
 import org.sosy_lab.cpachecker.util.predicates.pathformula.SSAMap;
@@ -446,8 +446,10 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     List<CFAEdge> edges = new ArrayList<>();
     boolean firstFound = pStartIncluded.isEmpty();
 
-    final List<Triple<ARGState, CFAEdge, ARGState>> iterate = iterate(originalPath);
-    for (Triple<ARGState, CFAEdge, ARGState> e : iterate) {
+    PathIterator pathIterator = originalPath.pathIterator();
+    while (pathIterator.hasNext()) {
+      Pair<ARGState, CFAEdge> e =
+          Pair.of(pathIterator.getAbstractState(), pathIterator.getOutgoingEdge());
       final @Nullable ARGState currentNode = e.getFirst();
       if (!firstFound && currentNode.equals(pStartIncluded.get())) {
         firstFound = true;
@@ -464,6 +466,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           break;
         }
       }
+      pathIterator.advance();
     }
     return new ARGPath(states, edges);
   }
@@ -609,7 +612,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
       prover.addConstraint(pPathFormula.getFormula());
       prover.addConstraint(assertion.getFormula());
       return !prover.isUnsat();
-    } catch (InterruptedException | SolverException e) { // TODO Auto-generated catch block
+    } catch (InterruptedException | SolverException e) {
 //In case of an error, we assume that the formula is sat and should be exported
       return true;
     }
@@ -632,13 +635,17 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     // Iterate through all edges of the path and start to build the path fromula from
     // pStateBeforeAssertion to last state
 
-    for (Triple<ARGState, CFAEdge, ARGState> e : iterate(pPath)) {
+    PathIterator pathIterator = pPath.pathIterator();
+    while (pathIterator.hasNext()) {
+      Pair<ARGState, CFAEdge> e =
+          Pair.of(pathIterator.getAbstractState(), pathIterator.getOutgoingEdge());
       if (e.getFirst().equals(pAbstractState)) {
         start = true;
       }
       if (start) {
         res = pfManager.makeAnd(res, e.getSecond());
       }
+      pathIterator.advance();
     }
     return res;
   }
@@ -758,25 +765,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     } else {
       return Optional.empty();
     }
-    //    // TODO: Remove, as probably obsolte
-    //        List<PathFormula> initCondition = new ArrayList<>();
-    //
-    //        for (int i = 0; i < loopHead.getNumEnteringEdges(); i++) {
-    //          CFANode predOfLoopHead = loopHead.getEnteringEdge(i).getPredecessor();
-    //          if (!nodesInLoop.contains(predOfLoopHead)) {
-    //            // This is the path from the last abstraction location to the loophead
-    //
-    //            Optional<PathFormula> pf = getPathFormulaOfNode(predOfLoopHead, reached,
-    //     pLoopHeadAbstractState);
-    //            if (pf.isPresent()) {
-    //              initCondition.add(pf.get());
-    //            }
-    //          }
-    //        }
-    //        if (initCondition.isEmpty()) {
-    //          return Optional.empty();
-    //        }
-    //        return Optional.of(StrongestPost4Loop.merge(initCondition, fmgr));
+
   }
   /**
    * Looks for all nodes that leaf the loop and takes the ssa map of these nodes
@@ -980,7 +969,10 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     // Add the branching conditions
     List<BooleanFormula> pathConditions = Lists.newArrayList();
 
-    for (Triple<ARGState, CFAEdge, ARGState> e : iterate(path)) {
+    PathIterator pathIterator = path.pathIterator();
+    while (pathIterator.hasNext()) {
+      Pair<ARGState, CFAEdge> e =
+          Pair.of(pathIterator.getAbstractState(), pathIterator.getOutgoingEdge());
       if (e.getSecond() instanceof CAssumeEdge) {
         CAssumeEdge assume = (CAssumeEdge) e.getSecond();
         @Nullable
@@ -999,6 +991,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           pathConditions.add(fmgr.getBooleanFormulaManager().not(pred));
         }
       }
+      pathIterator.advance();
     }
 
     BooleanFormula and = fmgr.getBooleanFormulaManager().and(pathConditions);
@@ -1011,20 +1004,5 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
         pathFormula.getLength());
   }
 
-  private List<Triple<ARGState, CFAEdge, ARGState>> iterate(ARGPath path) {
 
-    List<Triple<ARGState, CFAEdge, ARGState>> res = new ArrayList<>();
-
-    List<CFAEdge> edges = path.getFullPath();
-    List<Pair<ARGState, ARGState>> nodePairs = path.getStatePairs();
-    if (edges.size() != nodePairs.size()) {
-      throw new IllegalArgumentException("The path is not formed well " + path.toString());
-    }
-    for (int i = 0; i < edges.size(); i++) {
-
-      final Triple<ARGState, CFAEdge, ARGState> triple = Triple.of(nodePairs.get(i).getFirst(), edges.get(i), nodePairs.get(i).getSecond());
-      res.add(triple);
-    }
-    return res;
-  }
 }
