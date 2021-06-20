@@ -2843,6 +2843,9 @@ cpa.smg.verifyPredicates = false
 # Allocation functions which set memory to zero
 cpa.smg.zeroingMemoryAllocation = {"calloc", "kzalloc"}
 
+# Generate the smt formulae for interpolation queries according to sharma12.
+cpa.spexport.generateInterpolatinoTasks = true
+
 # Create a file that contains the StrongestPost for each loop in the program
 # in this directory.
 cpa.spexport.outdirForExport = "output/"

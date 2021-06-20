@@ -172,35 +172,6 @@ public class GeneratorSharma {
     return AlgorithmStatus.NO_PROPERTY_CHECKED;
   }
 
-  private @Nullable PathFormula getAssertion(
-      AbstractState pAbstractState, PredicateAbstractState pPredicateState, ARGPath pPath)
-      throws CPATransferException, InterruptedException {
-    PathFormula oldPF = pPredicateState.getPathFormula();
-    PathFormula res =
-        new PathFormula(
-            fmgr.getBooleanFormulaManager().makeTrue(),
-            oldPF.getSsa(),
-            oldPF.getPointerTargetSet(),
-            oldPF.getLength());
-
-    boolean start = false;
-    // Iterate through all edges of the path and start to build the path fromula from
-    // pStateBeforeAssertion to last state
-
-    PathIterator pathIterator = pPath.pathIterator();
-    while (pathIterator.hasNext()) {
-      Pair<ARGState, CFAEdge> e =
-          Pair.of(pathIterator.getAbstractState(), pathIterator.getOutgoingEdge());
-      if (e.getFirst().equals(pAbstractState)) {
-        start = true;
-      }
-      if (start) {
-        res = pfManager.makeAnd(res, e.getSecond());
-      }
-      pathIterator.advance();
-    }
-    return res;
-  }
 
   private @Nullable PathFormula transformPath(
       AbstractState startingPoint,
