@@ -87,8 +87,10 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           "Create a file that contains the StrongestPost for each loop in the program in this directory.")
   private String outdirForExport = "output/";
 
-  @Option(secure = true, description = "Generate the smt formulae according to sharma12.")
-  private boolean sharma12 = true;
+  @Option(
+      secure = true,
+      description = "Generate the smt formulae for interpolation queries according to sharma12.")
+  private boolean generateInterpolatinoTasks = true;
 
   private final LogManager logger;
 
@@ -147,11 +149,10 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     } else {
 
       // If the data should be generated for Sharma, then delegate do different class
-      if (sharma12) {
+      if (generateInterpolatinoTasks) {
 
         try {
-          GeneratorSharma gen =
-              new GeneratorSharma(algorithm, logger, cfa, cpa, shutdown, outdirForExport);
+          GeneratorSharma gen = new GeneratorSharma(logger, cpa, cfa, outdirForExport);
           gen.generate(reached);
         } catch (InvalidConfigurationException e) {
           return status;

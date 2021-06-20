@@ -23,14 +23,12 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.cfa.model.c.CAssumeEdge;
-import org.sosy_lab.cpachecker.core.algorithm.Algorithm;
 import org.sosy_lab.cpachecker.core.algorithm.Algorithm.AlgorithmStatus;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
@@ -69,7 +67,6 @@ public class GeneratorSharma {
   private final CFA cfa;
   Solver solver;
   FormulaManagerView fmgr;
-  private ShutdownNotifier shutdown;
 
   private PathFormulaManager pfManager;
 
@@ -78,12 +75,7 @@ public class GeneratorSharma {
   private LoopStructure loopStruct;
 
   public GeneratorSharma(
-      Algorithm pAlgorithm,
-      LogManager pLogger,
-      CFA pCfa,
-      ConfigurableProgramAnalysis pCpa,
-      ShutdownNotifier pShutdown,
-      String outdirForExport)
+      LogManager pLogger, ConfigurableProgramAnalysis pCpa, CFA pCfa, String outdirForExport)
       throws InvalidConfigurationException {
     cfa = Objects.requireNonNull(pCfa);
     logger = Objects.requireNonNull(pLogger);
@@ -95,7 +87,7 @@ public class GeneratorSharma {
     fmgr = solver.getFormulaManager();
     pfManager = predCPA.getPathFormulaManager();
     converter = pfManager.getConverter();
-    this.shutdown = pShutdown;
+
     this.outdirForExport = outdirForExport;
   }
 
@@ -370,13 +362,7 @@ public class GeneratorSharma {
     return result;
   }
 
-  /**
-   * Creates assignemnts for each var xi in pOld and xj in PNew, s.t. xi=xj
-   *
-   * @param pCUrrentPathFormula
-   * @param pPf1LoopITeration
-   * @return
-   */
+  /** Creates assignemnts for each var xi in pOld and xj in PNew, s.t. xi=xj */
   private BooleanFormula mapSSAIndicesfromFIrstTOSecond(PathFormula pOld, PathFormula pNew) {
     // Take all variables from the old path formula (leading o the loop, remove all ssa indices
     Set<Formula> varsInOld =
