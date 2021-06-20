@@ -45,6 +45,7 @@ import org.sosy_lab.java_smt.api.BooleanFormula;
 public class StrongestPost4Loop {
 
   private static final String NAMEING_PREFIX = "sp_for_loop_";
+  private static final String NAMEING_PREFIX_Interpolation = "interpol_for_loop_";
 
   //  @SuppressWarnings("resource")
   //  public static void serializeLoop(
@@ -237,11 +238,34 @@ public class StrongestPost4Loop {
             dump2TerminationConditionExchangeObj(pFmgr, pPostConditionAndAssertion),
             invariantsPresent);
 
+    dumpObjToFile(pLogger, pLoopHead, pOutdirForExport, pLineNumbersToNodes, exObj);
+  }
+
+  public static void dumpObjToFile(
+      LogManager pLogger,
+      CFANode pLoopHead,
+      String pOutdirForExport,
+      Map<CFANode, Integer> pLineNumbersToNodes,
+      Object exObj) {
+    dumpObjToFile(pLogger, pLoopHead, pOutdirForExport, pLineNumbersToNodes, exObj, false);
+  }
+
+  public static void dumpObjToFile(
+      LogManager pLogger,
+      CFANode pLoopHead,
+      String pOutdirForExport,
+      Map<CFANode, Integer> pLineNumbersToNodes,
+      Object exObj,
+      boolean isInterpol) {
+
+    String name = NAMEING_PREFIX;
+    if (isInterpol) {
+      name = NAMEING_PREFIX_Interpolation;
+    }
     try (FileOutputStream fileOutputStream =
             new FileOutputStream(
                 String.format(
-                    pOutdirForExport + NAMEING_PREFIX + "%d.txt",
-                    pLineNumbersToNodes.get(pLoopHead)));
+                    pOutdirForExport + name + "%d.txt", pLineNumbersToNodes.get(pLoopHead)));
         ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream); ) {
       objectOutputStream.writeObject(exObj);
       objectOutputStream.flush();
