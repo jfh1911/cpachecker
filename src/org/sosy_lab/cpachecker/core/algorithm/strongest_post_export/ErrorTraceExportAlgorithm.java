@@ -468,6 +468,9 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
 
     PathIterator pathIterator = originalPath.pathIterator();
     while (pathIterator.hasNext()) {
+
+      // As we do not iterate through the full oath, it is ok to not process the last node on the
+      // path
       Pair<ARGState, CFAEdge> e =
           Pair.of(pathIterator.getAbstractState(), pathIterator.getOutgoingEdge());
       final @Nullable ARGState currentNode = e.getFirst();
@@ -656,6 +659,8 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
 
     PathIterator pathIterator = pPath.pathIterator();
     while (pathIterator.hasNext()) {
+      // we ignore the last node, but as we are only interesed in the edges (to build the pf), this
+      // is ok
       Pair<ARGState, CFAEdge> e =
           Pair.of(pathIterator.getAbstractState(), pathIterator.getOutgoingEdge());
       if (e.getFirst().equals(pAbstractState)) {
@@ -990,6 +995,9 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
 
     PathIterator pathIterator = path.pathIterator();
     while (pathIterator.hasNext()) {
+
+      // We ignore the last node on the path, but as we are only intereseted in the edges to get the
+      // branching conditions, this is ok
       Pair<ARGState, CFAEdge> e =
           Pair.of(pathIterator.getAbstractState(), pathIterator.getOutgoingEdge());
       if (e.getSecond() instanceof CAssumeEdge) {
