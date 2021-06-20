@@ -33,10 +33,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.sosy_lab.common.ShutdownNotifier;
 import org.sosy_lab.common.collect.MapsDifference;
-import org.sosy_lab.common.configuration.Configuration;
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
-import org.sosy_lab.common.configuration.Option;
-import org.sosy_lab.common.configuration.Options;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.cpachecker.cfa.CFA;
 import org.sosy_lab.cpachecker.cfa.model.AssumeEdge;
@@ -44,6 +41,7 @@ import org.sosy_lab.cpachecker.cfa.model.CFAEdge;
 import org.sosy_lab.cpachecker.cfa.model.CFANode;
 import org.sosy_lab.cpachecker.cfa.model.c.CAssumeEdge;
 import org.sosy_lab.cpachecker.core.algorithm.Algorithm;
+import org.sosy_lab.cpachecker.core.algorithm.Algorithm.AlgorithmStatus;
 import org.sosy_lab.cpachecker.core.interfaces.AbstractState;
 import org.sosy_lab.cpachecker.core.interfaces.ConfigurableProgramAnalysis;
 import org.sosy_lab.cpachecker.core.reachedset.PartitionedReachedSet;
@@ -76,19 +74,15 @@ import org.sosy_lab.java_smt.api.ProverEnvironment;
 import org.sosy_lab.java_smt.api.SolverContext.ProverOptions;
 import org.sosy_lab.java_smt.api.SolverException;
 
-@Options(prefix = "cpa.spexport")
-public class ErrorTraceExportAlgorithm implements Algorithm {
+
+public class GeneratorSharma {
 
   public static final String INV_FUNCTION_NAMING_SCHEMA = "Inv_%s";
 
-  @Option(
-      secure = true,
-      description =
-          "Create a file that contains the StrongestPost for each loop in the program in this directory.")
+
   private String outdirForExport = "output/";
 
-  @Option(secure = true, description = "Generate the smt formulae according to sharma12.")
-  private boolean sharma12 = true;
+
 
   private final LogManager logger;
 
@@ -102,17 +96,19 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
 
   private CtoFormulaConverter converter;
 
-  private ConfigurableProgramAnalysis cpa;
 
-  public ErrorTraceExportAlgorithm(
-      Configuration config,
+  private LoopStructure loopStruct;
+
+  public GeneratorSharma(
+
       Algorithm pAlgorithm,
       LogManager pLogger,
       CFA pCfa,
       ConfigurableProgramAnalysis pCpa,
-      ShutdownNotifier pShutdown)
+      ShutdownNotifier pShutdown,
+      String outdirForExport)
       throws InvalidConfigurationException {
-    config.inject(this, ErrorTraceExportAlgorithm.class);
+
     algorithm = pAlgorithm;
     cfa = Objects.requireNonNull(pCfa);
     logger = Objects.requireNonNull(pLogger);
@@ -120,58 +116,67 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     @SuppressWarnings("resource")
     @NonNull
     PredicateCPA predCPA =
-        CPAs.retrieveCPAOrFail(pCpa, PredicateCPA.class, ErrorTraceExportAlgorithm.class);
+        CPAs.retrieveCPAOrFail(pCpa, PredicateCPA.class, GeneratorSharma.class);
     solver = predCPA.getSolver();
     fmgr = solver.getFormulaManager();
     pfManager = predCPA.getPathFormulaManager();
     converter = pfManager.getConverter();
     this.shutdown = pShutdown;
-    this.cpa = pCpa;
+    this.outdirForExport = outdirForExport;
   }
 
-  @Override
-  public AlgorithmStatus run(ReachedSet pReached) throws CPAException, InterruptedException {
+  public AlgorithmStatus generate(ReachedSet pReached) throws CPAException, InterruptedException {
     if (!(pReached instanceof PartitionedReachedSet)) {
       throw new CPAException("Expecting a partioned reached set");
     }
     PartitionedReachedSet reached = (PartitionedReachedSet) pReached;
-    AlgorithmStatus status = AlgorithmStatus.NO_PROPERTY_CHECKED;
-
-    // run algorithm
-    algorithm.run(reached);
-    if (reached.hasWaitingState()) {
-      // Nested algortihm is not finished, hence do another round by returning to loop in calling
-      // class
-      return status;
-
-    } else {
-
-      // If the data should be generated for Sharma, then delegate do different class
-      if (sharma12) {
-
-        try {
-          GeneratorSharma gen =
-              new GeneratorSharma(algorithm, logger, cfa, cpa, shutdown, outdirForExport);
-          gen.generate(reached);
-        } catch (InvalidConfigurationException e) {
-          return status;
-        }
-      }
 
       // Try to get the loop heads and extract the loop invariant conditions for these
-      LoopStructure loopStruct = cfa.getLoopStructure().get();
+      loopStruct = cfa.getLoopStructure().get();
       if (cfa.getAllLoopHeads().isPresent() && cfa.getLoopStructure().isPresent()) {
 
         Map<CFANode, Integer> lineNumbersToNodes =
             getLineNumbersToNodes(loopStruct.getAllLoopHeads());
-        if (loopStruct.getCount() == 1) {
-          processSingleLoop(reached, loopStruct, lineNumbersToNodes);
-        } else {
-          processConsecutiveLoops(reached, loopStruct, lineNumbersToNodes);
+
+      Map<CFANode, List<Pair<PathFormula, PathFormula>>> mapOfLoopHeadsToAllConditions =
+          new HashMap<>();
+
+      PathFormula initalPF =
+          AbstractStates.extractStateByType(reached.getFirstState(), PredicateAbstractState.class)
+              .getPathFormula();
+
+        for(CFANode loopHead : loopStruct.getAllLoopHeads()) {
+        List<Pair<PathFormula, PathFormula>> pathForLocation = new ArrayList<>();
+          for (AbstractState absLoopHeadState : filter(loopHead, reached)) {
+            for (AbstractState targetState : AbstractStates.getTargetStates(reached)) {
+              final Set<ARGPath> allPathsToTarget =
+                  ARGUtils.getAllPaths(
+                      AbstractStates.extractStateByType(absLoopHeadState, ARGState.class),
+                      AbstractStates.extractStateByType(targetState, ARGState.class),
+                      true);
+
+              for (ARGPath violationPath : allPathsToTarget) {
+                for(ARGPath  initPath : ARGUtils.getAllPaths(
+                    AbstractStates.extractStateByType( reached.getFirstState(), ARGState.class),
+                      AbstractStates.extractStateByType(absLoopHeadState, ARGState.class),
+                      true)) {
+
+                @Nullable
+                PathFormula pathFormulaA =
+                    transformPath(reached.getFirstState(), initalPF, initPath, reached);
+                @Nullable
+                PathFormula pathFormulaB =
+                    transformPath(absLoopHeadState, pathFormulaA, violationPath, reached);
+                pathForLocation.add(Pair.of(pathFormulaA, pathFormulaB));
+                }
+                }}
         }
+        mapOfLoopHeadsToAllConditions.put(loopHead, pathForLocation);
+        }
+
+      System.out.println(mapOfLoopHeadsToAllConditions);
       }
-      return status;
-    }
+    return AlgorithmStatus.NO_PROPERTY_CHECKED;
   }
 
   private void processConsecutiveLoops(
@@ -499,6 +504,12 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
 
     List<AbstractState> argStateOfLoopHead = Lists.newArrayList(filter(loopHead, reached));
 
+
+
+
+
+
+
     // TO be able to see, which predecessor nodes of the loop head are part of the loop body
     // (and hence need to be processed differently)
     // we first collect all nodes of the looped body
@@ -547,6 +558,21 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
                 AbstractStates.extractStateByType(s, ARGState.class),
                 true);
         for (ARGPath path : paths) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
           // If the path contains exactly two abstraction locations, namely the first (loop
           // head) and the last (error location) and all nodes in between are non-abstraction
@@ -639,6 +665,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
 
   private @Nullable PathFormula getAssertion(
       AbstractState pAbstractState, PredicateAbstractState pPredicateState,
+
       ARGPath pPath)
       throws CPATransferException, InterruptedException {
     PathFormula oldPF = pPredicateState.getPathFormula();
@@ -666,6 +693,103 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
       pathIterator.advance();
     }
     return res;
+  }
+
+
+  private @Nullable PathFormula transformPath(
+      AbstractState startingPoint, PathFormula oldPF,ARGPath pPath, PartitionedReachedSet reached)
+      throws CPATransferException, InterruptedException {
+
+    PathFormula res =
+        new PathFormula(
+            fmgr.getBooleanFormulaManager().makeTrue(),
+            oldPF.getSsa(),
+            oldPF.getPointerTargetSet(),
+            oldPF.getLength());
+
+  boolean start = false;
+    // Iterate through all edges of the path and start to build the path fromula from
+    // pStateBeforeAssertion to last state
+
+    PathIterator pathIterator = pPath.fullPathIterator();
+    while (pathIterator.hasNext()) {
+      Pair<ARGState, CFAEdge> e =
+          Pair.of(pathIterator.getAbstractState(), pathIterator.getOutgoingEdge());
+      System.out.println(e.getSecond());
+      pathIterator.advance();
+    }
+
+    while (pathIterator.hasNext()) {
+      Pair<ARGState, CFAEdge> e =
+          Pair.of(pathIterator.getAbstractState(), pathIterator.getOutgoingEdge());
+      if (e.getFirst().equals(startingPoint)) {
+        start = true;
+      }
+      if (start) {
+        //Now, check if we have an abstractionState. Then, we need to add one loop iteration
+        @Nullable PredicateAbstractState currentPredState = AbstractStates.extractStateByType(e.getFirst(), PredicateAbstractState.class);
+        if (currentPredState.isAbstractionState()
+            && !e.getFirst().equals(pPath.getFirstState())
+            && !e.getFirst()
+                .equals(reached.getFirstState()) // First is abstraction state by default
+            && !e.getFirst().isTarget()) { // Last aswell, but both not loophead
+          res = addOneLoopIterationAndUpdateSSA(e.getFirst(), res, reached);
+        }
+        else {
+          if (Objects.nonNull(e.getSecond())) {
+        res = pfManager.makeAnd(res, e.getSecond());
+          } else {
+            System.out.println("");
+          }
+        }
+      }
+      pathIterator.advance();
+    }
+    return res;
+  }
+
+
+
+  private PathFormula addOneLoopIterationAndUpdateSSA( ARGState pLoopHeadABS, PathFormula pCUrrentPathFormula, PartitionedReachedSet reached) throws CPATransferException, InterruptedException {
+
+    //FIrstly, determie which predecessor is inside the loop
+CFANode loopHead = AbstractStates.extractLocation(pLoopHeadABS);
+  if (!loopStruct.getAllLoopHeads().contains(loopHead)) {
+    throw new IllegalArgumentException(String.format("An internal error occured, because abstraction is not conducted at loophead. The abstraction location is %s, availabel loopheads are %s", loopHead, loopStruct.getAllLoopHeads()));
+  }
+  Set<CFANode> nodesInLoop = new HashSet<>();
+  for (Loop loop : loopStruct.getLoopsForLoopHead(loopHead)) {
+    nodesInLoop.addAll(loop.getLoopNodes());
+  }
+  Optional<CFANode> predecessorInLoop = CFAUtils.allEnteringEdges(loopHead).stream().map(e -> e.getPredecessor()).filter(n -> nodesInLoop.contains(n)).findFirst();
+  if (predecessorInLoop.isEmpty()) {
+    throw new IllegalArgumentException("THere has to be at least one node in the loop leading to the loophead");
+  }
+
+  //Now, get all path from the loopHead to the pedecessorInLoop (the corresponding-ARG_Node
+  Set<PathFormula> allPathFormulae = new HashSet<>();
+  for (AbstractState absLoopHeadState : filter(predecessorInLoop.get(), reached)) {
+    //AS the arg is a tree (due to abstraction at loop heads and covered by, as empty precision, we dont need to care about neasted loops
+      final Set<ARGPath> allPaths =
+          ARGUtils.getAllPaths(
+              AbstractStates.extractStateByType(absLoopHeadState, ARGState.class),
+              AbstractStates.extractStateByType(pLoopHeadABS, ARGState.class),
+              false);
+//Compute for each path the path formula (use transformPath to handle neasted loops
+     for (ARGPath path : allPaths) {
+       allPathFormulae.add(transformPath(pLoopHeadABS, pCUrrentPathFormula, path, reached));
+     }
+    }
+//Now, disjoin the path (as only one can be executed, hence all other should be false)
+  ArrayList<PathFormula> pfList = Lists.newArrayList(allPathFormulae);
+  if(allPathFormulae.size() == 1) {
+    return pfList.get(0);
+  }else {
+    PathFormula first = pfList.get(0);
+    for(int i = 1; i < pfList.size(); i++) {
+      first=pfManager.makeOr(first, pfList.get(i));
+    }return first;
+  }
   }
 
   private Optional<AbstractState> getStateWithAssertion(ARGPath pPath) {
