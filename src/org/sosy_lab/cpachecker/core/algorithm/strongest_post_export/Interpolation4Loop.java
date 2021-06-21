@@ -29,10 +29,10 @@ public class Interpolation4Loop {
   private static final String NAMEING_PREFIX_Interpolation = "interpol_for_loop_";
 
   @SuppressWarnings("resource")
-  public static Map<Integer, InterpolationTaskExchangeObject> deserializeAllLoops(
+  public static Map<Integer, SharmaInterpolationTaskList> deserializeAllLoops(
       String pathToExchangeDIr, LogManager pLogger) {
 
-    Map<Integer, InterpolationTaskExchangeObject> loops = new HashMap<>();
+    Map<Integer, SharmaInterpolationTaskList> loops = new HashMap<>();
 
     try (Stream<Path> stream = Files.list(Paths.get(pathToExchangeDIr))) {
       List<File> filesToLoad =
@@ -42,8 +42,8 @@ public class Interpolation4Loop {
         if (file.getName().startsWith(NAMEING_PREFIX_Interpolation)) {
           FileInputStream fileInputStream = new FileInputStream(file);
           ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
-          InterpolationTaskExchangeObject l =
-              (InterpolationTaskExchangeObject) objectInputStream.readObject();
+          SharmaInterpolationTaskList l =
+              (SharmaInterpolationTaskList) objectInputStream.readObject();
           int linenumber =
               Integer.parseInt(
                   file.getName()
