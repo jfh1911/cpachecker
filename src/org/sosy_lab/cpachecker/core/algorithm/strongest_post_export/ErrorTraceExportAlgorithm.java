@@ -90,7 +90,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
   @Option(
       secure = true,
       description = "Generate the smt formulae for interpolation queries according to sharma12.")
-  private boolean generateInterpolatinoTasks = true;
+  private boolean generateInterpolationTasks = false;
 
   private final LogManager logger;
 
@@ -149,7 +149,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     } else {
 
       // If the data should be generated for Sharma, then delegate do different class
-      if (generateInterpolatinoTasks) {
+      if (generateInterpolationTasks) {
 
         try {
           GeneratorSharma gen = new GeneratorSharma(logger, cpa, cfa, outdirForExport);
