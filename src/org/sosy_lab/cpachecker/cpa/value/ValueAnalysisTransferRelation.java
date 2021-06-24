@@ -11,6 +11,7 @@ package org.sosy_lab.cpachecker.cpa.value;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -1723,6 +1724,13 @@ public class ValueAnalysisTransferRelation
     try {
       this.valuesFromFile =
           TestCompTestcaseLoader.loadTestcase(options.getFunctionValuesForRandom());
+      if (this.valuesFromFile.isEmpty()) {
+        logger.log(
+            Level.WARNING,
+            String.format(
+                "Loading the testcases from %s failed, no information is loaded, may not exists",
+                options.getFunctionValuesForRandom()));
+      }
     } catch (ParserConfigurationException | SAXException | IOException e) {
       // Nothing to do here, as we are not able to lead the additional information, hence ignoring
       // the file
@@ -1731,6 +1739,7 @@ public class ValueAnalysisTransferRelation
           String.format(
               "Ignoring the additionally given file 'functionValuesForRandom' %s due to an error",
               options.getFunctionValuesForRandom()));
+      this.valuesFromFile = Maps.newHashMap();
     }
   }
 

@@ -9,6 +9,7 @@
 package org.sosy_lab.cpachecker.cpa.value;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.Maps;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -26,6 +27,8 @@ public class TestCompTestcaseLoader {
 
   public static Map<Integer, String> loadTestcase(Path pathToFile)
       throws ParserConfigurationException, SAXException, IOException {
+
+    if (pathToFile.toFile().exists() && pathToFile.toFile().canRead()) {
     DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
     DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
     Map<Integer, String> inputs = new HashMap<>();
@@ -42,5 +45,7 @@ public class TestCompTestcaseLoader {
       }
     }
     return inputs;
+  }
+    return Maps.newHashMap();
   }
 }
