@@ -172,7 +172,6 @@ public class GeneratorSharma {
     return AlgorithmStatus.NO_PROPERTY_CHECKED;
   }
 
-
   private @Nullable PathFormula transformPath(
       AbstractState startingPoint,
       PathFormula oldPF,
@@ -293,42 +292,75 @@ public class GeneratorSharma {
       result = first;
     }
 
-    // FIXME: ITE einbauen
-    if (loopHead.isLoopStart()
-        && loopHead.getNumLeavingEdges() == 2
-        && CFAUtils.allLeavingEdges(loopHead).allMatch(e -> e instanceof CAssumeEdge)) {
+    // Build the ITE for the formula
 
-      CAssumeEdge outEdge;
-      if (((CAssumeEdge) loopHead.getLeavingEdge(0)).getTruthAssumption()) {
-        outEdge = (CAssumeEdge) loopHead.getLeavingEdge(0);
-      } else {
-        outEdge = (CAssumeEdge) loopHead.getLeavingEdge(1);
+    // A speciale handling is needed, if the loophead is not the decision-node, but there is a
+    // unique path to the deicision node
+    // (Happens, if there is a assignemtn int the loop-condition
+
+    CFANode assumptionNode = null;
+    if (loopHead.isLoopStart() && loopHead.getNumLeavingEdges() == 1) {
+
+      // Traverse the path to see, if it leads directly to a decision node
+      CFANode curNode = loopHead;
+      while (curNode.getNumLeavingEdges() == 1) {
+        CFANode suc = curNode.getLeavingEdge(0).getSuccessor();
+        if (suc.getNumLeavingEdges() == 2
+            && CFAUtils.allLeavingEdges(suc).allMatch(e -> e instanceof CAssumeEdge)) {
+          // We found the node
+          assumptionNode = suc;
+          break;
+        } else {
+          curNode = suc;
+        }
       }
-      BooleanFormula loopCondition =
-          converter.makePredicate(
-              outEdge.getExpression(),
-              outEdge,
-              loopHead.getFunctionName(),
-              pCUrrentPathFormula.getSsa().builder());
-      BooleanFormula oldANdLoopIteration =
-          fmgr.makeAnd(pCUrrentPathFormula.getFormula(), result.getFormula());
-      BooleanFormula oldAndNOLoopIteration =
+
+    }
+
+    final boolean loopHeadIsAssumeNode =
+        loopHead.isLoopStart()
+            && loopHead.getNumLeavingEdges() == 2
+            && CFAUtils.allLeavingEdges(loopHead).allMatch(e -> e instanceof CAssumeEdge);
+    if (loopHeadIsAssumeNode) {
+      assumptionNode = loopHead;
+    }
+    if (Objects.isNull(assumptionNode)) {
+      // We cannot build an ite
+      logger.log(Level.WARNING, String.format("CAnnot build ITE for loophead %s!", loopHead));
+    } else {
+      // Finde the edge that goes INTO the loop (which is by default, if the condition is true (or
+      // swapped and false)
+      CAssumeEdge outEdge = null;
+      final CAssumeEdge firstAssumeEdge = (CAssumeEdge) assumptionNode.getLeavingEdge(0);
+      if (firstAssumeEdge.getTruthAssumption()
+          || (!firstAssumeEdge.getTruthAssumption() && firstAssumeEdge.isSwapped())) {
+      outEdge = (CAssumeEdge) assumptionNode.getLeavingEdge(0);
+    } else {
+        // second edge leads to the loop
+        outEdge = (CAssumeEdge) assumptionNode.getLeavingEdge(1);
+    }
+
+    BooleanFormula loopCondition =
+        converter.makePredicate(
+            outEdge.getExpression(),
+            outEdge,
+            loopHead.getFunctionName(),
+            pCUrrentPathFormula.getSsa().builder());
+    BooleanFormula oldANdLoopIteration =
+        fmgr.makeAnd(pCUrrentPathFormula.getFormula(), result.getFormula());
+      BooleanFormula oldAndOnlyAssignment =
           fmgr.makeAnd(
               pCUrrentPathFormula.getFormula(),
               mapSSAIndicesfromFIrstTOSecond(pCUrrentPathFormula, result));
       BooleanFormula ite =
           fmgr.getBooleanFormulaManager()
-              .ifThenElse(loopCondition, oldANdLoopIteration, oldAndNOLoopIteration);
-      result =
-          new PathFormula(
-              ite,
-              pf1LoopITeration.getSsa(),
-              pf1LoopITeration.getPointerTargetSet(),
-              pf1LoopITeration.getLength());
-
-    } else {
-      // We cannot build an ite
-      logger.log(Level.WARNING, String.format("CAnnot build ITE for loophead %s!", loopHead));
+              .ifThenElse(loopCondition, oldANdLoopIteration, oldAndOnlyAssignment);
+    result =
+        new PathFormula(
+            ite,
+            pf1LoopITeration.getSsa(),
+            pf1LoopITeration.getPointerTargetSet(),
+            pf1LoopITeration.getLength());
     }
     return result;
   }
