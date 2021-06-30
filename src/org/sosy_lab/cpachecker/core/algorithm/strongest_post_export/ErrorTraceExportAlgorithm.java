@@ -341,7 +341,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
     // path formula until this state, the rest is stored as assertion
 
     for (CFANode loopHead : loopStruct.getAllLoopHeads()) {
-      Set<PathFormula> allPathFormulae = new HashSet<>();
+      //      Set<PathFormula> allPathFormulae = new HashSet<>();
       for (AbstractState absLoopHeadState : filter(loopHead, reached)) {
         for (AbstractState target : AbstractStates.getTargetStates(reached)) {
           final Set<ARGPath> allPaths =
@@ -352,8 +352,7 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           for (ARGPath path : allPaths) {
 
             if (isAbstractionState(path.getFirstState())
-                && isAbstractionState(path.getLastState())
-                && allInnerNodesAreNonAbstractionStates(path)) {
+                && isAbstractionState(path.getLastState())) {
 
               Optional<AbstractState> stateBeforeAssertion = getStateWithAssertion(path);
               if (stateBeforeAssertion.isPresent()) {
@@ -399,13 +398,13 @@ public class ErrorTraceExportAlgorithm implements Algorithm {
           }
         }
       }
-      if (allPathFormulae.isEmpty()) {
-        throw new CPAException(
-            String.format(
-                "We were not able to compute a termination conditinon fot the loop %s."
-                    + " Are you sure that the loop can be exited?",
-                loopHead));
-      }
+      //      if (allPathFormulae.isEmpty()) {
+      //        throw new CPAException(
+      //            String.format(
+      //                "We were not able to compute a termination conditinon fot the loop %s."
+      //                    + " Are you sure that the loop can be exited?",
+      //                loopHead));
+      //      }
     }
 
     //                if (isAbstractionState(path.getLastState())
