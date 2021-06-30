@@ -2844,7 +2844,7 @@ cpa.smg.verifyPredicates = false
 cpa.smg.zeroingMemoryAllocation = {"calloc", "kzalloc"}
 
 # Generate the smt formulae for interpolation queries according to sharma12.
-cpa.spexport.generateInterpolatinoTasks = true
+cpa.spexport.generateInterpolationTasks = false
 
 # Create a file that contains the StrongestPost for each loop in the program
 # in this directory.

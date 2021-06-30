@@ -8,6 +8,7 @@
 
 package org.sosy_lab.cpachecker.core.algorithm.strongest_post_export;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
@@ -19,7 +20,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -131,7 +131,7 @@ public class GeneratorSharma {
                       AbstractStates.extractStateByType(reached.getFirstState(), ARGState.class),
                       AbstractStates.extractStateByType(absLoopHeadState, ARGState.class),
                       true)) {
-                System.out.println("");
+                try {
                 @Nullable
                 PathFormula pathFormulaA =
                     transformPath(reached.getFirstState(), initalPF, initPath, reached);
@@ -139,6 +139,10 @@ public class GeneratorSharma {
                 PathFormula pathFormulaB =
                     transformPath(absLoopHeadState, pathFormulaA, violationPath, reached);
                 pathForLocation.add(Pair.of(pathFormulaA, pathFormulaB));
+                } catch (CPATransferException e) {
+                  throw new CPAException(
+                      "An error occured, caused by :" + Throwables.getStackTraceAsString(e), e);
+              }
               }
             }
           }
@@ -301,20 +305,7 @@ public class GeneratorSharma {
     CFANode assumptionNode = null;
     if (loopHead.isLoopStart() && loopHead.getNumLeavingEdges() == 1) {
 
-      // Traverse the path to see, if it leads directly to a decision node
-      CFANode curNode = loopHead;
-      while (curNode.getNumLeavingEdges() == 1) {
-        CFANode suc = curNode.getLeavingEdge(0).getSuccessor();
-        if (suc.getNumLeavingEdges() == 2
-            && CFAUtils.allLeavingEdges(suc).allMatch(e -> e instanceof CAssumeEdge)) {
-          // We found the node
-          assumptionNode = suc;
-          break;
-        } else {
-          curNode = suc;
-        }
-      }
-
+      assumptionNode = getAssumptionNodeIfExists(loopHead);
     }
 
     final boolean loopHeadIsAssumeNode =
@@ -326,7 +317,8 @@ public class GeneratorSharma {
     }
     if (Objects.isNull(assumptionNode)) {
       // We cannot build an ite
-      logger.log(Level.WARNING, String.format("CAnnot build ITE for loophead %s!", loopHead));
+      throw new IllegalArgumentException(
+          String.format("Cannot build ITE for loophead %s!", loopHead));
     } else {
       // Finde the edge that goes INTO the loop (which is by default, if the condition is true (or
       // swapped and false)
@@ -334,20 +326,20 @@ public class GeneratorSharma {
       final CAssumeEdge firstAssumeEdge = (CAssumeEdge) assumptionNode.getLeavingEdge(0);
       if (firstAssumeEdge.getTruthAssumption()
           || (!firstAssumeEdge.getTruthAssumption() && firstAssumeEdge.isSwapped())) {
-      outEdge = (CAssumeEdge) assumptionNode.getLeavingEdge(0);
-    } else {
+        outEdge = (CAssumeEdge) assumptionNode.getLeavingEdge(0);
+      } else {
         // second edge leads to the loop
         outEdge = (CAssumeEdge) assumptionNode.getLeavingEdge(1);
-    }
+      }
 
-    BooleanFormula loopCondition =
-        converter.makePredicate(
-            outEdge.getExpression(),
-            outEdge,
-            loopHead.getFunctionName(),
-            pCUrrentPathFormula.getSsa().builder());
-    BooleanFormula oldANdLoopIteration =
-        fmgr.makeAnd(pCUrrentPathFormula.getFormula(), result.getFormula());
+      BooleanFormula loopCondition =
+          converter.makePredicate(
+              outEdge.getExpression(),
+              outEdge,
+              loopHead.getFunctionName(),
+              pCUrrentPathFormula.getSsa().builder());
+      BooleanFormula oldANdLoopIteration =
+          fmgr.makeAnd(pCUrrentPathFormula.getFormula(), result.getFormula());
       BooleanFormula oldAndOnlyAssignment =
           fmgr.makeAnd(
               pCUrrentPathFormula.getFormula(),
@@ -355,14 +347,30 @@ public class GeneratorSharma {
       BooleanFormula ite =
           fmgr.getBooleanFormulaManager()
               .ifThenElse(loopCondition, oldANdLoopIteration, oldAndOnlyAssignment);
-    result =
-        new PathFormula(
-            ite,
-            pf1LoopITeration.getSsa(),
-            pf1LoopITeration.getPointerTargetSet(),
-            pf1LoopITeration.getLength());
+      result =
+          new PathFormula(
+              ite,
+              pf1LoopITeration.getSsa(),
+              pf1LoopITeration.getPointerTargetSet(),
+              pf1LoopITeration.getLength());
     }
     return result;
+  }
+
+  public CFANode getAssumptionNodeIfExists(CFANode loopHead) {
+    // Traverse the path to see, if it leads directly to a decision node
+    CFANode curNode = loopHead;
+    while (curNode.getNumLeavingEdges() == 1) {
+      CFANode suc = curNode.getLeavingEdge(0).getSuccessor();
+      if (suc.getNumLeavingEdges() == 2
+          && CFAUtils.allLeavingEdges(suc).allMatch(e -> e instanceof CAssumeEdge)) {
+        // We found the node
+        return suc;
+      } else {
+        curNode = suc;
+      }
+    }
+    return null;
   }
 
   /** Creates assignemnts for each var xi in pOld and xj in PNew, s.t. xi=xj */
