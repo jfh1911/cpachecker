@@ -14,6 +14,7 @@ import com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.util.Map;
 import org.junit.Test;
+import org.sosy_lab.common.log.LogManager;
 
 public class TestCompTestcaseLoaderTest {
 
@@ -25,7 +26,8 @@ public class TestCompTestcaseLoaderTest {
     Map<Integer, String> expected = ImmutableMap.<Integer, String>builder().put(0, "2").build();
 
     Map<Integer, String> loadedInputs =
-        TestCompTestcaseLoader.loadTestcase(new File(PREFIX + "testfile1.xml").toPath());
+        TestCompTestcaseLoader.loadTestcase(
+            new File(PREFIX + "testfile1.xml").toPath(), LogManager.createTestLogManager());
     assertMapEquals(expected, loadedInputs);
   }
 
@@ -36,7 +38,8 @@ public class TestCompTestcaseLoaderTest {
         ImmutableMap.<Integer, String>builder().put(0, "1").put(1, "2").put(2, "42").build();
 
     Map<Integer, String> loadedInputs =
-        TestCompTestcaseLoader.loadTestcase(new File(PREFIX + "testfile2.xml").toPath());
+        TestCompTestcaseLoader.loadTestcase(
+            new File(PREFIX + "testfile2.xml").toPath(), LogManager.createTestLogManager());
     assertMapEquals(expected, loadedInputs);
   }
 

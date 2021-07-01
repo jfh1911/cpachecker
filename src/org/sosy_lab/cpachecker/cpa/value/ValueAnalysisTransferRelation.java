@@ -1723,7 +1723,7 @@ public class ValueAnalysisTransferRelation
   private void setupFunctionValuesForRandom() {
     try {
       this.valuesFromFile =
-          TestCompTestcaseLoader.loadTestcase(options.getFunctionValuesForRandom());
+          TestCompTestcaseLoader.loadTestcase(options.getFunctionValuesForRandom(), logger);
       if (this.valuesFromFile.isEmpty()) {
         logger.log(
             Level.WARNING,
